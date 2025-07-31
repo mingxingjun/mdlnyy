@@ -1,0 +1,10 @@
+node_modules/
+.next/
+out/
+app/
+deploy-temp/
+*.d.ts
+package*.json
+README.md
+DEPLOY_TO_GITHUB.md
+deploy-github-pages.ps1
