@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>应援资源 - 角色应援站</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/resources.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-star"></i>
+                <span>角色应援站</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link">首页</a></li>
+                <li><a href="profile.html" class="nav-link">角色档案</a></li>
+                <li><a href="moments.html" class="nav-link">名场面回顾</a></li>
+                <li><a href="community.html" class="nav-link">粉丝社区</a></li>
+                <li><a href="resources.html" class="nav-link active">应援资源</a></li>
+                <li><a href="about.html" class="nav-link">关于我们</a></li>
+            </ul>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 页面头部 -->
+    <section class="resources-header">
+        <div class="header-background">
+            <div class="header-overlay"></div>
+        </div>
+        <div class="container">
+            <div class="header-content">
+                <h1 class="page-title">应援资源</h1>
+                <p class="page-subtitle">为你的应援行动提供全方位支持</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 资源分类导航 -->
+    <section class="resource-nav">
+        <div class="container">
+            <div class="nav-tabs">
+                <button class="nav-tab active" data-target="wallpapers">
+                    <i class="fas fa-image"></i>
+                    <span>壁纸素材</span>
+                </button>
+                <button class="nav-tab" data-target="avatars">
+                    <i class="fas fa-user-circle"></i>
+                    <span>头像素材</span>
+                </button>
+                <button class="nav-tab" data-target="templates">
+                    <i class="fas fa-palette"></i>
+                    <span>应援模板</span>
+                </button>
+                <button class="nav-tab" data-target="guides">
+                    <i class="fas fa-book"></i>
+                    <span>投票指南</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 壁纸素材区 -->
+    <section id="wallpapers" class="resource-section active">
+        <div class="container">
+            <h2 class="section-title">壁纸素材</h2>
+            <div class="wallpaper-categories">
+                <button class="filter-btn active" data-filter="all">全部</button>
+                <button class="filter-btn" data-filter="mobile">手机壁纸</button>
+                <button class="filter-btn" data-filter="desktop">电脑壁纸</button>
+                <button class="filter-btn" data-filter="tablet">平板壁纸</button>
+            </div>
+            
+            <div class="wallpaper-grid">
+                <!-- 手机壁纸 -->
+                <div class="wallpaper-item" data-category="mobile">
+                    <div class="wallpaper-preview">
+                        <i class="fas fa-mobile-alt"></i>
+                        <div class="preview-overlay">
+                            <div class="preview-info">
+                                <span class="resolution">1080x1920</span>
+                                <span class="format">PNG</span>
+                            </div>
+                            <div class="preview-actions">
+                                <button class="action-btn preview">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="action-btn download">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="wallpaper-info">
+                        <h3>经典立绘壁纸</h3>
+                        <p>手机竖屏壁纸，高清无水印</p>
+                        <div class="download-stats">
+                            <i class="fas fa-download"></i>
+                            <span>1.2k 下载</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wallpaper-item" data-category="desktop">
+                    <div class="wallpaper-preview">
+                        <i class="fas fa-desktop"></i>
+                        <div class="preview-overlay">
+                            <div class="preview-info">
+                                <span class="resolution">1920x1080</span>
+                                <span class="format">PNG</span>
+                            </div>
+                            <div class="preview-actions">
+                                <button class="action-btn preview">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="action-btn download">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="wallpaper-info">
+                        <h3>名场面合集壁纸</h3>
+                        <p>电脑桌面壁纸，4K高清</p>
+                        <div class="download-stats">
+                            <i class="fas fa-download"></i>
+                            <span>856 下载</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wallpaper-item" data-category="mobile">
+                    <div class="wallpaper-preview">
+                        <i class="fas fa-mobile-alt"></i>
+                        <div class="preview-overlay">
+                            <div class="preview-info">
+                                <span class="resolution">1080x1920</span>
+                                <span class="format">JPG</span>
+                            </div>
+                            <div class="preview-actions">
+                                <button class="action-btn preview">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="action-btn download">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="wallpaper-info">
+                        <h3>温柔系列壁纸</h3>
+                        <p>温馨治愈风格，适合日常使用</p>
+                        <div class="download-stats">
+                            <i class="fas fa-download"></i>
+                            <span>2.1k 下载</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wallpaper-item" data-category="tablet">
+                    <div class="wallpaper-preview">
+                        <i class="fas fa-tablet-alt"></i>
+                        <div class="preview-overlay">
+                            <div class="preview-info">
+                                <span class="resolution">2048x1536</span>
+                                <span class="format">PNG</span>
+                            </div>
+                            <div class="preview-actions">
+                                <button class="action-btn preview">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="action-btn download">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="wallpaper-info">
+                        <h3>平板专用壁纸</h3>
+                        <p>适配平板尺寸，横屏显示</p>
+                        <div class="download-stats">
+                            <i class="fas fa-download"></i>
+                            <span>643 下载</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wallpaper-item" data-category="desktop">
+                    <div class="wallpaper-preview">
+                        <i class="fas fa-desktop"></i>
+                        <div class="preview-overlay">
+                            <div class="preview-info">
+                                <span class="resolution">2560x1440</span>
+                                <span class="format">PNG</span>
+                            </div>
+                            <div class="preview-actions">
+                                <button class="action-btn preview">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="action-btn download">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="wallpaper-info">
+                        <h3>超清桌面壁纸</h3>
+                        <p>2K分辨率，细节丰富</p>
+                        <div class="download-stats">
+                            <i class="fas fa-download"></i>
+                            <span>1.8k 下载</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wallpaper-item" data-category="mobile">
+                    <div class="wallpaper-preview">
+                        <i class="fas fa-mobile-alt"></i>
+                        <div class="preview-overlay">
+                            <div class="preview-info">
+                                <span class="resolution">1080x1920</span>
+                                <span class="format">PNG</span>
+                            </div>
+                            <div class="preview-actions">
+                                <button class="action-btn preview">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="action-btn download">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="wallpaper-info">
+                        <h3>节日特别版</h3>
+                        <p>节日主题设计，限时提供</p>
+                        <div class="download-stats">
+                            <i class="fas fa-download"></i>
+                            <span>967 下载</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 头像素材区 -->
+    <section id="avatars" class="resource-section">
+        <div class="container">
+            <h2 class="section-title">头像素材</h2>
+            <div class="avatar-grid">
+                <div class="avatar-item">
+                    <div class="avatar-preview">
+                        <i class="fas fa-user-circle"></i>
+                        <div class="avatar-overlay">
+                            <button class="download-btn">
+                                <i class="fas fa-download"></i>
+                                下载
+                            </button>
+                        </div>
+                    </div>
+                    <div class="avatar-info">
+                        <h3>Q版头像</h3>
+                        <span class="size-info">512x512</span>
+                    </div>
+                </div>
+
+                <div class="avatar-item">
+                    <div class="avatar-preview">
+                        <i class="fas fa-user-circle"></i>
+                        <div class="avatar-overlay">
+                            <button class="download-btn">
+                                <i class="fas fa-download"></i>
+                                下载
+                            </button>
+                        </div>
+                    </div>
+                    <div class="avatar-info">
+                        <h3>正式头像</h3>
+                        <span class="size-info">512x512</span>
+                    </div>
+                </div>
+
+                <div class="avatar-item">
+                    <div class="avatar-preview">
+                        <i class="fas fa-user-circle"></i>
+                        <div class="avatar-overlay">
+                            <button class="download-btn">
+                                <i class="fas fa-download"></i>
+                                下载
+                            </button>
+                        </div>
+                    </div>
+                    <div class="avatar-info">
+                        <h3>表情包头像</h3>
+                        <span class="size-info">512x512</span>
+                    </div>
+                </div>
+
+                <div class="avatar-item">
+                    <div class="avatar-preview">
+                        <i class="fas fa-user-circle"></i>
+                        <div class="avatar-overlay">
+                            <button class="download-btn">
+                                <i class="fas fa-download"></i>
+                                下载
+                            </button>
+                        </div>
+                    </div>
+                    <div class="avatar-info">
+                        <h3>节日头像</h3>
+                        <span class="size-info">512x512</span>
+                    </div>
+                </div>
+
+                <div class="avatar-item">
+                    <div class="avatar-preview">
+                        <i class="fas fa-user-circle"></i>
+                        <div class="avatar-overlay">
+                            <button class="download-btn">
+                                <i class="fas fa-download"></i>
+                                下载
+                            </button>
+                        </div>
+                    </div>
+                    <div class="avatar-info">
+                        <h3>圆形头像</h3>
+                        <span class="size-info">512x512</span>
+                    </div>
+                </div>
+
+                <div class="avatar-item">
+                    <div class="avatar-preview">
+                        <i class="fas fa-user-circle"></i>
+                        <div class="avatar-overlay">
+                            <button class="download-btn">
+                                <i class="fas fa-download"></i>
+                                下载
+                            </button>
+                        </div>
+                    </div>
+                    <div class="avatar-info">
+                        <h3>方形头像</h3>
+                        <span class="size-info">512x512</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 应援模板区 -->
+    <section id="templates" class="resource-section">
+        <div class="container">
+            <h2 class="section-title">应援模板</h2>
+            <div class="template-categories">
+                <div class="template-category">
+                    <div class="category-header">
+                        <i class="fas fa-flag"></i>
+                        <h3>手幅设计</h3>
+                    </div>
+                    <div class="template-list">
+                        <div class="template-item">
+                            <div class="template-preview">
+                                <i class="fas fa-flag"></i>
+                            </div>
+                            <div class="template-info">
+                                <h4>经典应援手幅</h4>
+                                <p>标准尺寸，适合演唱会使用</p>
+                                <button class="template-btn">
+                                    <i class="fas fa-download"></i>
+                                    下载模板
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="template-item">
+                            <div class="template-preview">
+                                <i class="fas fa-flag"></i>
+                            </div>
+                            <div class="template-info">
+                                <h4>迷你手幅</h4>
+                                <p>小巧便携，日常应援必备</p>
+                                <button class="template-btn">
+                                    <i class="fas fa-download"></i>
+                                    下载模板
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="template-category">
+                    <div class="category-header">
+                        <i class="fas fa-lightbulb"></i>
+                        <h3>灯牌设计</h3>
+                    </div>
+                    <div class="template-list">
+                        <div class="template-item">
+                            <div class="template-preview">
+                                <i class="fas fa-lightbulb"></i>
+                            </div>
+                            <div class="template-info">
+                                <h4>LED灯牌模板</h4>
+                                <p>支持自定义文字和图案</p>
+                                <button class="template-btn">
+                                    <i class="fas fa-download"></i>
+                                    下载模板
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="template-item">
+                            <div class="template-preview">
+                                <i class="fas fa-lightbulb"></i>
+                            </div>
+                            <div class="template-info">
+                                <h4>荧光棒贴纸</h4>
+                                <p>荧光棒装饰贴纸设计</p>
+                                <button class="template-btn">
+                                    <i class="fas fa-download"></i>
+                                    下载模板
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="template-category">
+                    <div class="category-header">
+                        <i class="fas fa-calendar-alt"></i>
+                        <h3>活动流程</h3>
+                    </div>
+                    <div class="template-list">
+                        <div class="template-item">
+                            <div class="template-preview">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
+                            <div class="template-info">
+                                <h4>线下应援流程表</h4>
+                                <p>详细的活动组织指南</p>
+                                <button class="template-btn">
+                                    <i class="fas fa-download"></i>
+                                    下载模板
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="template-item">
+                            <div class="template-preview">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
+                            <div class="template-info">
+                                <h4>生日应援策划</h4>
+                                <p>生日应援活动完整方案</p>
+                                <button class="template-btn">
+                                    <i class="fas fa-download"></i>
+                                    下载模板
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 投票指南区 -->
+    <section id="guides" class="resource-section">
+        <div class="container">
+            <h2 class="section-title">投票指南</h2>
+            <div class="guide-grid">
+                <div class="guide-card">
+                    <div class="guide-header">
+                        <i class="fas fa-mobile-alt"></i>
+                        <h3>手机APP投票</h3>
+                    </div>
+                    <div class="guide-steps">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>下载官方APP</h4>
+                                <p>在应用商店搜索并下载官方投票APP</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>注册登录账号</h4>
+                                <p>使用手机号或邮箱注册新账号</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>找到投票页面</h4>
+                                <p>在首页或活动页面找到相关投票</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h4>完成投票</h4>
+                                <p>选择角色并确认投票，每日可投多次</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="guide-card">
+                    <div class="guide-header">
+                        <i class="fas fa-globe"></i>
+                        <h3>网页端投票</h3>
+                    </div>
+                    <div class="guide-steps">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>访问官方网站</h4>
+                                <p>打开浏览器访问官方投票网站</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>登录账号</h4>
+                                <p>使用已有账号登录或快速注册</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>进入投票页</h4>
+                                <p>点击投票活动链接进入投票页面</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h4>投票确认</h4>
+                                <p>选择角色后点击投票按钮确认</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="guide-card">
+                    <div class="guide-header">
+                        <i class="fas fa-share-alt"></i>
+                        <h3>社交媒体投票</h3>
+                    </div>
+                    <div class="guide-steps">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>关注官方账号</h4>
+                                <p>在微博、抖音等平台关注官方账号</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>找到投票帖</h4>
+                                <p>在官方动态中找到投票相关帖子</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>参与互动</h4>
+                                <p>按要求点赞、转发、评论参与投票</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h4>邀请好友</h4>
+                                <p>分享给好友一起参与投票活动</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>关于我们</h3>
+                    <p>为角色粉丝搭建的非盈利应援平台</p>
+                    <p class="disclaimer">素材源自网络，如有侵权请联系删除</p>
+                </div>
+                <div class="footer-section">
+                    <h3>联系方式</h3>
+                    <p><i class="fas fa-envelope"></i> support@example.com</p>
+                    <p><i class="fas fa-comment"></i> 意见反馈</p>
+                </div>
+                <div class="footer-section">
+                    <h3>关注我们</h3>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-weibo"></i> 微博超话</a>
+                        <a href="#"><i class="fab fa-qq"></i> QQ群</a>
+                        <a href="#"><i class="fab fa-bilibili"></i> B站账号</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 角色应援站. All rights reserved.</p>
+            </div>
+        </div>
+        <button class="back-to-top" id="backToTop">
+            <i class="fas fa-chevron-up"></i>
+        </button>
+    </footer>
+
+    <script src="js/script.js"></script>
+    <script src="js/resources.js"></script>
+</body>
+</html>
