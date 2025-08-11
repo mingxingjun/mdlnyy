@@ -421,6 +421,78 @@
     font-weight: 500;
 }
 
+/* 尽情期待容器样式 */
+.coming-soon-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4rem 2rem;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+    margin: 0 auto;
+    max-width: 600px;
+    border: 2px solid rgba(255, 107, 107, 0.1);
+}
+
+.coming-soon-icon {
+    margin-bottom: 2rem;
+}
+
+.coming-soon-icon i {
+    font-size: 4rem;
+    color: #ff6b6b;
+    opacity: 0.8;
+    animation: pulse 2s infinite;
+}
+
+.coming-soon-content h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 1rem;
+}
+
+.coming-soon-text {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #ff6b6b, #ffa500);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 1rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.coming-soon-desc {
+    color: #6c757d;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin: 0;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+}
+
+/* 测试声明样式 */
+.test-notice {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-top: 8px;
+    opacity: 0.7;
+    font-style: italic;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
     .page-title {

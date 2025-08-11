@@ -841,3 +841,12 @@ body {
         padding: 30px 20px;
     }
 }
+
+/* 测试声明样式 */
+.test-notice {
+    font-size: 12px;
+    color: #999;
+    margin-top: 10px;
+    opacity: 0.8;
+    font-style: italic;
+}

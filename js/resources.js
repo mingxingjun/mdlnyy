@@ -84,6 +84,208 @@ function filterWallpapers(filter, items) {
     });
 }
 
+// 壁纸下载函数
+function downloadWallpaper(imagePath, filename) {
+    // 创建一个临时的a标签来触发下载
+    const link = document.createElement('a');
+    link.href = imagePath;
+    link.download = filename;
+    link.style.display = 'none';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // 显示下载提示
+    showToast(`正在下载壁纸：${filename}`);
+}
+
+// 图片预览函数
+function showImagePreview(imagePath, title) {
+    const modal = document.createElement('div');
+    modal.className = 'image-preview-modal';
+    modal.innerHTML = `
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>${title} - 预览</h3>
+                <button class="close-btn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="image-container">
+                    <img src="${imagePath}" alt="${title}" class="preview-image">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn download" onclick="downloadWallpaper('${imagePath}', '${imagePath.split('/').pop()}')">
+                    <i class="fas fa-download"></i>
+                    下载原图
+                </button>
+                <button class="modal-btn close">关闭</button>
+            </div>
+        </div>
+    `;
+    
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: all 0.3s ease;
+        background: rgba(0, 0, 0, 0.9);
+    `;
+    
+    // 添加预览模态框样式
+    const modalStyle = document.createElement('style');
+    modalStyle.textContent = `
+        .image-preview-modal .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(5px);
+        }
+        .image-preview-modal .modal-content {
+            position: relative;
+            background: white;
+            border-radius: 15px;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow: hidden;
+            transform: scale(0.8);
+            transition: all 0.3s ease;
+        }
+        .image-preview-modal .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 2px solid #f8f9fa;
+            background: white;
+        }
+        .image-preview-modal .modal-header h3 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 1.2rem;
+        }
+        .image-preview-modal .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #6c757d;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        .image-preview-modal .close-btn:hover {
+            background: #f8f9fa;
+            color: #ff6b6b;
+        }
+        .image-preview-modal .modal-body {
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            max-height: 70vh;
+            overflow: hidden;
+        }
+        .image-preview-modal .image-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f8f9fa;
+        }
+        .image-preview-modal .preview-image {
+            max-width: 100%;
+            max-height: 70vh;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+        .image-preview-modal .modal-footer {
+            display: flex;
+            gap: 1rem;
+            padding: 15px 20px;
+            border-top: 2px solid #f8f9fa;
+            justify-content: flex-end;
+            background: white;
+        }
+        .image-preview-modal .modal-btn {
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        .image-preview-modal .modal-btn.download {
+            background: linear-gradient(135deg, #ff6b6b, #ffa500);
+            color: white;
+            border: none;
+        }
+        .image-preview-modal .modal-btn.close {
+            background: #f8f9fa;
+            color: #6c757d;
+            border: 2px solid #e9ecef;
+        }
+        .image-preview-modal .modal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+    `;
+    document.head.appendChild(modalStyle);
+    
+    document.body.appendChild(modal);
+    
+    // 显示动画
+    setTimeout(() => {
+        modal.style.opacity = '1';
+        modal.querySelector('.modal-content').style.transform = 'scale(1)';
+    }, 100);
+    
+    // 关闭功能
+    const closeModal = () => {
+        modal.style.opacity = '0';
+        modal.querySelector('.modal-content').style.transform = 'scale(0.8)';
+        setTimeout(() => {
+            if (document.body.contains(modal)) {
+                document.body.removeChild(modal);
+            }
+            if (document.head.contains(modalStyle)) {
+                document.head.removeChild(modalStyle);
+            }
+        }, 300);
+    };
+    
+    modal.querySelector('.close-btn').addEventListener('click', closeModal);
+    modal.querySelector('.modal-btn.close').addEventListener('click', closeModal);
+    modal.querySelector('.modal-overlay').addEventListener('click', closeModal);
+    
+    // ESC键关闭
+    const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            closeModal();
+            document.removeEventListener('keydown', handleEscape);
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
+}
+
 // 下载功能
 function initDownloadFunctions() {
     // 壁纸下载
@@ -106,8 +308,8 @@ function initDownloadFunctions() {
         });
     });
     
-    // 壁纸预览
-    const wallpaperPreviewBtns = document.querySelectorAll('.wallpaper-item .action-btn.preview');
+    // 壁纸预览（只绑定没有onclick属性的按钮）
+    const wallpaperPreviewBtns = document.querySelectorAll('.wallpaper-item .action-btn.preview:not([onclick])');
     wallpaperPreviewBtns.forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
