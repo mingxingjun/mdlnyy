@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeFilter();
     initializeWatchButtons();
     initializeCardAnimations();
+
 });
 
 // 初始化筛选功能

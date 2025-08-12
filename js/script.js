@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeCarousel();
     initializeBackToTop();
     initializeSmoothScroll();
+    initializeSocialLinks();
+    initializeHeroButtons();
 });
 
 // 导航栏功能
@@ -162,18 +164,28 @@ function initializeSmoothScroll() {
     
     links.forEach(link => {
         link.addEventListener('click', function(e) {
+            const targetId = this.getAttribute('href');
+            
+            // 如果href只是#或者为空，则不处理
+            if (targetId === '#' || targetId === '' || targetId.length <= 1) {
+                return;
+            }
+            
             e.preventDefault();
             
-            const targetId = this.getAttribute('href');
-            const targetElement = document.querySelector(targetId);
-            
-            if (targetElement) {
-                const offsetTop = targetElement.offsetTop - 70; // 考虑导航栏高度
+            try {
+                const targetElement = document.querySelector(targetId);
                 
-                window.scrollTo({
-                    top: offsetTop,
-                    behavior: 'smooth'
-                });
+                if (targetElement) {
+                    const offsetTop = targetElement.offsetTop - 70; // 考虑导航栏高度
+                    
+                    window.scrollTo({
+                        top: offsetTop,
+                        behavior: 'smooth'
+                    });
+                }
+            } catch (error) {
+                console.warn('Invalid selector:', targetId);
             }
         });
     });
@@ -292,3 +304,123 @@ rippleStyle.textContent = `
     }
 `;
 document.head.appendChild(rippleStyle);
+
+// 首页按钮处理
+function initializeHeroButtons() {
+    // 处理首页的"加入应援群"按钮
+    const heroButtons = document.querySelectorAll('.hero-buttons .btn-primary');
+    
+    heroButtons.forEach(button => {
+        // 检查按钮文本是否包含"应援群"或有QQ图标
+        const buttonText = button.textContent.trim();
+        const hasQQIcon = button.querySelector('.fa-qq');
+        
+        if (buttonText.includes('应援群') || buttonText.includes('QQ群') || hasQQIcon) {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                showMessage('应援群功能敬请期待', 'info');
+            });
+        }
+    });
+}
+
+// 社交链接处理
+function initializeSocialLinks() {
+    // 查找所有指向#的链接
+    const socialLinks = document.querySelectorAll('a[href="#"]');
+    
+    socialLinks.forEach(link => {
+        const text = link.textContent.trim();
+        const hasQQIcon = link.querySelector('.fa-qq');
+        const hasBilibiliIcon = link.querySelector('.fa-bilibili');
+        
+        // 处理QQ群链接
+        if (text.includes('QQ群') || hasQQIcon) {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                showMessage('QQ群功能敬请期待', 'info');
+            });
+        }
+        // 处理B站链接
+        else if (text.includes('B站') || text.includes('bilibili') || hasBilibiliIcon) {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                showMessage('B站账号功能敬请期待', 'info');
+            });
+        }
+    });
+}
+
+// 显示消息提示
+function showMessage(message, type = 'info') {
+    // 移除已存在的消息
+    const existingMessage = document.querySelector('.message-toast');
+    if (existingMessage) {
+        existingMessage.remove();
+    }
+    
+    // 创建消息元素
+    const messageElement = document.createElement('div');
+    messageElement.className = `message-toast message-${type}`;
+    messageElement.innerHTML = `
+        <i class="fas ${getMessageIcon(type)}"></i>
+        <span>${message}</span>
+    `;
+    
+    // 添加样式
+    Object.assign(messageElement.style, {
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        background: getMessageColor(type),
+        color: 'white',
+        padding: '15px 20px',
+        borderRadius: '8px',
+        boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+        zIndex: '10000',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        fontSize: '14px',
+        fontWeight: '500',
+        transform: 'translateX(100%)',
+        transition: 'transform 0.3s ease'
+    });
+    
+    document.body.appendChild(messageElement);
+    
+    // 显示动画
+    setTimeout(() => {
+        messageElement.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // 自动隐藏
+    setTimeout(() => {
+        messageElement.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (messageElement.parentNode) {
+                messageElement.remove();
+            }
+        }, 300);
+    }, 3000);
+}
+
+function getMessageIcon(type) {
+    const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle'
+    };
+    return icons[type] || icons.info;
+}
+
+function getMessageColor(type) {
+    const colors = {
+        success: '#28a745',
+        error: '#dc3545',
+        warning: '#ffc107',
+        info: '#17a2b8'
+    };
+    return colors[type] || colors.info;
+}

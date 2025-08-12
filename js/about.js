@@ -155,13 +155,21 @@ function initScrollAnimations() {
 
 // 联系方式点击处理
 function handleContactClicks() {
-    // QQ群号点击复制
+    // QQ群联系方式点击
     const qqContact = document.querySelector('.contact-item:nth-child(2) .contact-details p');
     if (qqContact) {
         qqContact.style.cursor = 'pointer';
         qqContact.addEventListener('click', function() {
-            copyToClipboard(this.textContent);
-            showMessage('QQ群号已复制到剪贴板', 'success');
+            showMessage('QQ群功能敬请期待', 'info');
+        });
+    }
+    
+    // B站联系方式点击
+    const bilibiliContact = document.querySelector('.contact-item:nth-child(3) .contact-details p');
+    if (bilibiliContact) {
+        bilibiliContact.style.cursor = 'pointer';
+        bilibiliContact.addEventListener('click', function() {
+            showMessage('B站账号功能敬请期待', 'info');
         });
     }
     
