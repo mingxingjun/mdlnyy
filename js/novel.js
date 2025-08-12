@@ -1,13 +1,84 @@
 // 小说阅读页面JavaScript功能
 
+// 全局变量
+let currentChapterNum = 1; // 当前章节号
+const totalChapters = 2; // 总章节数
+
 document.addEventListener('DOMContentLoaded', function() {
+    initializeNavbar(); // 初始化导航栏
     initializeNovelPage();
     initializeReadingProgress();
     initializeFontControls();
     initializeChapterNavigation();
     initializeScrollAnimations();
     initializeActionButtons();
+    updateChapterControls(); // 初始化章节控制器状态
 });
+
+// 初始化导航栏
+function initializeNavbar() {
+    const navbar = document.querySelector('.navbar');
+    const navToggle = document.querySelector('.nav-toggle');
+    const navMenu = document.querySelector('.nav-menu');
+    
+    // 移动端菜单切换
+    if (navToggle && navMenu) {
+        navToggle.addEventListener('click', function() {
+            navToggle.classList.toggle('active');
+            navMenu.classList.toggle('active');
+        });
+        
+        // 点击菜单项时关闭移动端菜单
+        const navLinks = document.querySelectorAll('.nav-menu a');
+        navLinks.forEach(link => {
+            link.addEventListener('click', function() {
+                navToggle.classList.remove('active');
+                navMenu.classList.remove('active');
+            });
+        });
+        
+        // 点击页面其他地方时关闭移动端菜单
+        document.addEventListener('click', function(e) {
+            if (!navbar.contains(e.target)) {
+                navToggle.classList.remove('active');
+                navMenu.classList.remove('active');
+            }
+        });
+    }
+    
+    // 滚动效果
+    let lastScrollTop = 0;
+    window.addEventListener('scroll', function() {
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        
+        // 添加滚动样式
+        if (scrollTop > 50) {
+            navbar.classList.add('scrolled');
+        } else {
+            navbar.classList.remove('scrolled');
+        }
+        
+        lastScrollTop = scrollTop;
+    });
+    
+    // 平滑滚动到锚点
+    const navLinks = document.querySelectorAll('.nav-menu a[href^="#"]');
+    navLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href').substring(1);
+            const targetElement = document.getElementById(targetId);
+            
+            if (targetElement) {
+                const offsetTop = targetElement.offsetTop - 70; // 减去导航栏高度
+                window.scrollTo({
+                    top: offsetTop,
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+}
 
 // 初始化小说页面
 function initializeNovelPage() {
@@ -120,24 +191,34 @@ function initializeChapterNavigation() {
     
     chapterItems.forEach(item => {
         item.addEventListener('click', function() {
-            const chapterNumber = this.querySelector('.chapter-number').textContent;
-            scrollToChapter(chapterNumber);
+            const chapterNum = this.getAttribute('data-chapter');
+            if (chapterNum) {
+                scrollToChapterById(chapterNum);
+            }
         });
     });
 
     // 阅读控制按钮
-    const prevBtn = document.getElementById('prev-chapter');
-    const nextBtn = document.getElementById('next-chapter');
+    const prevBtn = document.getElementById('prevChapter');
+    const nextBtn = document.getElementById('nextChapter');
 
     if (prevBtn) {
         prevBtn.addEventListener('click', function() {
-            showNotification('上一章节敬请期待', 'info');
+            if (currentChapterNum > 1) {
+                scrollToChapterById(currentChapterNum - 1);
+            } else {
+                showNotification('已经是第一话了', 'info');
+            }
         });
     }
 
     if (nextBtn) {
         nextBtn.addEventListener('click', function() {
-            showNotification('下一章节敬请期待', 'info');
+            if (currentChapterNum < totalChapters) {
+                scrollToChapterById(currentChapterNum + 1);
+            } else {
+                showNotification('下一章节敬请期待', 'info');
+            }
         });
     }
 }
@@ -146,9 +227,17 @@ function initializeChapterNavigation() {
 function scrollToChapter(chapterNumber) {
     // 解析章节号
     const chapterNum = chapterNumber.replace('第', '').replace('话', '');
+    scrollToChapterById(chapterNum);
+}
+
+// 根据章节ID滚动到指定章节
+function scrollToChapterById(chapterNum) {
     const targetChapter = document.querySelector(`#chapter-${chapterNum}`);
     
     if (targetChapter) {
+        // 更新当前章节号
+        currentChapterNum = parseInt(chapterNum);
+        
         // 隐藏所有章节
         document.querySelectorAll('.chapter-content').forEach(chapter => {
             chapter.style.display = 'none';
@@ -182,7 +271,53 @@ function scrollToChapter(chapterNumber) {
             targetChapter.style.transform = 'translateY(0)';
             targetChapter.classList.add('show');
         }, 100);
+        
+        // 更新章节指示器和按钮状态
+        updateChapterControls();
     }
+}
+
+// 更新章节控制器状态
+function updateChapterControls() {
+    // 更新章节指示器
+    const currentChapterSpan = document.getElementById('currentChapter');
+    const totalChaptersSpan = document.getElementById('totalChapters');
+    
+    if (currentChapterSpan) {
+        currentChapterSpan.textContent = `第${getChapterName(currentChapterNum)}话`;
+    }
+    
+    if (totalChaptersSpan) {
+        totalChaptersSpan.textContent = `第${getChapterName(totalChapters)}话`;
+    }
+    
+    // 更新按钮状态
+    const prevBtn = document.getElementById('prevChapter');
+    const nextBtn = document.getElementById('nextChapter');
+    
+    if (prevBtn) {
+        prevBtn.disabled = currentChapterNum <= 1;
+        if (currentChapterNum <= 1) {
+            prevBtn.classList.add('disabled');
+        } else {
+            prevBtn.classList.remove('disabled');
+        }
+    }
+    
+    if (nextBtn) {
+        nextBtn.disabled = currentChapterNum >= totalChapters;
+        if (currentChapterNum >= totalChapters) {
+            nextBtn.classList.add('disabled');
+        } else {
+            nextBtn.classList.remove('disabled');
+        }
+    }
+}
+
+// 获取章节名称
+function getChapterName(chapterNum) {
+    const chapterNames = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+    return chapterNames[chapterNum - 1] || chapterNum.toString();
 }
 
 // 初始化滚动动画
