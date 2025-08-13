@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>与玛德蕾娜聊天 - 角色应援站</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/chat.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-star"></i>
+                <span>颜料应援</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link">首页</a></li>
+                <li><a href="profile.html" class="nav-link">角色档案</a></li>
+                <li><a href="moments.html" class="nav-link">名场面回顾</a></li>
+                <li><a href="community.html" class="nav-link">粉丝社区</a></li>
+                <li><a href="resources.html" class="nav-link">应援资源</a></li>
+                <li><a href="chat.html" class="nav-link active">AI聊天</a></li>
+                <li><a href="about.html" class="nav-link">关于我们</a></li>
+            </ul>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 聊天主体区域 -->
+    <main class="chat-main">
+        <div class="chat-container">
+            <!-- 聊天头部 -->
+            <div class="chat-header">
+                <div class="character-info">
+                    <div class="character-avatar">
+                        <img src="images/madeline-bg.jpg" alt="玛德蕾娜头像">
+                        <div class="status-indicator online"></div>
+                    </div>
+                    <div class="character-details">
+                        <h2>玛德蕾娜·利里</h2>
+                        <p class="character-status">专属时装绘师 · 在线</p>
+                    </div>
+                </div>
+                <div class="chat-actions">
+                    <button class="action-btn" id="clearChat" title="清空聊天">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button class="action-btn" id="settingsBtn" title="设置">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 聊天消息区域 -->
+            <div class="chat-messages" id="chatMessages">
+                <div class="message ai-message">
+                    <div class="message-avatar">
+                        <img src="images/madeline-bg.jpg" alt="玛德蕾娜">
+                    </div>
+                    <div class="message-content">
+                        <div class="message-bubble">
+                            <p>很高兴见到你！我的名字叫玛德蕾娜，是姐姐的专属时装绘师！请多关照啦~ 有什么想聊的吗？</p>
+                        </div>
+                        <div class="message-time">刚刚</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="chat-input-area">
+                <div class="input-container">
+                    <div class="input-wrapper">
+                        <textarea id="messageInput" placeholder="输入消息...按Enter发送，Shift+Enter换行" rows="1"></textarea>
+                        <button id="sendButton" class="send-btn">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                    <div class="quick-actions">
+                        <button class="quick-btn" data-message="你好！">
+                            <i class="fas fa-hand-wave"></i>
+                            打招呼
+                        </button>
+                        <button class="quick-btn" data-message="能给我画一幅画吗？">
+                            <i class="fas fa-palette"></i>
+                            请求绘画
+                        </button>
+                        <button class="quick-btn" data-message="今天心情怎么样？">
+                            <i class="fas fa-smile"></i>
+                            询问心情
+                        </button>
+                        <button class="quick-btn" data-message="讲个故事吧">
+                            <i class="fas fa-book"></i>
+                            听故事
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置面板 -->
+        <div class="settings-panel" id="settingsPanel">
+            <div class="settings-content">
+                <div class="settings-header">
+                    <h3>AI设置</h3>
+                    <button class="close-btn" id="closeSettings">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="settings-body">
+                    <div class="setting-group">
+                        <label for="apiKey">API密钥</label>
+                        <input type="password" id="apiKey" placeholder="请输入您的AI API密钥">
+                        <small>支持OpenAI、Claude等主流AI服务</small>
+                    </div>
+                    <div class="setting-group">
+                        <label for="apiProvider">AI服务商</label>
+                        <select id="apiProvider">
+                            <option value="openai">OpenAI GPT</option>
+                            <option value="claude">Anthropic Claude</option>
+                            <option value="custom">自定义API</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label for="customEndpoint">自定义API端点</label>
+                        <input type="url" id="customEndpoint" placeholder="https://api.example.com/v1/chat">
+                    </div>
+                    <div class="setting-group">
+                        <label for="temperature">创造性 (0-1)</label>
+                        <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.7">
+                        <span id="temperatureValue">0.7</span>
+                    </div>
+                </div>
+                <div class="settings-footer">
+                    <button class="btn btn-primary" id="saveSettings">保存设置</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 加载指示器 -->
+    <div class="loading-indicator" id="loadingIndicator">
+        <div class="loading-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <p>玛德蕾娜正在思考...</p>
+    </div>
+
+    <script src="js/script.js"></script>
+    <script src="js/chat.js"></script>
+</body>
+</html>
