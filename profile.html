@@ -13,7 +13,7 @@
     <nav class="navbar" id="navbar">
         <div class="nav-container">
             <div class="nav-logo">
-                <i class="fas fa-star"></i>
+                <i class="fas fa-paint-brush"></i>
                 <span>颜料应援</span>
             </div>
             <ul class="nav-menu">
@@ -223,7 +223,7 @@
                         </div>
                     </div>
                     <div class="skill-description">
-                        发射颜料，使经过的敌人减速、弦化禁止并暴露脚印
+                        命中障碍物后产生颜料区域，敌人进入后受到禁弦和颜料脚印效果，降低30%移动速度。觉醒后可提供隐身、治疗、泡泡防护等增强效果。
                     </div>
                     <div class="skill-details">
                         <div class="detail-item">
@@ -237,6 +237,18 @@
                         <div class="detail-item">
                             <span class="detail-label">冷却时间</span>
                             <span class="detail-value">25秒</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">准备前摇</span>
+                            <span class="detail-value">0.7秒</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">影响范围</span>
+                            <span class="detail-value">半径6米</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">减速效果</span>
+                            <span class="detail-value">30%移速降低</span>
                         </div>
                     </div>
                 </div>
@@ -252,16 +264,28 @@
                         </div>
                     </div>
                     <div class="skill-description">
-                        主武器命中敌人时，使其减速并暴露脚印
+                        使用主武器命中敌人时，对其施加30%减速和颜料脚印效果。目标处于隐身状态时也会受到颜料脚印效果的影响。
                     </div>
                     <div class="skill-details">
                         <div class="detail-item">
                             <span class="detail-label">触发条件</span>
-                            <span class="detail-value">武器命中</span>
+                            <span class="detail-value">主武器命中</span>
                         </div>
                         <div class="detail-item">
-                            <span class="detail-label">效果</span>
-                            <span class="detail-value">减速+脚印</span>
+                            <span class="detail-label">减速效果</span>
+                            <span class="detail-value">30%移速降低</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">减速持续</span>
+                            <span class="detail-value">2秒</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">脚印持续</span>
+                            <span class="detail-value">5秒</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">特殊效果</span>
+                            <span class="detail-value">可影响隐身目标</span>
                         </div>
                     </div>
                 </div>
@@ -277,16 +301,32 @@
                         </div>
                     </div>
                     <div class="skill-description">
-                        发射大泡泡，泡泡内敌人禁弦、暴露脚印，爆炸后范围减速易伤
+                        进入肩射状态瞄准后发射大泡泡，命中后4秒内扩张至最大范围。敌人进入泡泡内受到禁弦与颜料脚印效果，泡泡爆炸时造成50%减速和35%易伤效果。
                     </div>
                     <div class="skill-details">
                         <div class="detail-item">
-                            <span class="detail-label">作用范围</span>
-                            <span class="detail-value">大面积</span>
+                            <span class="detail-label">准备时间</span>
+                            <span class="detail-value">1.25秒</span>
                         </div>
                         <div class="detail-item">
-                            <span class="detail-label">效果</span>
-                            <span class="detail-value">禁弦+减速+易伤</span>
+                            <span class="detail-label">扩张时间</span>
+                            <span class="detail-value">4秒</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">持续时间</span>
+                            <span class="detail-value">15秒</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">最大范围</span>
+                            <span class="detail-value">半径28米</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">爆炸减速</span>
+                            <span class="detail-value">50%移速降低</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">易伤效果</span>
+                            <span class="detail-value">35%伤害增加</span>
                         </div>
                     </div>
                 </div>
@@ -302,7 +342,7 @@
                         </div>
                     </div>
                     <div class="skill-description">
-                        向前发射颜料泡，对碰到的敌人施加减速、弦化禁止和暴露脚印效果
+                        发射泡泡呈直线飞行，3秒内逐渐扩张至最大范围。敌人进入范围内受到禁弦、颜料脚印和30%减速效果。泡泡爆炸时对范围内敌人施加相同效果。
                     </div>
                     <div class="skill-details">
                         <div class="detail-item">
@@ -313,6 +353,22 @@
                             <span class="detail-label">冷却时间</span>
                             <span class="detail-value">35秒</span>
                         </div>
+                        <div class="detail-item">
+                            <span class="detail-label">扩张时间</span>
+                            <span class="detail-value">3秒</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">影响范围</span>
+                            <span class="detail-value">半径6米</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">减速效果</span>
+                            <span class="detail-value">30%移速降低</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">脚印持续</span>
+                            <span class="detail-value">2秒</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -320,7 +376,7 @@
     </section>
 
     <!-- 角色故事时间线 -->
-    <section class="story-section">
+    <section class="timeline-section">
         <div class="container">
             <div class="section-header">
                 <h2 class="section-title">
@@ -500,6 +556,339 @@
         </div>
     </section>
 
+    <!-- 弦能增幅网络 -->
+    <section class="enhancement-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-cogs"></i>
+                    弦能增幅网络
+                </h2>
+                <p class="section-subtitle">通过能量点投资提升角色各项能力</p>
+                <div class="weapon-showcase">
+                    <img src="images/枪械.jpg" alt="玛德蕾娜专属武器" class="weapon-image">
+                </div>
+            </div>
+            
+            <div class="enhancement-grid">
+                <!-- 核心系统 -->
+                <div class="enhancement-category">
+                    <h3 class="category-title">
+                        <i class="fas fa-bullseye"></i>
+                        核心
+                    </h3>
+                    
+                    <div class="enhancement-item">
+                        <h4 class="enhancement-header" onclick="toggleDetails(this)">
+                            基础伤害提升
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                        </h4>
+                        <div class="cost">150 <i class="fas fa-bolt"></i></div>
+                        <div class="enhancement-details collapsed">
+                            <div class="stat-change">
+                                <span class="stat-label">10米头部伤害：</span>
+                                <span class="stat-value">89→93 (+4)</span>
+                            </div>
+                            <div class="stat-change">
+                                <span class="stat-label">30米头部伤害：</span>
+                                <span class="stat-value">87→91 (+4)</span>
+                            </div>
+                            <div class="stat-change">
+                                <span class="stat-label">50米头部伤害：</span>
+                                <span class="stat-value">83→87 (+4)</span>
+                            </div>
+                            <div class="stat-change">
+                                <span class="stat-label">10米上身伤害：</span>
+                                <span class="stat-value">51→53 (+2)</span>
+                            </div>
+                            <div class="stat-change">
+                                <span class="stat-label">30米上身伤害：</span>
+                                <span class="stat-value">49→52 (+3)</span>
+                            </div>
+                            <div class="stat-change">
+                                <span class="stat-label">50米上身伤害：</span>
+                                <span class="stat-value">47→49 (+2)</span>
+                            </div>
+                            <div class="stat-change">
+                                <span class="stat-label">10米下肢伤害：</span>
+                                <span class="stat-value">35→37 (+2)</span>
+                            </div>
+                            <div class="stat-change">
+                                <span class="stat-label">30米下肢伤害：</span>
+                                <span class="stat-value">34→36 (+2)</span>
+                            </div>
+                            <div class="stat-change">
+                                <span class="stat-label">50米下肢伤害：</span>
+                                <span class="stat-value">33→34 (+1)</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="enhancement-item">
+                        <h4 class="enhancement-header" onclick="toggleDetails(this)">
+                            散射控制提升
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                        </h4>
+                        <div class="cost">150 <i class="fas fa-bolt"></i></div>
+                        <div class="enhancement-details collapsed">
+                            <div class="stat-change">
+                                <span class="stat-label">精准：</span>
+                                <span class="stat-value">15→18 (+3)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 暴击系统 -->
+                <div class="enhancement-category">
+                    <h3 class="category-title">
+                        <i class="fas fa-crosshairs"></i>
+                        暴击
+                    </h3>
+                    
+                    <div class="enhancement-item">
+                        <h4 class="enhancement-header" onclick="toggleDetails(this)">
+                            爆头伤害提升
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                        </h4>
+                        <div class="cost">150 <i class="fas fa-bolt"></i></div>
+                        <div class="enhancement-details collapsed">
+                            <div class="stat-change">
+                                <span class="stat-label">10米头部伤害：</span>
+                                <span class="stat-value">89→102 (+13)</span>
+                            </div>
+                            <div class="stat-change">
+                                <span class="stat-label">30米头部伤害：</span>
+                                <span class="stat-value">87→99 (+12)</span>
+                            </div>
+                            <div class="stat-change">
+                                <span class="stat-label">50米头部伤害：</span>
+                                <span class="stat-value">83→94 (+11)</span>
+                            </div>
+                            <div class="stat-change">
+                                <span class="stat-label">爆头系数：</span>
+                                <span class="stat-value">1.75→2.0 (+0.25)</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="enhancement-item">
+                        <h4 class="enhancement-header" onclick="toggleDetails(this)">
+                            弦化伤害提升
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                        </h4>
+                        <div class="cost">150 <i class="fas fa-bolt"></i></div>
+                        <div class="enhancement-details collapsed">
+                            <div class="stat-change">
+                                <span class="stat-label">弦化伤害：</span>
+                                <span class="stat-value">67→80 (+13)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 续航系统 -->
+                <div class="enhancement-category">
+                    <h3 class="category-title">
+                        <i class="fas fa-battery-three-quarters"></i>
+                        续航
+                    </h3>
+                    
+                    <div class="enhancement-item">
+                        <h4 class="enhancement-header" onclick="toggleDetails(this)">
+                            载弹数量提升
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                        </h4>
+                        <div class="cost">150 <i class="fas fa-bolt"></i></div>
+                        <div class="enhancement-details collapsed">
+                            <div class="stat-change">
+                                <span class="stat-label">弹匣容量：</span>
+                                <span class="stat-value">15→20 (+5)</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="enhancement-item">
+                        <h4 class="enhancement-header" onclick="toggleDetails(this)">
+                            换弹速度提升
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                        </h4>
+                        <div class="cost">150 <i class="fas fa-bolt"></i></div>
+                        <div class="enhancement-details collapsed">
+                            <div class="stat-change">
+                                <span class="stat-label">装填速度：</span>
+                                <span class="stat-value">21→29 (+8)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 精准系统 -->
+                <div class="enhancement-category">
+                    <h3 class="category-title">
+                        <i class="fas fa-target"></i>
+                        精准
+                    </h3>
+                    
+                    <div class="enhancement-item">
+                        <h4 class="enhancement-header" onclick="toggleDetails(this)">
+                            移动速度提升
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                        </h4>
+                        <div class="cost">150 <i class="fas fa-bolt"></i></div>
+                        <div class="enhancement-details collapsed">
+                            <div class="stat-change">
+                                <span class="stat-label">移动速度：</span>
+                                <span class="stat-value">54→58 (+4)</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="enhancement-item">
+                        <h4 class="enhancement-header" onclick="toggleDetails(this)">
+                            后坐控制提升
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                        </h4>
+                        <div class="cost">150 <i class="fas fa-bolt"></i></div>
+                        <div class="enhancement-details collapsed">
+                            <div class="stat-change">
+                                <span class="stat-label">操控：</span>
+                                <span class="stat-value">60→78 (+18)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 技能强化 -->
+                <div class="enhancement-category">
+                    <h3 class="category-title">
+                        <i class="fas fa-magic"></i>
+                        技能强化
+                    </h3>
+                    
+                    <div class="enhancement-item">
+                        <h4 class="enhancement-header" onclick="toggleDetails(this)">
+                            颜料束缚强化
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                        </h4>
+                        <div class="enhancement-details collapsed">
+                            <div class="enhancement-option">
+                                <div class="option-title">持续时间增加5秒</div>
+                                <div class="cost">250 <i class="fas fa-bolt"></i></div>
+                                <div class="stat-change">
+                                    <span class="stat-label">持续时间：</span>
+                                    <span class="stat-value">15秒→20秒</span>
+                                </div>
+                            </div>
+                            <div class="enhancement-option">
+                                <div class="option-title">上限增加至3个</div>
+                                <div class="cost">250 <i class="fas fa-bolt"></i></div>
+                                <div class="stat-change">
+                                    <span class="stat-label">上限：</span>
+                                    <span class="stat-value">2个→3个</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="enhancement-item">
+                        <h4 class="enhancement-header" onclick="toggleDetails(this)">
+                            颜料脚印强化
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                        </h4>
+                        <div class="cost">250 <i class="fas fa-bolt"></i></div>
+                        <div class="enhancement-details collapsed">
+                            <div class="stat-change">
+                                <span class="stat-label">减速时间增加1秒：</span>
+                                <span class="stat-value">2秒→5秒</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 护甲系统 -->
+                <div class="enhancement-category">
+                    <h3 class="category-title">
+                        <i class="fas fa-shield-alt"></i>
+                        护甲
+                    </h3>
+                    
+                    <div class="enhancement-item">
+                        <h4 class="enhancement-header" onclick="toggleDetails(this)">
+                            快回轻型护甲
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                        </h4>
+                        <div class="cost">250 <i class="fas fa-bolt"></i></div>
+                        <div class="enhancement-details collapsed">
+                            <div class="stat-change">
+                                <span class="stat-label">护甲回复值：</span>
+                                <span class="stat-value">2→8 (+6)</span>
+                            </div>
+                            <div class="stat-change">
+                                <span class="stat-label">护甲值：</span>
+                                <span class="stat-value">80→80</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="enhancement-item">
+                        <h4 class="enhancement-header" onclick="toggleDetails(this)">
+                            重型护甲
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                        </h4>
+                        <div class="cost">250 <i class="fas fa-bolt"></i></div>
+                        <div class="enhancement-details collapsed">
+                            <div class="stat-change">
+                                <span class="stat-label">护甲回复值：</span>
+                                <span class="stat-value">2</span>
+                            </div>
+                            <div class="stat-change">
+                                <span class="stat-label">护甲值：</span>
+                                <span class="stat-value">80→100 (+20)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 生存系统 -->
+                <div class="enhancement-category">
+                    <h3 class="category-title">
+                        <i class="fas fa-heart"></i>
+                        生存
+                    </h3>
+                    
+                    <div class="enhancement-item">
+                        <h4 class="enhancement-header" onclick="toggleDetails(this)">
+                            弦化状态移速增加15%
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                        </h4>
+                        <div class="cost">250 <i class="fas fa-bolt"></i></div>
+                        <div class="enhancement-details collapsed">
+                            <div class="stat-change">
+                                <span class="stat-label">弦化移速：</span>
+                                <span class="stat-value">66→76 (+10)</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="enhancement-item">
+                        <h4 class="enhancement-header" onclick="toggleDetails(this)">
+                            弦化减伤系数提至46%
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                        </h4>
+                        <div class="cost">250 <i class="fas fa-bolt"></i></div>
+                        <div class="enhancement-details collapsed">
+                            <div class="stat-change">
+                                <span class="stat-label">弦化减伤比例：</span>
+                                <span class="stat-value">33→46 (+13)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- 人物关系网络 -->
     <section class="relationships-section">
         <div class="container">
@@ -599,5 +988,22 @@
     </footer>
 
     <script src="js/script.js"></script>
+    <script>
+        // 弦能增幅网络展开/收起功能
+        function toggleDetails(header) {
+            const details = header.nextElementSibling.nextElementSibling; // 跳过cost div
+            const icon = header.querySelector('.toggle-icon');
+            
+            if (details.classList.contains('collapsed')) {
+                details.classList.remove('collapsed');
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+            } else {
+                details.classList.add('collapsed');
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+            }
+        }
+    </script>
 </body>
 </html>
