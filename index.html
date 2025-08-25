@@ -8,6 +8,69 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
+    <!-- 开场动画 -->
+    <div id="opening-animation" class="opening-overlay">
+        <!-- 第一阶段：画布骤现 -->
+        <div class="canvas-stage">
+            <div class="black-screen"></div>
+            <div class="canvas-crack"></div>
+            <div class="canvas-surface">
+                <svg class="sketch-lines" viewBox="0 0 100 100">
+                    <path d="M10,20 Q30,10 50,25 T90,30" class="sketch-line" />
+                    <path d="M15,60 Q40,45 65,70 T85,75" class="sketch-line" />
+                    <path d="M25,80 Q45,85 70,75" class="sketch-line" />
+                </svg>
+            </div>
+        </div>
+        
+        <!-- 第二阶段：颜料爆涌 -->
+        <div class="paint-stage">
+            <div class="paint-drop"></div>
+            <div class="paint-splash">
+                <div class="splash-particle" style="--angle: 0deg; --distance: 80px;"></div>
+                <div class="splash-particle" style="--angle: 45deg; --distance: 120px;"></div>
+                <div class="splash-particle" style="--angle: 90deg; --distance: 100px;"></div>
+                <div class="splash-particle" style="--angle: 135deg; --distance: 90px;"></div>
+                <div class="splash-particle" style="--angle: 180deg; --distance: 110px;"></div>
+                <div class="splash-particle" style="--angle: 225deg; --distance: 95px;"></div>
+                <div class="splash-particle" style="--angle: 270deg; --distance: 85px;"></div>
+                <div class="splash-particle" style="--angle: 315deg; --distance: 105px;"></div>
+            </div>
+            <div class="bubbles">
+                <div class="bubble" style="--delay: 0.1s; --x: 0px; --y: -30px;"></div>
+                <div class="bubble" style="--delay: 0.2s; --x: 20px; --y: -40px;"></div>
+                <div class="bubble" style="--delay: 0.3s; --x: -15px; --y: -35px;"></div>
+                <div class="bubble" style="--delay: 0.4s; --x: 10px; --y: -45px;"></div>
+            </div>
+            <div class="golden-sparkles">
+                <div class="sparkle" style="--delay: 0.5s; --x: 25px; --y: -20px;"></div>
+                <div class="sparkle" style="--delay: 0.6s; --x: -20px; --y: -25px;"></div>
+                <div class="sparkle" style="--delay: 0.7s; --x: 15px; --y: -30px;"></div>
+                <div class="sparkle" style="--delay: 0.8s; --x: -10px; --y: -15px;"></div>
+                <div class="sparkle" style="--delay: 0.9s; --x: 30px; --y: -35px;"></div>
+            </div>
+        </div>
+        
+        <!-- 第三阶段：符号定帧 -->
+        <div class="symbol-stage">
+            <div class="palette-outline">
+                <svg viewBox="0 0 200 150" class="palette-svg">
+                    <path d="M50,75 Q75,25 125,50 Q175,75 150,125 Q125,150 75,125 Q25,100 50,75 Z" 
+                          class="palette-path" fill="none" stroke="#ff6b47" stroke-width="3"/>
+                    <circle cx="100" cy="75" r="8" class="palette-center" fill="#ffd700"/>
+                    <path d="M92,75 Q100,65 108,75" class="golden-stroke" fill="none" stroke="#ffd700" stroke-width="2"/>
+                </svg>
+            </div>
+            <div class="dream-text">
+                <span class="dream-char" style="--delay: 0s;">绘</span>
+                <span class="dream-char" style="--delay: 0.1s;">梦</span>
+            </div>
+        </div>
+        
+        <!-- 跳过按钮 -->
+        <button class="skip-button" onclick="skipOpening()">跳过 <i class="fas fa-forward"></i></button>
+    </div>
+
     <!-- 导航栏 -->
     <nav class="navbar" id="navbar">
         <div class="nav-container">
@@ -200,5 +263,6 @@
     </footer>
 
     <script src="js/script.js"></script>
+    <script src="js/opening-animation.js"></script>
 </body>
 </html>
