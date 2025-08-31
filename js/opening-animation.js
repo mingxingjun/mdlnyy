@@ -8,16 +8,22 @@ class OpeningAnimation {
     }
 
     init() {
-        // 检查是否已经播放过（可选功能）
-        if (localStorage.getItem('opening-animation-played') === 'true') {
-            this.hasPlayed = true;
-            return;
-        }
+        console.log('Animation init called');
+        // 临时禁用localStorage检查以便调试
+        // const hasPlayed = localStorage.getItem('opening-animation-played');
+        // console.log('Has played before:', hasPlayed);
+        // if (hasPlayed === 'true') {
+        //     this.hasPlayed = true;
+        //     console.log('Animation already played, skipping');
+        //     return;
+        // }
 
         // 等待DOM加载完成
         if (document.readyState === 'loading') {
+            console.log('DOM still loading, waiting...');
             document.addEventListener('DOMContentLoaded', () => this.start());
         } else {
+            console.log('DOM ready, starting animation');
             this.start();
         }
     }
@@ -31,7 +37,14 @@ class OpeningAnimation {
         // 绑定跳过按钮事件
         const skipButton = this.overlay.querySelector('.skip-button');
         if (skipButton) {
-            skipButton.addEventListener('click', () => this.skip());
+            console.log('Skip button found, binding click event');
+            skipButton.addEventListener('click', (e) => {
+                console.log('Skip button clicked');
+                e.preventDefault();
+                this.skip();
+            });
+        } else {
+            console.log('Skip button not found');
         }
 
         // 绑定键盘事件（ESC键跳过）
@@ -150,6 +163,7 @@ class OpeningAnimation {
     }
 
     skip() {
+        console.log('Skip method called, isSkipped:', this.isSkipped);
         if (this.isSkipped) return;
         
         this.isSkipped = true;
@@ -157,10 +171,12 @@ class OpeningAnimation {
     }
 
     end() {
+        console.log('End method called, overlay exists:', !!this.overlay);
         if (!this.overlay) return;
 
         // 添加淡出动画
         this.overlay.classList.add('hidden');
+        console.log('Added hidden class to overlay');
         
         // 等待淡出动画完成后移除元素
         setTimeout(() => {
@@ -212,8 +228,22 @@ class OpeningAnimation {
     }
 }
 
-// 创建动画实例
+// 创建实例并初始化
 const openingAnimation = new OpeningAnimation();
+openingAnimation.init();
 
-// 导出到全局作用域（用于调试）
+// 导出到全局作用域以便调试
 window.openingAnimation = openingAnimation;
+
+// 全局跳过函数
+function skipOpening() {
+    console.log('Global skipOpening called, animation exists:', !!window.openingAnimation);
+    if (window.openingAnimation) {
+        window.openingAnimation.skip();
+    } else {
+        console.log('Opening animation instance not found');
+    }
+}
+
+// 导出跳过函数到全局作用域
+window.skipOpening = skipOpening;

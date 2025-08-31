@@ -89,7 +89,7 @@
     background: rgba(255, 107, 107, 0.1);
 }
 
-.nav-toggle {
+.hamburger {
     display: none;
     flex-direction: column;
     cursor: pointer;
@@ -98,11 +98,11 @@
     transition: all 0.3s ease;
 }
 
-.nav-toggle:hover {
+.hamburger:hover {
     background: rgba(255, 107, 107, 0.1);
 }
 
-.nav-toggle span {
+.hamburger span {
     width: 25px;
     height: 3px;
     background: #333;
@@ -111,15 +111,15 @@
     border-radius: 2px;
 }
 
-.nav-toggle.active span:nth-child(1) {
+.hamburger.active span:nth-child(1) {
     transform: rotate(45deg) translate(5px, 5px);
 }
 
-.nav-toggle.active span:nth-child(2) {
+.hamburger.active span:nth-child(2) {
     opacity: 0;
 }
 
-.nav-toggle.active span:nth-child(3) {
+.hamburger.active span:nth-child(3) {
     transform: rotate(-45deg) translate(7px, -6px);
 }
 
@@ -181,7 +181,7 @@
 
 /* 响应式导航栏 */
 @media (max-width: 768px) {
-    .nav-toggle {
+    .hamburger {
         display: flex;
     }
     

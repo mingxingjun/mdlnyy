@@ -59,6 +59,29 @@ function initializeScrollEffects() {
         });
     }
     
+    // 滚动指示器和视差效果
+    window.addEventListener('scroll', () => {
+        const scrolled = (window.pageYOffset / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
+        if (scrollIndicator) {
+            scrollIndicator.style.width = scrolled + '%';
+        }
+        
+        // 视差效果
+        const scrollY = window.pageYOffset;
+        const heroBackground = document.querySelector('.hero-background');
+        const floatingElements = document.querySelectorAll('.floating-decoration');
+        
+        if (heroBackground) {
+            heroBackground.style.transform = `translateY(${scrollY * 0.5}px)`;
+        }
+        
+        // 浮动装饰元素视差
+        floatingElements.forEach((element, index) => {
+            const speed = 0.2 + (index * 0.1);
+            element.style.transform = `translateY(${scrollY * speed}px)`;
+        });
+    });
+    
     // 滚动动画观察器
     const observerOptions = {
         threshold: 0.1,
@@ -76,10 +99,10 @@ function initializeScrollEffects() {
     
     // 观察需要动画的元素
     const animateElements = document.querySelectorAll('.highlight-card, .timeline-item, .voice-card');
-    animateElements.forEach(el => {
+    animateElements.forEach((el, index) => {
         el.style.opacity = '0';
         el.style.transform = 'translateY(30px)';
-        el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        el.style.transition = `opacity 0.6s ease ${index * 0.1}s, transform 0.6s ease ${index * 0.1}s`;
         observer.observe(el);
     });
 }
@@ -211,15 +234,62 @@ function debounce(func, wait, immediate) {
 
 // 添加一些交互效果
 document.addEventListener('DOMContentLoaded', function() {
+    // 页面加载动画
+    document.body.style.opacity = '0';
+    document.body.style.transform = 'translateY(20px)';
+    document.body.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
+    
+    setTimeout(() => {
+        document.body.style.opacity = '1';
+        document.body.style.transform = 'translateY(0)';
+    }, 100);
+    
+    // 鼠标跟随光标效果
+    const cursor = document.createElement('div');
+    cursor.className = 'custom-cursor';
+    document.body.appendChild(cursor);
+    
+    const cursorDot = document.createElement('div');
+    cursorDot.className = 'cursor-dot';
+    document.body.appendChild(cursorDot);
+    
+    let mouseX = 0, mouseY = 0;
+    let cursorX = 0, cursorY = 0;
+    let dotX = 0, dotY = 0;
+    
+    document.addEventListener('mousemove', (e) => {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+    });
+    
+    function animateCursor() {
+        cursorX += (mouseX - cursorX) * 0.1;
+        cursorY += (mouseY - cursorY) * 0.1;
+        dotX += (mouseX - dotX) * 0.3;
+        dotY += (mouseY - dotY) * 0.3;
+        
+        cursor.style.left = cursorX + 'px';
+        cursor.style.top = cursorY + 'px';
+        cursorDot.style.left = dotX + 'px';
+        cursorDot.style.top = dotY + 'px';
+        
+        requestAnimationFrame(animateCursor);
+    }
+    animateCursor();
+    
     // 卡片悬停效果增强
     const cards = document.querySelectorAll('.highlight-card, .voice-card');
     cards.forEach(card => {
+        card.style.transition = 'transform 0.3s ease, box-shadow 0.3s ease';
+        
         card.addEventListener('mouseenter', function() {
             this.style.transform = 'translateY(-10px) scale(1.02)';
+            this.style.boxShadow = '0 20px 40px rgba(0,0,0,0.15)';
         });
         
         card.addEventListener('mouseleave', function() {
             this.style.transform = 'translateY(0) scale(1)';
+            this.style.boxShadow = '0 5px 15px rgba(0,0,0,0.1)';
         });
     });
     
@@ -265,6 +335,20 @@ document.addEventListener('DOMContentLoaded', function() {
     progressBars.forEach(bar => {
         progressObserver.observe(bar);
     });
+    
+    // 元素进入动画增强
+    const fadeInElements = document.querySelectorAll('.fade-in');
+    const fadeInObserver = new IntersectionObserver(function(entries) {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('fade-in-active');
+            }
+        });
+    }, { threshold: 0.1 });
+    
+    fadeInElements.forEach(element => {
+        fadeInObserver.observe(element);
+    });
 });
 
 // 添加波纹效果的CSS（动态添加）
@@ -289,6 +373,48 @@ rippleStyle.textContent = `
             transform: scale(4);
             opacity: 0;
         }
+    }
+    
+    .fade-in {
+        opacity: 0;
+        transform: translateY(20px);
+        transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+    
+    .fade-in-active {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    
+    .hero-background {
+        will-change: transform;
+    }
+    
+    .floating-decoration {
+        will-change: transform;
+    }
+    
+    .custom-cursor {
+        position: fixed;
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(255, 255, 255, 0.8);
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 9999;
+        mix-blend-mode: difference;
+        transform: translate(-50%, -50%);
+    }
+    
+    .cursor-dot {
+        position: fixed;
+        width: 4px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 10000;
+        transform: translate(-50%, -50%);
     }
 `;
 document.head.appendChild(rippleStyle);

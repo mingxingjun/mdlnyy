@@ -18,13 +18,13 @@ document.addEventListener('DOMContentLoaded', function() {
 // 初始化导航栏
 function initializeNavbar() {
     const navbar = document.querySelector('.navbar');
-    const navToggle = document.querySelector('.nav-toggle');
+    const hamburger = document.querySelector('.hamburger');
     const navMenu = document.querySelector('.nav-menu');
     
     // 移动端菜单切换
-    if (navToggle && navMenu) {
-        navToggle.addEventListener('click', function() {
-            navToggle.classList.toggle('active');
+    if (hamburger && navMenu) {
+        hamburger.addEventListener('click', function() {
+            hamburger.classList.toggle('active');
             navMenu.classList.toggle('active');
         });
         
@@ -32,7 +32,7 @@ function initializeNavbar() {
         const navLinks = document.querySelectorAll('.nav-menu a');
         navLinks.forEach(link => {
             link.addEventListener('click', function() {
-                navToggle.classList.remove('active');
+                hamburger.classList.remove('active');
                 navMenu.classList.remove('active');
             });
         });
@@ -40,7 +40,7 @@ function initializeNavbar() {
         // 点击页面其他地方时关闭移动端菜单
         document.addEventListener('click', function(e) {
             if (!navbar.contains(e.target)) {
-                navToggle.classList.remove('active');
+                hamburger.classList.remove('active');
                 navMenu.classList.remove('active');
             }
         });
