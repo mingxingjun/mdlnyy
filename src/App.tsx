@@ -1,7 +1,5 @@
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
-import ThreeBackground from '@/components/ThreeBackground';
 import Dashboard from '@/pages/Dashboard';
 import AIEngine from '@/pages/AIEngine';
 import MyNotes from '@/pages/MyNotes';
@@ -10,9 +8,8 @@ import { ToastContainer } from '@/components/Toast';
 
 export default function App() {
   return (
-    <Router>
+    <Router basename="/mdlnyy">
       <ToastContainer />
-      <ThreeBackground />
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
