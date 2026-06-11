@@ -1,8 +1,9 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Brain, NotebookPen, Headphones, Bell, User } from 'lucide-react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, Brain, NotebookPen, Headphones, Bell, User, Settings, Cpu, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { useMemo } from 'react';
+import { loadModelSettings } from '@/lib/models/api';
 
 const navItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: '高光仪表盘', color: 'neon-blue' },
@@ -13,7 +14,7 @@ const navItems = [
 
 const pageTitles: Record<string, { title: string; subtitle: string }> = {
   '/dashboard': { title: '高光仪表盘', subtitle: '考试倒计时 · 进度追踪 · 盲区热力图' },
-  '/ai-engine': { title: 'AI 冲刺核', subtitle: 'AI 对话 · 文档解析 · 闪卡训练 · 考点速查' },
+  '/ai-engine': { title: 'AI 冲刺核', subtitle: '6 大 AI Agent · 模型配置 · 智能复习' },
   '/my-notes': { title: '我的笔记', subtitle: '上传、整理、复习你的学习笔记' },
   '/flow-chamber': { title: '沉浸流空间', subtitle: '番茄钟 · 白噪音 · 虚拟自习室' },
 };
@@ -40,6 +41,19 @@ export default function Layout() {
   }, [subjects]);
 
   const current = pageTitles[location.pathname] || pageTitles['/dashboard'];
+
+  const navigate = useNavigate();
+  const modelSettings = useMemo(() => loadModelSettings(), []);
+  const activeProvider = modelSettings.activeProvider;
+
+  const providerDisplay = useMemo(() => {
+    switch (activeProvider) {
+      case 'deepseek': return { icon: Cpu, label: 'DeepSeek' };
+      case 'ollama': return { icon: Zap, label: '本地模型' };
+      case 'openai': return { icon: Cpu, label: 'OpenAI' };
+      case 'custom': return { icon: Settings, label: '自定义' };
+    }
+  }, [activeProvider]);
 
   return (
     <div className="flex h-screen bg-dark-900 font-body">
@@ -121,7 +135,15 @@ export default function Layout() {
                 : '暂无即将到来的考试'}
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/ai-engine?tab=settings')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-xs font-medium"
+              title="AI 模型设置"
+            >
+              <providerDisplay.icon size={14} className="text-neon-blue" />
+              <span className="text-neon-blue">{providerDisplay.label}</span>
+            </button>
             <button className="relative p-2 rounded-lg hover:bg-white/5 transition-colors">
               <Bell size={18} className="text-zinc-400" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-neon-pink rounded-full" />

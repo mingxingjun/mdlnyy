@@ -68,6 +68,21 @@ export interface Note {
   updatedAt: string;
 }
 
+export interface AgentMessage {
+  id: string;
+  agentId: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: number;
+}
+
+export interface AgentSession {
+  id: string;
+  agentId: string;
+  messages: AgentMessage[];
+  createdAt: number;
+}
+
 interface AppState {
   subjects: Subject[];
   flashCards: FlashCard[];
@@ -98,6 +113,11 @@ interface AppState {
 
   joinRoom: (roomId: string) => void;
   leaveRoom: (roomId: string) => void;
+
+  agentSessions: AgentSession[];
+  addAgentMessage: (sessionId: string, message: AgentMessage) => void;
+  createAgentSession: (agentId: string) => string;
+  clearAgentSession: (sessionId: string) => void;
 }
 
 // 自习室是公共房间，不属于用户数据，保留默认值
@@ -128,6 +148,8 @@ export const useAppStore = create<AppState>()(
 
       // 公共数据：非用户私有
       studyRooms: defaultStudyRooms,
+
+      agentSessions: [],
 
       addSubject: (subject) => set((state) => ({ subjects: [...state.subjects, subject] })),
       removeSubject: (id) => set((state) => ({ subjects: state.subjects.filter((s) => s.id !== id) })),
@@ -172,6 +194,24 @@ export const useAppStore = create<AppState>()(
           r.id === roomId ? { ...r, members: Math.max(0, r.members - 1) } : r
         ),
       })),
+
+      createAgentSession: (agentId) => {
+        const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        set((state) => ({
+          agentSessions: [...state.agentSessions, { id, agentId, messages: [], createdAt: Date.now() }],
+        }));
+        return id;
+      },
+      addAgentMessage: (sessionId, message) =>
+        set((state) => ({
+          agentSessions: state.agentSessions.map((s) =>
+            s.id === sessionId ? { ...s, messages: [...s.messages, message] } : s
+          ),
+        })),
+      clearAgentSession: (sessionId) =>
+        set((state) => ({
+          agentSessions: state.agentSessions.filter((s) => s.id !== sessionId),
+        })),
     }),
     {
       name: 'uniflow-storage',
