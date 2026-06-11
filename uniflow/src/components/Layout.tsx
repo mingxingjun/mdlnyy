@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Brain, BookOpen, Headphones, Bell, User } from 'lucide-react';
+import { LayoutDashboard, Brain, NotebookPen, Headphones, Bell, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { useMemo } from 'react';
@@ -7,14 +7,14 @@ import { useMemo } from 'react';
 const navItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: '高光仪表盘', color: 'neon-blue' },
   { path: '/ai-engine', icon: Brain, label: 'AI 冲刺核', color: 'neon-purple' },
-  { path: '/peer-hub', icon: BookOpen, label: '朋辈资料', color: 'neon-green' },
+  { path: '/my-notes', icon: NotebookPen, label: '我的笔记', color: 'neon-green' },
   { path: '/flow-chamber', icon: Headphones, label: '沉浸流空间', color: 'neon-purple' },
 ];
 
 const pageTitles: Record<string, { title: string; subtitle: string }> = {
   '/dashboard': { title: '高光仪表盘', subtitle: '考试倒计时 · 心流统计 · 进度追踪' },
   '/ai-engine': { title: 'AI 冲刺核', subtitle: '上传教材，AI 自动提取考点' },
-  '/peer-hub': { title: '朋辈资料矩阵', subtitle: '本校学长学姐的通关秘籍' },
+  '/my-notes': { title: '我的笔记', subtitle: '上传、整理、复习你的学习笔记' },
   '/flow-chamber': { title: '沉浸流空间', subtitle: '番茄钟 · 白噪音 · 虚拟自习室' },
 };
 

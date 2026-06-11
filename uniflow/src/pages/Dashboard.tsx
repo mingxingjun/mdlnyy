@@ -1,16 +1,15 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 import {
   Clock,
-  Timer,
   Plus,
   Minus,
-  TrendingUp,
   Flame,
   Target,
+  Trash2,
+  Calendar,
 } from 'lucide-react';
-import { useAppStore } from '@/store/useAppStore';
+import { useAppStore, type Subject } from '@/store/useAppStore';
 
 /* ─── 动画变体 ─── */
 const containerVariants = {
@@ -53,188 +52,168 @@ function masteryBg(mastery: number): string {
   return 'rgba(255,68,68,0.12)';
 }
 
+/* ─── 添加科目弹窗 ─── */
+function AddSubjectModal({ onClose, onAdd }: { onClose: () => void; onAdd: (s: Subject) => void }) {
+  const [name, setName] = useState('');
+  const [examDate, setExamDate] = useState('');
+  const colors = ['#00d4ff', '#00ff88', '#8b5cf6', '#ff0080', '#ffd600', '#ff6b35'];
+
+  const handleSubmit = () => {
+    if (!name.trim() || !examDate) return;
+    onAdd({
+      id: crypto.randomUUID(),
+      name: name.trim(),
+      examDate,
+      progress: 0,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      icon: 'book',
+    });
+    onClose();
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backdropFilter: 'blur(8px)', background: 'rgba(0,0,0,0.6)' }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.92, y: 20 }}
+        onClick={(e) => e.stopPropagation()}
+        className="glass-card w-full max-w-md p-6"
+      >
+        <h3 className="font-display font-bold text-lg text-white mb-5">添加考试科目</h3>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs text-zinc-500 mb-1.5">科目名称</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="如：高等数学下"
+              className="w-full px-4 py-2.5 rounded-xl bg-dark-600/60 border border-white/5 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-neon-blue/50 focus:shadow-[0_0_15px_rgba(0,212,255,0.15)] transition-all"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-zinc-500 mb-1.5">考试日期</label>
+            <input
+              type="date"
+              value={examDate}
+              onChange={(e) => setExamDate(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-dark-600/60 border border-white/5 text-sm text-zinc-200 outline-none focus:border-neon-blue/50 focus:shadow-[0_0_15px_rgba(0,212,255,0.15)] transition-all"
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-3 mt-6">
+          <button onClick={onClose} className="neon-btn neon-btn-blue flex-1 justify-center" style={{ color: '#a1a1aa', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            取消
+          </button>
+          <button onClick={handleSubmit} className="neon-btn neon-btn-blue flex-1 justify-center">
+            添加
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 /* ─── 子组件 ─── */
 
 /** 1. 考试倒计时卡片 */
 function ExamCountdown() {
-  const { subjects } = useAppStore();
+  const { subjects, removeSubject } = useAppStore();
+  const [showAdd, setShowAdd] = useState(false);
+  const addSubject = useAppStore((s) => s.addSubject);
 
   return (
-    <div className="col-span-2 row-span-2 glass-card p-5 flex flex-col">
-      <div className="flex items-center gap-2 mb-4">
-        <Clock size={18} className="text-neon-blue" />
-        <h3 className="font-display font-semibold text-white text-base">考试倒计时</h3>
-      </div>
-      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-auto">
-        {subjects.map((subject) => {
-          const cd = getCountdown(subject.examDate);
-          return (
-            <motion.div
-              key={subject.id}
-              variants={itemVariants}
-              className="relative rounded-xl p-4 flex flex-col justify-between overflow-hidden"
-              style={{
-                background: `linear-gradient(135deg, ${subject.color}10, ${subject.color}05)`,
-                border: `1px solid ${subject.color}40`,
-                boxShadow: neonShadow(subject.color, 0.15),
-              }}
-            >
-              {/* 背景光晕 */}
-              <div
-                className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-20 blur-2xl"
-                style={{ background: subject.color }}
-              />
-              <div className="relative z-10">
-                <p className="text-sm text-zinc-400 font-body truncate">{subject.name}</p>
-                <p className="text-xs text-zinc-600 mt-0.5">{subject.examDate}</p>
-              </div>
-              <div className="relative z-10 mt-3">
-                {cd.passed ? (
-                  <span className="text-sm text-zinc-500">已结束</span>
-                ) : (
-                  <div className="flex items-baseline gap-1.5">
-                    <span
-                      className="font-display font-bold text-3xl tabular-nums"
-                      style={{
-                        color: subject.color,
-                        textShadow: `0 0 14px ${subject.color}80, 0 0 40px ${subject.color}30`,
-                      }}
-                    >
-                      {cd.days}
-                    </span>
-                    <span className="text-xs text-zinc-500">天</span>
-                    <span
-                      className="font-display font-semibold text-xl tabular-nums"
-                      style={{ color: subject.color, textShadow: `0 0 10px ${subject.color}60` }}
-                    >
-                      {cd.hours}
-                    </span>
-                    <span className="text-xs text-zinc-500">时</span>
-                    <span
-                      className="font-display font-semibold text-lg tabular-nums"
-                      style={{ color: subject.color, textShadow: `0 0 10px ${subject.color}40` }}
-                    >
-                      {cd.minutes}
-                    </span>
-                    <span className="text-xs text-zinc-500">分</span>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/** 2. 心流时长统计 */
-function FlowStats() {
-  const { todayFlowMinutes, weeklyFlowData } = useAppStore();
-  const target = 125;
-  const pct = Math.min((todayFlowMinutes / target) * 100, 100);
-
-  // SVG 环形图参数
-  const size = 140;
-  const strokeWidth = 10;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (pct / 100) * circumference;
-
-  return (
-    <div className="col-span-2 row-span-2 glass-card p-5 flex flex-col">
-      <div className="flex items-center gap-2 mb-4">
-        <Timer size={18} className="text-neon-green" />
-        <h3 className="font-display font-semibold text-white text-base">心流时长统计</h3>
-      </div>
-
-      <div className="flex-1 flex flex-col lg:flex-row items-center gap-6">
-        {/* 环形图 */}
-        <div className="relative flex-shrink-0">
-          <svg width={size} height={size} className="-rotate-90">
-            {/* 背景环 */}
-            <circle
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              fill="none"
-              stroke="rgba(255,255,255,0.06)"
-              strokeWidth={strokeWidth}
-            />
-            {/* 进度环 */}
-            <circle
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              fill="none"
-              stroke="url(#ringGradient)"
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={offset}
-              style={{ transition: 'stroke-dashoffset 1s ease' }}
-            />
-            <defs>
-              <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#00ff88" />
-                <stop offset="100%" stopColor="#00d4ff" />
-              </linearGradient>
-            </defs>
-          </svg>
-          {/* 中心文字 */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="font-display font-bold text-2xl neon-text-green tabular-nums">
-              {todayFlowMinutes}
-            </span>
-            <span className="text-[11px] text-zinc-500">/ {target} 分钟</span>
+    <>
+      <div className="col-span-2 row-span-2 glass-card p-5 flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Clock size={18} className="text-neon-blue" />
+            <h3 className="font-display font-semibold text-white text-base">考试倒计时</h3>
           </div>
+          <button
+            onClick={() => setShowAdd(true)}
+            className="w-7 h-7 rounded-lg bg-neon-blue/10 border border-neon-blue/30 flex items-center justify-center hover:bg-neon-blue/20 transition-colors"
+          >
+            <Plus size={14} className="text-neon-blue" />
+          </button>
         </div>
-
-        {/* 周趋势面积图 */}
-        <div className="flex-1 w-full h-36">
-          <p className="text-xs text-zinc-500 mb-2 flex items-center gap-1">
-            <TrendingUp size={12} /> 本周趋势
-          </p>
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={weeklyFlowData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="flowGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#00ff88" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="#00ff88" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis
-                dataKey="day"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 10, fill: '#71717a' }}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: 'rgba(18,18,26,0.9)',
-                  border: '1px solid rgba(0,255,136,0.2)',
-                  borderRadius: 8,
-                  fontSize: 12,
-                  color: '#e4e4e7',
+        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-auto">
+          {subjects.map((subject) => {
+            const cd = getCountdown(subject.examDate);
+            return (
+              <motion.div
+                key={subject.id}
+                variants={itemVariants}
+                className="relative rounded-xl p-4 flex flex-col justify-between overflow-hidden group"
+                style={{
+                  background: `linear-gradient(135deg, ${subject.color}10, ${subject.color}05)`,
+                  border: `1px solid ${subject.color}40`,
+                  boxShadow: neonShadow(subject.color, 0.15),
                 }}
-                formatter={(value: number) => [`${value} 分钟`, '心流时长']}
-              />
-              <Area
-                type="monotone"
-                dataKey="minutes"
-                stroke="#00ff88"
-                strokeWidth={2}
-                fill="url(#flowGradient)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+              >
+                <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-20 blur-2xl" style={{ background: subject.color }} />
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-zinc-400 font-body truncate">{subject.name}</p>
+                    <button
+                      onClick={() => removeSubject(subject.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/10"
+                    >
+                      <Trash2 size={12} className="text-zinc-500" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-zinc-600 mt-0.5 flex items-center gap-1">
+                    <Calendar size={10} /> {subject.examDate}
+                  </p>
+                </div>
+                <div className="relative z-10 mt-3">
+                  {cd.passed ? (
+                    <span className="text-sm text-zinc-500">已结束</span>
+                  ) : (
+                    <div className="flex items-baseline gap-1.5">
+                      <span
+                        className="font-display font-bold text-3xl tabular-nums"
+                        style={{ color: subject.color, textShadow: `0 0 14px ${subject.color}80, 0 0 40px ${subject.color}30` }}
+                      >
+                        {cd.days}
+                      </span>
+                      <span className="text-xs text-zinc-500">天</span>
+                      <span
+                        className="font-display font-semibold text-xl tabular-nums"
+                        style={{ color: subject.color, textShadow: `0 0 10px ${subject.color}60` }}
+                      >
+                        {cd.hours}
+                      </span>
+                      <span className="text-xs text-zinc-500">时</span>
+                      <span
+                        className="font-display font-semibold text-lg tabular-nums"
+                        style={{ color: subject.color, textShadow: `0 0 10px ${subject.color}40` }}
+                      >
+                        {cd.minutes}
+                      </span>
+                      <span className="text-xs text-zinc-500">分</span>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
-    </div>
+      {showAdd && <AddSubjectModal onClose={() => setShowAdd(false)} onAdd={addSubject} />}
+    </>
   );
 }
 
-/** 3. 科目进度条 */
+/** 2. 科目进度条 */
 function SubjectProgress() {
   const { subjects, updateSubjectProgress } = useAppStore();
 
@@ -254,7 +233,7 @@ function SubjectProgress() {
       <div className="flex-1 space-y-3 overflow-auto">
         {subjects.map((subject) => (
           <div key={subject.id} className="flex items-center gap-3">
-            <span className="text-xs text-zinc-400 w-24 truncate flex-shrink-0">{subject.name}</span>
+            <span className="text-xs text-zinc-400 w-28 truncate flex-shrink-0">{subject.name}</span>
             <div className="flex-1 h-3 rounded-full bg-white/5 overflow-hidden relative">
               <motion.div
                 className="h-full rounded-full"
@@ -294,7 +273,7 @@ function SubjectProgress() {
   );
 }
 
-/** 4. 盲区热力图 */
+/** 3. 盲区热力图 */
 function Heatmap() {
   const { knowledgePoints, subjects } = useAppStore();
   const [hovered, setHovered] = useState<string | null>(null);
@@ -348,7 +327,6 @@ function Heatmap() {
                       >
                         {kp.mastery}
                       </motion.div>
-                      {/* 悬浮提示 */}
                       {isHovered && (
                         <motion.div
                           initial={{ opacity: 0, y: 4 }}
@@ -357,7 +335,7 @@ function Heatmap() {
                           style={{
                             background: 'rgba(18,18,26,0.95)',
                             border: `1px solid ${masteryColor(kp.mastery)}50`,
-                            boxShadow: `0 4px 20px rgba(0,0,0,0.4)`,
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
                           }}
                         >
                           <p className="text-xs text-zinc-200">{kp.name}</p>
@@ -377,8 +355,6 @@ function Heatmap() {
           );
         })}
       </div>
-
-      {/* 图例 */}
       <div className="flex items-center gap-4 mt-4 pt-3 border-t border-white/5">
         <span className="text-[10px] text-zinc-600">掌握度</span>
         <div className="flex items-center gap-1.5">
@@ -409,9 +385,6 @@ export default function Dashboard() {
     >
       <motion.div variants={itemVariants} className="contents">
         <ExamCountdown />
-      </motion.div>
-      <motion.div variants={itemVariants} className="contents">
-        <FlowStats />
       </motion.div>
       <motion.div variants={itemVariants} className="contents">
         <SubjectProgress />
