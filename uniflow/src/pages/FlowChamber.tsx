@@ -331,15 +331,19 @@ function PomodoroTimer() {
       </div>
 
       {/* 科目选择 */}
-      <select
-        value={selectedSubject}
-        onChange={(e) => setSelectedSubject(e.target.value)}
-        className="bg-dark-700 border border-white/10 rounded-lg px-4 py-2 text-sm text-zinc-300 focus:outline-none focus:border-neon-blue/40 transition-colors"
-      >
-        {subjects.map((s) => (
-          <option key={s.id} value={s.id}>{s.name}</option>
-        ))}
-      </select>
+      {subjects.length > 0 ? (
+        <select
+          value={selectedSubject}
+          onChange={(e) => setSelectedSubject(e.target.value)}
+          className="bg-dark-700 border border-white/10 rounded-lg px-4 py-2 text-sm text-zinc-300 focus:outline-none focus:border-neon-blue/40 transition-colors"
+        >
+          {subjects.map((s) => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
+      ) : (
+        <p className="text-xs text-zinc-500">请先在仪表盘添加考试科目</p>
+      )}
 
       {/* 当前科目名称展示 */}
       {currentSubject && (
