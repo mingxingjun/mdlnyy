@@ -11,10 +11,6 @@
 
 ---
 
-## 预览
-
-<img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=cyberpunk%20study%20dashboard%20with%20neon%20blue%20and%20purple%20colors%2C%20floating%203D%20geometric%20particles%2C%20glass%20morphism%20cards%2C%20dark%20theme%2C%20AI%20assistant%20interface%2C%20futuristic%20UI%20design%2C%20highest%20quality&image_size=landscape_16_9" alt="UniFlow Preview" width="100%">
-
 ## 核心特性
 
 ### 6 大 AI Agent
