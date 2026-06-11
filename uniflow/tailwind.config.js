@@ -46,6 +46,7 @@ export default {
         'glow': 'glow 2s ease-in-out infinite alternate',
         'float': 'float 6s ease-in-out infinite',
         'shimmer': 'shimmer 2s linear infinite',
+        'completion-pulse': 'completionPulse 2s ease-out forwards',
       },
       keyframes: {
         pulseNeon: {
@@ -63,6 +64,13 @@ export default {
         shimmer: {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
+        },
+        completionPulse: {
+          '0%': { transform: 'scale(1)', filter: 'brightness(1)' },
+          '25%': { transform: 'scale(1.08)', filter: 'brightness(1.5)' },
+          '50%': { transform: 'scale(1.04)', filter: 'brightness(1.3)' },
+          '75%': { transform: 'scale(1.06)', filter: 'brightness(1.4)' },
+          '100%': { transform: 'scale(1)', filter: 'brightness(1)' },
         },
       },
     },

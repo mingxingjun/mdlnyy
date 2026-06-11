@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Play, Pause, RotateCcw, Volume2, Users, Flame, Clock,
-  CloudRain, BookOpen, Coffee, Music, Trees, FlameKindling,
+  CloudRain, BookOpen, Coffee, Music, Trees, FlameKindling, Check,
 } from 'lucide-react';
 import { useAppStore, type WhiteNoiseType } from '@/store/useAppStore';
+import { useToastStore } from '@/components/Toast';
 import { cn } from '@/lib/utils';
 
 /* ──────────────── 常量 ──────────────── */
@@ -20,15 +21,152 @@ const NOISE_CONFIG: { type: WhiteNoiseType; label: string; icon: typeof CloudRai
   { type: 'fire', label: '壁炉', icon: FlameKindling },
 ];
 
+/* ──────────────── 白噪音音频生成器 ──────────────── */
+function createNoiseGenerator(
+  ctx: AudioContext,
+  type: WhiteNoiseType,
+  gainNode: GainNode
+) {
+  const sampleRate = ctx.sampleRate;
+  const bufferSize = 2 * sampleRate;
+  const buffer = ctx.createBuffer(1, bufferSize, sampleRate);
+
+  switch (type) {
+    case 'rain': {
+      // 白噪音 + 低通滤波
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 1200;
+      source.connect(filter);
+      filter.connect(gainNode);
+      source.start();
+      return source;
+    }
+    case 'library': {
+      // 棕噪音（非常安静）
+      const data = buffer.getChannelData(0);
+      let lastOut = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1;
+        lastOut = (lastOut + 0.02 * white) / 1.02;
+        data[i] = lastOut * 3.5;
+      }
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 400;
+      source.connect(filter);
+      filter.connect(gainNode);
+      source.start();
+      return source;
+    }
+    case 'cafe': {
+      // 粉噪音 + 带通滤波
+      const data = buffer.getChannelData(0);
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + white * 0.0555179;
+        b1 = 0.99332 * b1 + white * 0.0750759;
+        b2 = 0.96900 * b2 + white * 0.1538520;
+        b3 = 0.86650 * b3 + white * 0.3104856;
+        b4 = 0.55000 * b4 + white * 0.5329522;
+        b5 = -0.7616 * b5 - white * 0.0168980;
+        data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+        b6 = white * 0.115926;
+      }
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 800;
+      filter.Q.value = 0.5;
+      source.connect(filter);
+      filter.connect(gainNode);
+      source.start();
+      return source;
+    }
+    case 'bass': {
+      // 低频振荡器
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = 60;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 120;
+      osc.connect(filter);
+      filter.connect(gainNode);
+      osc.start();
+      return osc;
+    }
+    case 'forest': {
+      // 滤波噪音 + 调制
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 600;
+      filter.Q.value = 2;
+      // LFO 调制
+      const lfo = ctx.createOscillator();
+      lfo.type = 'sine';
+      lfo.frequency.value = 0.3;
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.value = 300;
+      lfo.connect(lfoGain);
+      lfoGain.connect(filter.frequency);
+      lfo.start();
+      source.connect(filter);
+      filter.connect(gainNode);
+      source.start();
+      return source;
+    }
+    case 'fire': {
+      // 噼啪声
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        if (Math.random() < 0.003) {
+          data[i] = (Math.random() - 0.5) * 0.8;
+        } else {
+          data[i] = (Math.random() * 2 - 1) * 0.05;
+        }
+      }
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 2000;
+      source.connect(filter);
+      filter.connect(gainNode);
+      source.start();
+      return source;
+    }
+  }
+}
+
 /* ──────────────── 番茄钟 ──────────────── */
 function PomodoroTimer() {
   const subjects = useAppStore((s) => s.subjects);
   const addPomodoroSession = useAppStore((s) => s.addPomodoroSession);
+  const addToast = useToastStore((s) => s.addToast);
 
   const [mode, setMode] = useState<'work' | 'break'>('work');
   const [timeLeft, setTimeLeft] = useState(WORK_DURATION);
   const [running, setRunning] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState(subjects[0]?.id ?? '');
+  const [completedAnimation, setCompletedAnimation] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const totalDuration = mode === 'work' ? WORK_DURATION : BREAK_DURATION;
@@ -41,7 +179,8 @@ function PomodoroTimer() {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           // 时间到，自动切换模式
-          if (mode === 'work') {
+          const currentMode = mode;
+          if (currentMode === 'work') {
             addPomodoroSession({
               id: crypto.randomUUID(),
               startTime: new Date().toISOString(),
@@ -49,8 +188,15 @@ function PomodoroTimer() {
               subjectId: selectedSubject,
               completed: true,
             });
+            addToast('success', '🎉 专注完成！休息一下吧');
+          } else {
+            addToast('info', '休息结束，继续加油！');
           }
-          const nextMode = mode === 'work' ? 'break' : 'work';
+          // 触发完成动画
+          setCompletedAnimation(true);
+          setTimeout(() => setCompletedAnimation(false), 2000);
+
+          const nextMode = currentMode === 'work' ? 'break' : 'work';
           setMode(nextMode);
           return nextMode === 'work' ? WORK_DURATION : BREAK_DURATION;
         }
@@ -60,7 +206,7 @@ function PomodoroTimer() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [running, mode, selectedSubject, addPomodoroSession]);
+  }, [running, mode, selectedSubject, addPomodoroSession, addToast]);
 
   const handleStart = useCallback(() => setRunning(true), []);
   const handlePause = useCallback(() => setRunning(false), []);
@@ -76,6 +222,9 @@ function PomodoroTimer() {
   const radius = 120;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - progress);
+
+  // 当前选中的科目
+  const currentSubject = subjects.find((s) => s.id === selectedSubject);
 
   return (
     <motion.div
@@ -111,7 +260,7 @@ function PomodoroTimer() {
       </div>
 
       {/* SVG 圆环计时器 */}
-      <div className={cn('relative', running && 'animate-breathe')}>
+      <div className={cn('relative', running && 'animate-breathe', completedAnimation && 'animate-completion-pulse')}>
         <svg width="280" height="280" viewBox="0 0 280 280" className="-rotate-90">
           {/* 背景圆 */}
           <circle
@@ -131,7 +280,7 @@ function PomodoroTimer() {
             strokeDashoffset={strokeDashoffset}
             className="transition-all duration-1000 ease-linear"
             style={{
-              filter: `drop-shadow(0 0 8px ${mode === 'work' ? 'rgba(0,212,255,0.6)' : 'rgba(0,255,136,0.6)'})`,
+              filter: `drop-shadow(0 0 ${completedAnimation ? 24 : 8}px ${mode === 'work' ? 'rgba(0,212,255,0.6)' : 'rgba(0,255,136,0.6)'})`,
             }}
           />
         </svg>
@@ -140,8 +289,9 @@ function PomodoroTimer() {
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span
             className={cn(
-              'font-display text-5xl font-bold tracking-wider',
-              mode === 'work' ? 'neon-text-blue' : 'neon-text-green'
+              'font-display text-5xl font-bold tracking-wider transition-all duration-300',
+              mode === 'work' ? 'neon-text-blue' : 'neon-text-green',
+              completedAnimation && 'scale-110'
             )}
           >
             {minutes}:{seconds}
@@ -190,6 +340,16 @@ function PomodoroTimer() {
           <option key={s.id} value={s.id}>{s.name}</option>
         ))}
       </select>
+
+      {/* 当前科目名称展示 */}
+      {currentSubject && (
+        <span
+          className="text-sm font-medium"
+          style={{ color: currentSubject.color }}
+        >
+          {currentSubject.name}
+        </span>
+      )}
     </motion.div>
   );
 }
@@ -202,9 +362,71 @@ function WhiteNoisePanel() {
     rain: 70, library: 70, cafe: 70, bass: 70, forest: 70, fire: 70,
   });
 
+  // Web Audio API 相关
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioNodesRef = useRef<Map<WhiteNoiseType, { source: AudioNode; gain: GainNode }>>(new Map());
+
+  const getAudioCtx = useCallback(() => {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new AudioContext();
+    }
+    return audioCtxRef.current;
+  }, []);
+
   const handleVolumeChange = (type: WhiteNoiseType, value: number) => {
     setVolumes((prev) => ({ ...prev, [type]: value }));
+    const nodes = audioNodesRef.current.get(type);
+    if (nodes) {
+      nodes.gain.gain.value = value / 100;
+    }
   };
+
+  const handleToggle = useCallback((type: WhiteNoiseType) => {
+    const isActive = activeWhiteNoise.includes(type);
+    if (isActive) {
+      // 关闭：停止并断开音频节点
+      const nodes = audioNodesRef.current.get(type);
+      if (nodes) {
+        try {
+          if (nodes.source instanceof AudioBufferSourceNode || nodes.source instanceof OscillatorNode) {
+            nodes.source.stop();
+          }
+          nodes.source.disconnect();
+          nodes.gain.disconnect();
+        } catch { /* ignore */ }
+        audioNodesRef.current.delete(type);
+      }
+    } else {
+      // 开启：创建并启动音频节点
+      const ctx = getAudioCtx();
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = volumes[type] / 100;
+      gainNode.connect(ctx.destination);
+      const source = createNoiseGenerator(ctx, type, gainNode);
+      audioNodesRef.current.set(type, { source, gain: gainNode });
+    }
+    toggleWhiteNoise(type);
+  }, [activeWhiteNoise, toggleWhiteNoise, getAudioCtx, volumes]);
+
+  // 组件卸载时清理所有音频节点
+  useEffect(() => {
+    return () => {
+      audioNodesRef.current.forEach((nodes) => {
+        try {
+          if (nodes.source instanceof AudioBufferSourceNode || nodes.source instanceof OscillatorNode) {
+            nodes.source.stop();
+          }
+          nodes.source.disconnect();
+          nodes.gain.disconnect();
+        } catch { /* ignore */ }
+      });
+      audioNodesRef.current.clear();
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close();
+        audioCtxRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <motion.div
@@ -224,7 +446,7 @@ function WhiteNoisePanel() {
           return (
             <div key={type} className="flex flex-col items-center gap-2">
               <button
-                onClick={() => toggleWhiteNoise(type)}
+                onClick={() => handleToggle(type)}
                 className={cn(
                   'w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 border',
                   isActive
@@ -263,6 +485,10 @@ function WhiteNoisePanel() {
 /* ──────────────── 虚拟自习室 ──────────────── */
 function StudyRoomsPanel() {
   const studyRooms = useAppStore((s) => s.studyRooms);
+  const joinedRooms = useAppStore((s) => s.joinedRooms);
+  const joinRoom = useAppStore((s) => s.joinRoom);
+  const leaveRoom = useAppStore((s) => s.leaveRoom);
+  const addToast = useToastStore((s) => s.addToast);
 
   // 生成匿名头像颜色
   const avatarColors = [
@@ -272,6 +498,16 @@ function StudyRoomsPanel() {
     'from-neon-pink to-neon-yellow',
     'from-neon-yellow to-neon-green',
   ];
+
+  const handleJoinLeave = (roomId: string) => {
+    if (joinedRooms.includes(roomId)) {
+      leaveRoom(roomId);
+      addToast('info', '已离开自习室');
+    } else {
+      joinRoom(roomId);
+      addToast('success', '已加入自习室');
+    }
+  };
 
   return (
     <motion.div
@@ -286,50 +522,68 @@ function StudyRoomsPanel() {
       </h3>
 
       <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
-        {studyRooms.map((room) => (
-          <div
-            key={room.id}
-            className="glass-card p-4 flex items-center justify-between gap-3"
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-zinc-200 truncate">{room.name}</span>
-                {room.isActive && (
-                  <span className="w-2 h-2 rounded-full bg-neon-green animate-pulse-neon flex-shrink-0" />
-                )}
-              </div>
-              <div className="flex items-center gap-2 mt-1.5">
-                <span className="text-xs text-zinc-500">
-                  {room.members}/{room.maxMembers} 人
-                </span>
-                {/* 在线头像 */}
-                <div className="flex -space-x-1.5">
-                  {Array.from({ length: Math.min(4, room.members) }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        'w-5 h-5 rounded-full bg-gradient-to-br flex items-center justify-center ring-1 ring-dark-900',
-                        avatarColors[i % avatarColors.length]
-                      )}
-                    >
-                      <span className="text-[8px] font-bold text-white">
-                        {String.fromCharCode(65 + i)}
-                      </span>
-                    </div>
-                  ))}
-                  {room.members > 4 && (
-                    <div className="w-5 h-5 rounded-full bg-dark-500 flex items-center justify-center ring-1 ring-dark-900">
-                      <span className="text-[8px] text-zinc-400">+{room.members - 4}</span>
-                    </div>
+        {studyRooms.map((room) => {
+          const isJoined = joinedRooms.includes(room.id);
+          return (
+            <div
+              key={room.id}
+              className="glass-card p-4 flex items-center justify-between gap-3"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-zinc-200 truncate">{room.name}</span>
+                  {room.isActive && (
+                    <span className="w-2 h-2 rounded-full bg-neon-green animate-pulse-neon flex-shrink-0" />
                   )}
                 </div>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-xs text-zinc-500">
+                    {room.members}/{room.maxMembers} 人
+                  </span>
+                  {/* 在线头像 */}
+                  <div className="flex -space-x-1.5">
+                    {Array.from({ length: Math.min(4, room.members) }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          'w-5 h-5 rounded-full bg-gradient-to-br flex items-center justify-center ring-1 ring-dark-900',
+                          avatarColors[i % avatarColors.length]
+                        )}
+                      >
+                        <span className="text-[8px] font-bold text-white">
+                          {String.fromCharCode(65 + i)}
+                        </span>
+                      </div>
+                    ))}
+                    {room.members > 4 && (
+                      <div className="w-5 h-5 rounded-full bg-dark-500 flex items-center justify-center ring-1 ring-dark-900">
+                        <span className="text-[8px] text-zinc-400">+{room.members - 4}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
+              <button
+                onClick={() => handleJoinLeave(room.id)}
+                className={cn(
+                  'text-xs px-4 py-1.5 flex-shrink-0 flex items-center gap-1.5 rounded-lg font-medium transition-all',
+                  isJoined
+                    ? 'bg-neon-green/15 text-neon-green border border-neon-green/40'
+                    : 'neon-btn neon-btn-green'
+                )}
+              >
+                {isJoined ? (
+                  <>
+                    <Check size={12} />
+                    已加入
+                  </>
+                ) : (
+                  '加入'
+                )}
+              </button>
             </div>
-            <button className="neon-btn neon-btn-green text-xs px-4 py-1.5 flex-shrink-0">
-              加入
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </motion.div>
   );
@@ -337,10 +591,20 @@ function StudyRoomsPanel() {
 
 /* ──────────────── 今日专注统计 ──────────────── */
 function FocusStats() {
-  const todayFlowMinutes = useAppStore((s) => s.todayFlowMinutes);
   const pomodoroSessions = useAppStore((s) => s.pomodoroSessions);
 
-  const completedToday = pomodoroSessions.filter((s) => s.completed).length;
+  // 从实际完成的 pomodoroSessions 计算今日专注时长
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const todaySessions = pomodoroSessions.filter((s) => {
+    if (!s.completed) return false;
+    const sessionDate = new Date(s.startTime);
+    const sessionStr = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}-${String(sessionDate.getDate()).padStart(2, '0')}`;
+    return sessionStr === todayStr;
+  });
+  const todayFlowMinutes = todaySessions.reduce((sum, s) => sum + s.duration, 0);
+  const completedToday = todaySessions.length;
+
   const hours = Math.floor(todayFlowMinutes / 60);
   const mins = todayFlowMinutes % 60;
 

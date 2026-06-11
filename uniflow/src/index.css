@@ -218,3 +218,116 @@ a.glass-card:hover {
   background-size: 200% 200%;
   animation: gradientFlow 8s ease infinite;
 }
+
+/* 选择框样式 */
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+/* 输入框错误状态 */
+.input-error {
+  border-color: rgba(255, 68, 68, 0.5) !important;
+  box-shadow: 0 0 12px rgba(255, 68, 68, 0.15) !important;
+}
+
+/* 完成脉冲动画 */
+@keyframes completionPulse {
+  0% { transform: scale(1); filter: brightness(1); }
+  30% { transform: scale(1.08); filter: brightness(1.5); }
+  60% { transform: scale(1.02); filter: brightness(1.2); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+.animate-completion-pulse {
+  animation: completionPulse 2s ease-out;
+}
+
+/* AI 消息中的代码样式 */
+.ai-message code {
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.85em;
+  font-family: 'Courier New', monospace;
+  color: #c4b5fd;
+}
+
+/* AI 消息中的列表样式 */
+.ai-message ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 4px 0;
+}
+
+.ai-message ul li {
+  position: relative;
+  padding-left: 16px;
+  margin: 2px 0;
+}
+
+.ai-message ul li::before {
+  content: '•';
+  position: absolute;
+  left: 4px;
+  color: #8b5cf6;
+}
+
+.ai-message ol {
+  padding-left: 20px;
+  margin: 4px 0;
+}
+
+.ai-message ol li {
+  margin: 2px 0;
+}
+
+/* 移动端侧边栏适配 */
+@media (max-width: 1023px) {
+  aside {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100% !important;
+    height: 64px;
+    flex-direction: row;
+    border-right: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    z-index: 50;
+    background: rgba(10, 10, 15, 0.95);
+    backdrop-filter: blur(20px);
+  }
+
+  aside > div:first-child,
+  aside > div:last-child {
+    display: none;
+  }
+
+  aside nav {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0;
+  }
+
+  aside nav a {
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px;
+    font-size: 10px;
+  }
+
+  aside nav a span {
+    display: block !important;
+  }
+
+  main {
+    padding-bottom: 64px;
+  }
+}

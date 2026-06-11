@@ -1,13 +1,16 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import Layout from '@/components/Layout';
 import Dashboard from '@/pages/Dashboard';
 import AIEngine from '@/pages/AIEngine';
 import MyNotes from '@/pages/MyNotes';
 import FlowChamber from '@/pages/FlowChamber';
+import { ToastContainer } from '@/components/Toast';
 
 export default function App() {
   return (
     <Router>
+      <ToastContainer />
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />

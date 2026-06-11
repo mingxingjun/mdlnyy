@@ -13,29 +13,8 @@ import {
   ChevronDown,
   Check,
 } from 'lucide-react';
-import { useAppStore } from '@/store/useAppStore';
-
-/* ───────── 类型定义 ───────── */
-interface Note {
-  id: string;
-  title: string;
-  subjectId: string;
-  content: string;
-  tags: string[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-/* ───────── Mock 数据 ───────── */
-const initialNotes: Note[] = [
-  { id: '1', title: '多元函数微分 - 重点笔记', subjectId: '1', content: '偏导数：对某个变量求导，其他变量视为常数\n全微分：dz = (∂z/∂x)dx + (∂z/∂y)dy\n方向导数：沿某方向的变化率，梯度方向最大\n极值：AC-B²判别法，条件极值用拉格朗日乘数法', tags: ['偏导数', '全微分', '极值'], createdAt: '2026-06-08T10:30:00', updatedAt: '2026-06-08T10:30:00' },
-  { id: '2', title: '格林公式与曲线积分', subjectId: '1', content: '格林公式：∮Pdx+Qdy = ∬(∂Q/∂x - ∂P/∂y)dA\n路径无关条件：∂Q/∂x = ∂P/∂y\n应用：计算面积、简化曲线积分', tags: ['格林公式', '曲线积分', '路径无关'], createdAt: '2026-06-07T14:20:00', updatedAt: '2026-06-09T08:15:00' },
-  { id: '3', title: '电磁学公式汇总', subjectId: '2', content: '库仑定律：F = kq₁q₂/r²\n高斯定理：∮E·dA = Q/ε₀\n安培环路定理：∮B·dl = μ₀I\n法拉第定律：ε = -dΦ/dt', tags: ['电磁学', '公式汇总', '麦克斯韦'], createdAt: '2026-06-06T09:00:00', updatedAt: '2026-06-06T09:00:00' },
-  { id: '4', title: '矩阵运算速查表', subjectId: '3', content: '转置：(AB)ᵀ = BᵀAᵀ\n逆矩阵：(AB)⁻¹ = B⁻¹A⁻¹\n行列式：|AB| = |A||B|\n特征值：Ax = λx\n正交化：Gram-Schmidt过程', tags: ['矩阵', '特征值', '速查表'], createdAt: '2026-06-05T16:45:00', updatedAt: '2026-06-08T11:20:00' },
-  { id: '5', title: '排序算法对比', subjectId: '4', content: '冒泡 O(n²) 稳定\n快排 O(nlogn) 平均 不稳定\n归并 O(nlogn) 稳定\n堆排 O(nlogn) 不稳定\n选择排序 O(n²) 不稳定', tags: ['排序', '时间复杂度', '算法对比'], createdAt: '2026-06-04T13:10:00', updatedAt: '2026-06-04T13:10:00' },
-  { id: '6', title: '概率论核心公式', subjectId: '5', content: '贝叶斯：P(A|B) = P(B|A)P(A)/P(B)\n全概率：P(B) = ΣP(B|Ai)P(Ai)\n期望：E(X) = Σxi·pi\n方差：D(X) = E(X²) - [E(X)]²', tags: ['贝叶斯', '期望', '方差'], createdAt: '2026-06-03T20:30:00', updatedAt: '2026-06-07T15:00:00' },
-  { id: '7', title: '级数判敛方法总结', subjectId: '1', content: '比值法：lim|aₙ₊₁/aₙ| < 1 收敛\n根值法：lim ⁿ√|aₙ| < 1 收敛\n比较法：与已知级数比较\n莱布尼茨判别法：交错级数', tags: ['级数', '判敛', '总结'], createdAt: '2026-06-02T11:00:00', updatedAt: '2026-06-02T11:00:00' },
-];
+import { Note, useAppStore } from '@/store/useAppStore';
+import { useToastStore } from '@/components/Toast';
 
 /* ───────── 排序类型 ───────── */
 type SortOption = 'newest' | 'oldest' | 'subject';
@@ -82,9 +61,11 @@ function generateId(): string {
    ═══════════════════════════════════════════ */
 export default function MyNotes() {
   const subjects = useAppStore((s) => s.subjects);
-
-  /* ── 笔记状态 ── */
-  const [notes, setNotes] = useState<Note[]>(initialNotes);
+  const notes = useAppStore((s) => s.notes);
+  const addNote = useAppStore((s) => s.addNote);
+  const updateNote = useAppStore((s) => s.updateNote);
+  const removeNote = useAppStore((s) => s.removeNote);
+  const addToast = useToastStore((s) => s.addToast);
 
   /* ── 筛选状态 ── */
   const [searchQuery, setSearchQuery] = useState('');
@@ -98,6 +79,7 @@ export default function MyNotes() {
   const [uploadSubjectId, setUploadSubjectId] = useState('');
   const [uploadTagsInput, setUploadTagsInput] = useState('');
   const [uploadContent, setUploadContent] = useState('');
+  const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({});
 
   /* ── 详情/编辑弹窗状态 ── */
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
@@ -157,7 +139,16 @@ export default function MyNotes() {
 
   /* ── 上传笔记 ── */
   const handleUpload = () => {
-    if (!uploadTitle.trim() || !uploadSubjectId || !uploadContent.trim()) return;
+    const errors: Record<string, boolean> = {};
+    if (!uploadTitle.trim()) errors.title = true;
+    if (!uploadSubjectId) errors.subjectId = true;
+    if (!uploadContent.trim()) errors.content = true;
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
     const now = new Date().toISOString();
     const newNote: Note = {
       id: generateId(),
@@ -168,7 +159,8 @@ export default function MyNotes() {
       createdAt: now,
       updatedAt: now,
     };
-    setNotes((prev) => [newNote, ...prev]);
+    addNote(newNote);
+    addToast('success', '笔记创建成功');
     resetUploadForm();
   };
 
@@ -178,6 +170,7 @@ export default function MyNotes() {
     setUploadSubjectId('');
     setUploadTagsInput('');
     setUploadContent('');
+    setValidationErrors({});
   };
 
   /* ── 打开详情弹窗 ── */
@@ -194,26 +187,20 @@ export default function MyNotes() {
   /* ── 保存编辑 ── */
   const handleSaveEdit = () => {
     if (!selectedNote || !editTitle.trim() || !editContent.trim()) return;
-    setNotes((prev) =>
-      prev.map((n) =>
-        n.id === selectedNote.id
-          ? {
-              ...n,
-              title: editTitle.trim(),
-              content: editContent.trim(),
-              tags: parseTags(editTagsInput),
-              subjectId: editSubjectId,
-              updatedAt: new Date().toISOString(),
-            }
-          : n,
-      ),
-    );
+    updateNote(selectedNote.id, {
+      title: editTitle.trim(),
+      content: editContent.trim(),
+      tags: parseTags(editTagsInput),
+      subjectId: editSubjectId,
+    });
+    addToast('success', '笔记已更新');
     setSelectedNote(null);
   };
 
   /* ── 删除笔记 ── */
   const handleDelete = (id: string) => {
-    setNotes((prev) => prev.filter((n) => n.id !== id));
+    removeNote(id);
+    addToast('info', '笔记已删除');
     setSelectedNote(null);
     setConfirmDeleteId(null);
   };
@@ -399,10 +386,18 @@ export default function MyNotes() {
                   <input
                     type="text"
                     value={uploadTitle}
-                    onChange={(e) => setUploadTitle(e.target.value)}
+                    onChange={(e) => {
+                      setUploadTitle(e.target.value);
+                      if (validationErrors.title) setValidationErrors((prev) => ({ ...prev, title: false }));
+                    }}
                     placeholder="输入笔记标题..."
-                    className="w-full px-3 py-2 rounded-lg bg-dark-600/60 border border-white/5 text-sm text-zinc-200 placeholder-zinc-600 outline-none transition-all focus:border-neon-green/30"
+                    className={`w-full px-3 py-2 rounded-lg bg-dark-600/60 border text-sm text-zinc-200 placeholder-zinc-600 outline-none transition-all focus:border-neon-green/30 ${
+                      validationErrors.title ? 'border-red-500/60' : 'border-white/5'
+                    }`}
                   />
+                  {validationErrors.title && (
+                    <p className="text-[11px] text-red-400 mt-1">请输入笔记标题</p>
+                  )}
                 </div>
 
                 {/* 科目 */}
@@ -410,8 +405,13 @@ export default function MyNotes() {
                   <label className="block text-xs text-zinc-500 mb-1.5 font-medium">所属科目</label>
                   <select
                     value={uploadSubjectId}
-                    onChange={(e) => setUploadSubjectId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-dark-600/60 border border-white/5 text-sm text-zinc-200 outline-none transition-all focus:border-neon-green/30 appearance-none cursor-pointer"
+                    onChange={(e) => {
+                      setUploadSubjectId(e.target.value);
+                      if (validationErrors.subjectId) setValidationErrors((prev) => ({ ...prev, subjectId: false }));
+                    }}
+                    className={`w-full px-3 py-2 rounded-lg bg-dark-600/60 border text-sm text-zinc-200 outline-none transition-all focus:border-neon-green/30 appearance-none cursor-pointer ${
+                      validationErrors.subjectId ? 'border-red-500/60' : 'border-white/5'
+                    }`}
                   >
                     <option value="" className="bg-dark-600 text-zinc-400">选择科目</option>
                     {subjects.map((s) => (
@@ -420,6 +420,9 @@ export default function MyNotes() {
                       </option>
                     ))}
                   </select>
+                  {validationErrors.subjectId && (
+                    <p className="text-[11px] text-red-400 mt-1">请选择所属科目</p>
+                  )}
                 </div>
               </div>
 
@@ -454,11 +457,24 @@ export default function MyNotes() {
                 <label className="block text-xs text-zinc-500 mb-1.5 font-medium">笔记内容</label>
                 <textarea
                   value={uploadContent}
-                  onChange={(e) => setUploadContent(e.target.value)}
+                  onChange={(e) => {
+                    setUploadContent(e.target.value);
+                    if (validationErrors.content) setValidationErrors((prev) => ({ ...prev, content: false }));
+                  }}
                   placeholder="输入笔记内容..."
                   rows={4}
-                  className="w-full px-3 py-2 rounded-lg bg-dark-600/60 border border-white/5 text-sm text-zinc-200 placeholder-zinc-600 outline-none transition-all focus:border-neon-green/30 resize-none"
+                  className={`w-full px-3 py-2 rounded-lg bg-dark-600/60 border text-sm text-zinc-200 placeholder-zinc-600 outline-none transition-all focus:border-neon-green/30 resize-none ${
+                    validationErrors.content ? 'border-red-500/60' : 'border-white/5'
+                  }`}
                 />
+                <div className="flex items-center justify-between mt-1">
+                  {validationErrors.content ? (
+                    <p className="text-[11px] text-red-400">请输入笔记内容</p>
+                  ) : (
+                    <span />
+                  )}
+                  <span className="text-[11px] text-zinc-600">当前字数: {uploadContent.length}</span>
+                </div>
               </div>
 
               {/* 操作按钮 */}
@@ -484,7 +500,13 @@ export default function MyNotes() {
       </AnimatePresence>
 
       {/* ═══════ 笔记卡片网格 ═══════ */}
-      {filteredNotes.length === 0 ? (
+      {notes.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
+          <NotebookPen size={72} className="text-zinc-700 mb-5" />
+          <p className="text-zinc-400 text-base font-medium mb-1">还没有笔记，点击右上角新建</p>
+          <p className="text-zinc-600 text-xs">记录你的学习心得，让知识更有条理</p>
+        </div>
+      ) : filteredNotes.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
           <NotebookPen size={48} className="text-zinc-700 mb-4" />
           <p className="text-zinc-500 text-sm">没有找到匹配的笔记</p>
@@ -709,10 +731,19 @@ export default function MyNotes() {
               ) : (
                 <>
                   {/* ── 编辑模式 ── */}
-                  <h3 className="font-display font-semibold text-sm text-white mb-5 flex items-center gap-2">
-                    <Edit3 size={16} className="text-neon-green" />
-                    编辑笔记
-                  </h3>
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="font-display font-semibold text-sm text-white flex items-center gap-2">
+                      <Edit3 size={16} className="text-neon-green" />
+                      编辑笔记
+                    </h3>
+                    <div className="flex items-center gap-1.5 text-xs text-neon-green/70">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-green/50 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-neon-green" />
+                      </span>
+                      编辑中...
+                    </div>
+                  </div>
 
                   <div className="space-y-4">
                     {/* 标题 */}
@@ -774,6 +805,7 @@ export default function MyNotes() {
                         rows={8}
                         className="w-full px-3 py-2 rounded-lg bg-dark-600/60 border border-white/5 text-sm text-zinc-200 outline-none transition-all focus:border-neon-green/30 resize-none"
                       />
+                      <span className="text-[11px] text-zinc-600 mt-1 block text-right">当前字数: {editContent.length}</span>
                     </div>
                   </div>
 

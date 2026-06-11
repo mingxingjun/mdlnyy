@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Brain, NotebookPen, Headphones, Bell, User } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { useMemo } from 'react';
 
@@ -12,10 +12,16 @@ const navItems = [
 ];
 
 const pageTitles: Record<string, { title: string; subtitle: string }> = {
-  '/dashboard': { title: '高光仪表盘', subtitle: '考试倒计时 · 心流统计 · 进度追踪' },
-  '/ai-engine': { title: 'AI 冲刺核', subtitle: '上传教材，AI 自动提取考点' },
+  '/dashboard': { title: '高光仪表盘', subtitle: '考试倒计时 · 进度追踪 · 盲区热力图' },
+  '/ai-engine': { title: 'AI 冲刺核', subtitle: 'AI 对话 · 文档解析 · 闪卡训练 · 考点速查' },
   '/my-notes': { title: '我的笔记', subtitle: '上传、整理、复习你的学习笔记' },
   '/flow-chamber': { title: '沉浸流空间', subtitle: '番茄钟 · 白噪音 · 虚拟自习室' },
+};
+
+const pageVariants = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
+  exit: { opacity: 0, y: -8, transition: { duration: 0.15 } },
 };
 
 export default function Layout() {
@@ -125,7 +131,18 @@ export default function Layout() {
 
         {/* 页面内容 */}
         <div className="flex-1 overflow-auto p-6">
-          <Outlet />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="h-full"
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
     </div>

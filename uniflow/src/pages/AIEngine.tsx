@@ -14,6 +14,7 @@ import {
   Loader2,
   Sparkles,
   RotateCcw,
+  Trash2,
   Search,
   MessageSquare,
   BookOpen,
@@ -225,6 +226,69 @@ function MindMapTreeNode({ node, depth = 0 }: { node: MindMapNode; depth?: numbe
 }
 
 /* ================================================================== */
+/*  Simple Markdown Renderer                                           */
+/* ================================================================== */
+
+function renderMarkdown(text: string): string {
+  let html = text;
+
+  // Escape HTML entities first (but preserve emoji and special chars)
+  html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // Code backticks: `code` → <code>code</code>
+  html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(139,92,246,0.15);color:#c4b5fd;padding:1px 5px;border-radius:4px;font-size:0.85em;font-family:monospace">$1</code>');
+
+  // Bold: **text** → <strong>text</strong>
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+  // Italic: *text* → <em>text</em> (but not inside **)
+  html = html.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
+
+  // Split by lines for list processing
+  const lines = html.split('\n');
+  const processedLines: string[] = [];
+  let inUl = false;
+  let inOl = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Unordered list: lines starting with "- " or "• "
+    if (/^[ \t]*[-•]\s/.test(line)) {
+      if (!inUl) { processedLines.push('<ul style="padding-left:1.2em;margin:0.3em 0;list-style:disc">'); inUl = true; }
+      const content = line.replace(/^[ \t]*[-•]\s/, '');
+      processedLines.push(`<li style="margin:0.15em 0">${content}</li>`);
+      continue;
+    }
+
+    // Ordered list: lines starting with "1. " "2. " etc.
+    if (/^[ \t]*\d+\.\s/.test(line)) {
+      if (!inOl) { processedLines.push('<ol style="padding-left:1.2em;margin:0.3em 0;list-style:decimal">'); inOl = true; }
+      const content = line.replace(/^[ \t]*\d+\.\s/, '');
+      processedLines.push(`<li style="margin:0.15em 0">${content}</li>`);
+      continue;
+    }
+
+    // Close open lists if current line is not a list item
+    if (inUl) { processedLines.push('</ul>'); inUl = false; }
+    if (inOl) { processedLines.push('</ol>'); inOl = false; }
+
+    processedLines.push(line);
+  }
+
+  // Close any remaining open lists
+  if (inUl) processedLines.push('</ul>');
+  if (inOl) processedLines.push('</ol>');
+
+  html = processedLines.join('\n');
+
+  // Line breaks: \n → <br/>
+  html = html.replace(/\n/g, '<br/>');
+
+  return html;
+}
+
+/* ================================================================== */
 /*  Chat Message Type                                                  */
 /* ================================================================== */
 
@@ -254,6 +318,7 @@ export default function AIEngine() {
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLTextAreaElement>(null);
 
   /* ─── Document Parser State ─── */
   const [uploaded, setUploaded] = useState(false);
@@ -298,6 +363,29 @@ export default function AIEngine() {
     setFlipped(false);
   }, [subjectFilter]);
 
+  /* ─── Flashcard keyboard navigation ─── */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (filteredCards.length === 0) return;
+      // Ignore if user is typing in an input/textarea
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handlePrev();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        handleNext();
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        setFlipped((f) => !f);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [filteredCards.length]);
+
   /* ─── Chat Handlers ─── */
   const sendMessage = useCallback(
     (text: string) => {
@@ -334,6 +422,18 @@ export default function AIEngine() {
     sendMessage(chatInput);
   };
 
+  const clearChat = useCallback(() => {
+    setChatMessages([
+      {
+        id: 'welcome',
+        role: 'ai',
+        content: '你好！我是你的AI学习助手 🎓\n\n我可以帮你：\n- 总结各科重点和考点\n- 解释复杂概念（用大白话！）\n- 制定复习计划\n- 解题思路点拨\n\n有什么想问的，尽管开口吧！',
+        timestamp: Date.now(),
+      },
+    ]);
+    setChatInput('');
+  }, []);
+
   /* ─── Document Handlers ─── */
   const handleUpload = useCallback(() => {
     if (uploaded || processing) return;
@@ -343,6 +443,11 @@ export default function AIEngine() {
       setUploaded(true);
     }, 1800);
   }, [uploaded, processing]);
+
+  const handleReupload = useCallback(() => {
+    setUploaded(false);
+    setProcessing(false);
+  }, []);
 
   /* ─── Flashcard Handlers ─── */
   const handlePrev = () => {
@@ -407,7 +512,14 @@ export default function AIEngine() {
               <h2 className="font-display font-semibold text-white text-sm">AI 对话助手</h2>
               <p className="text-[10px] text-zinc-600 font-body">随时提问，智能解答</p>
             </div>
-            <div className="ml-auto flex items-center gap-1.5">
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={clearChat}
+                className="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-zinc-500 hover:text-zinc-300 cursor-pointer"
+                title="清空对话"
+              >
+                <Trash2 size={14} />
+              </button>
               <span className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
               <span className="text-[10px] text-zinc-500 font-body">在线</span>
             </div>
@@ -441,14 +553,13 @@ export default function AIEngine() {
 
                   {/* Bubble */}
                   <div
-                    className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm font-body leading-relaxed whitespace-pre-wrap
+                    className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm font-body leading-relaxed
                       ${msg.role === 'ai'
                         ? 'bg-dark-600/60 border border-white/5 text-zinc-300 rounded-tl-sm'
-                        : 'bg-neon-blue/10 border border-neon-blue/20 text-zinc-200 rounded-tr-sm'
+                        : 'bg-neon-blue/10 border border-neon-blue/20 text-zinc-200 rounded-tr-sm whitespace-pre-wrap'
                       }`}
-                  >
-                    {msg.content}
-                  </div>
+                    {...(msg.role === 'ai' ? { dangerouslySetInnerHTML: { __html: renderMarkdown(msg.content) } } : { children: msg.content })}
+                  />
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -501,19 +612,32 @@ export default function AIEngine() {
             onSubmit={handleChatSubmit}
             className="px-4 pb-4 pt-2 flex-shrink-0"
           >
-            <div className="flex items-center gap-2 bg-dark-700/60 border border-white/8 rounded-xl px-4 py-2 focus-within:border-neon-purple/40 focus-within:shadow-[0_0_15px_rgba(139,92,246,0.15)] transition-all duration-300">
-              <input
-                type="text"
+            <div className="flex items-end gap-2 bg-dark-700/60 border border-white/8 rounded-xl px-4 py-2 focus-within:border-neon-purple/40 focus-within:shadow-[0_0_15px_rgba(139,92,246,0.15)] transition-all duration-300">
+              <textarea
+                ref={chatInputRef}
                 value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                placeholder="输入你的问题..."
-                className="flex-1 bg-transparent text-sm font-body text-zinc-200 placeholder-zinc-600 outline-none"
+                onChange={(e) => {
+                  setChatInput(e.target.value);
+                  // Auto-grow
+                  e.target.style.height = 'auto';
+                  e.target.style.height = Math.min(e.target.scrollHeight, 3 * 24) + 'px';
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleChatSubmit(e as unknown as React.FormEvent);
+                  }
+                }}
+                placeholder="输入你的问题... (Shift+Enter 换行)"
+                rows={1}
+                className="flex-1 bg-transparent text-sm font-body text-zinc-200 placeholder-zinc-600 outline-none resize-none leading-6"
+                style={{ maxHeight: '72px' }}
                 disabled={isTyping}
               />
               <button
                 type="submit"
                 disabled={!chatInput.trim() || isTyping}
-                className="w-8 h-8 rounded-lg bg-neon-purple/15 flex items-center justify-center text-neon-purple hover:bg-neon-purple/25 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                className="w-8 h-8 rounded-lg bg-neon-purple/15 flex items-center justify-center text-neon-purple hover:bg-neon-purple/25 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex-shrink-0"
               >
                 <Send size={14} />
               </button>
@@ -601,6 +725,15 @@ export default function AIEngine() {
                           </div>
                           <Sparkles size={14} className="text-neon-green" />
                         </div>
+
+                        {/* Re-upload button */}
+                        <button
+                          onClick={handleReupload}
+                          className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-dark-600/40 border border-white/8 hover:bg-dark-600/60 hover:border-white/15 text-zinc-400 hover:text-zinc-200 text-xs font-body transition-all duration-200 cursor-pointer"
+                        >
+                          <RotateCcw size={12} />
+                          重新上传
+                        </button>
 
                         {/* Summary */}
                         <div className="px-3 py-2.5 rounded-lg bg-dark-600/40 border border-white/5">
@@ -704,6 +837,15 @@ export default function AIEngine() {
                   transition={{ duration: 0.4, ease: 'easeOut' }}
                 />
               </div>
+              {filteredCards.length > 0 && masteredCount === filteredCards.length && (
+                <motion.p
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-center text-xs font-body text-neon-green mt-1.5"
+                >
+                  🎉 全部掌握！
+                </motion.p>
+              )}
             </div>
 
             {/* Subject filter tabs */}
