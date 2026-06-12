@@ -1,15 +1,7 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import {
-  Clock,
-  Plus,
-  Minus,
-  Flame,
-  Target,
-  Trash2,
-  Calendar,
-  Inbox,
-} from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, Trash2, Clock, Target, Brain, Headphones, NotebookPen, X, Inbox, Zap } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore, type Subject } from '@/store/useAppStore';
 import { useToastStore } from '@/components/Toast';
 
@@ -17,12 +9,12 @@ import { useToastStore } from '@/components/Toast';
 const containerVariants = {
   hidden: {},
   visible: {
-    transition: { staggerChildren: 0.08 },
+    transition: { staggerChildren: 0.1 },
   },
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 24 },
+  hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
 };
 
@@ -36,10 +28,6 @@ function getCountdown(examDate: string) {
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
   return { days, hours, minutes, passed: false };
-}
-
-function neonShadow(color: string, intensity = 0.5) {
-  return `0 0 12px ${color}${Math.round(intensity * 255).toString(16).padStart(2, '0')}, 0 0 36px ${color}${Math.round(intensity * 0.3 * 255).toString(16).padStart(2, '0')}`;
 }
 
 function masteryColor(mastery: number): string {
@@ -94,7 +82,12 @@ function AddSubjectModal({ onClose, onAdd }: { onClose: () => void; onAdd: (s: S
         onClick={(e) => e.stopPropagation()}
         className="glass-card w-full max-w-md p-6"
       >
-        <h3 className="font-display font-bold text-lg text-white mb-5">添加考试科目</h3>
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-display font-bold text-lg text-white">添加考试科目</h3>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/5 transition-colors">
+            <X size={16} className="text-zinc-500" />
+          </button>
+        </div>
         <div className="space-y-4">
           <div>
             <label className="block text-xs text-zinc-500 mb-1.5">科目名称</label>
@@ -131,10 +124,21 @@ function AddSubjectModal({ onClose, onAdd }: { onClose: () => void; onAdd: (s: S
           </div>
         </div>
         <div className="flex items-center gap-3 mt-6">
-          <button onClick={onClose} className="neon-btn neon-btn-blue flex-1 justify-center" style={{ color: '#a1a1aa', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl text-sm text-zinc-400 transition-colors"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
             取消
           </button>
-          <button onClick={handleSubmit} className="neon-btn neon-btn-blue flex-1 justify-center">
+          <button
+            onClick={handleSubmit}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
+            style={{
+              background: 'linear-gradient(135deg, #00d4ff, #00ff88)',
+              boxShadow: '0 0 16px rgba(0,212,255,0.3)',
+            }}
+          >
             添加
           </button>
         </div>
@@ -145,33 +149,27 @@ function AddSubjectModal({ onClose, onAdd }: { onClose: () => void; onAdd: (s: S
 
 /* ─── 子组件 ─── */
 
-/** 1. 考试倒计时卡片 */
+/** 1. 考试倒计时 — Hero 卡片 */
 function ExamCountdown() {
-  const { subjects, removeSubject } = useAppStore();
+  const { subjects, removeSubject, addSubject } = useAppStore();
+  const addToast = useToastStore((s) => s.addToast);
   const [showAdd, setShowAdd] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const addSubject = useAppStore((s) => s.addSubject);
-  const addToast = useToastStore((s) => s.addToast);
-  const confirmRef = useRef<HTMLButtonElement>(null);
 
-  // 点击其他区域取消确认
-  useEffect(() => {
-    if (!confirmDeleteId) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (confirmRef.current && !confirmRef.current.contains(e.target as Node)) {
-        setConfirmDeleteId(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [confirmDeleteId]);
+  const sortedSubjects = useMemo(
+    () => [...subjects].sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime()),
+    [subjects],
+  );
 
-  const handleAdd = useCallback((s: Subject) => {
+  const nearest = sortedSubjects[0];
+  const others = sortedSubjects.slice(1);
+
+  const handleAdd = (s: Subject) => {
     addSubject(s);
     addToast('success', '科目添加成功');
-  }, [addSubject, addToast]);
+  };
 
-  const handleDelete = useCallback((id: string) => {
+  const handleDelete = (id: string) => {
     if (confirmDeleteId === id) {
       removeSubject(id);
       addToast('info', '科目已删除');
@@ -179,107 +177,164 @@ function ExamCountdown() {
     } else {
       setConfirmDeleteId(id);
     }
-  }, [confirmDeleteId, removeSubject, addToast]);
+  };
 
   return (
     <>
-      <div className="col-span-2 row-span-2 glass-card p-5 flex flex-col">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Clock size={18} className="text-neon-blue" />
+      <div className="col-span-2 glass-card p-6 flex flex-col min-h-[320px]">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(0,212,255,0.1)' }}>
+              <Clock size={16} className="text-neon-blue" />
+            </div>
             <h3 className="font-display font-semibold text-white text-base">考试倒计时</h3>
           </div>
           <button
             onClick={() => setShowAdd(true)}
-            className="w-7 h-7 rounded-lg bg-neon-blue/10 border border-neon-blue/30 flex items-center justify-center hover:bg-neon-blue/20 transition-colors"
+            className="w-8 h-8 rounded-lg flex items-center justify-center transition-all glass-card-interactive"
+            style={{ background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.15)' }}
           >
-            <Plus size={14} className="text-neon-blue" />
+            <Plus size={15} className="text-neon-blue" />
           </button>
         </div>
+
         {subjects.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3">
-            <Inbox size={36} className="text-zinc-600" />
-            <p className="text-sm text-zinc-500">暂无考试科目，点击 + 添加</p>
+            <Inbox size={32} className="text-zinc-700" />
+            <p className="text-sm text-zinc-600">暂无考试科目</p>
+            <button
+              onClick={() => setShowAdd(true)}
+              className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-105"
+              style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)' }}
+            >
+              <Plus size={16} className="text-neon-blue" />
+            </button>
           </div>
         ) : (
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-auto">
-            {subjects.map((subject) => {
-              const cd = getCountdown(subject.examDate);
-              const isConfirming = confirmDeleteId === subject.id;
-              return (
-                <motion.div
-                  key={subject.id}
-                  variants={itemVariants}
-                  className="relative rounded-xl p-4 flex flex-col justify-between overflow-hidden group"
-                  style={{
-                    background: `linear-gradient(135deg, ${subject.color}10, ${subject.color}05)`,
-                    border: `1px solid ${subject.color}40`,
-                    boxShadow: neonShadow(subject.color, 0.15),
-                  }}
-                >
-                  <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-20 blur-2xl" style={{ background: subject.color }} />
-                  <div className="relative z-10">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-zinc-400 font-body truncate">{subject.name}</p>
-                      <div className="relative">
+          <div className="flex-1 flex flex-col gap-4 overflow-auto">
+            {/* 最近的考试 — 大号展示 */}
+            {nearest && (
+              <div
+                className="relative rounded-2xl p-5 overflow-hidden"
+                style={{
+                  background: `linear-gradient(135deg, ${nearest.color}08, ${nearest.color}03)`,
+                  border: `1px solid ${nearest.color}25`,
+                }}
+              >
+                <div
+                  className="absolute -top-12 -right-12 w-40 h-40 rounded-full opacity-10 blur-3xl"
+                  style={{ background: nearest.color }}
+                />
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm text-zinc-400 font-body">{nearest.name}</p>
+                    <button
+                      onClick={() => handleDelete(nearest.id)}
+                      className={`p-1 rounded transition-all ${
+                        confirmDeleteId === nearest.id
+                          ? 'opacity-100 bg-red-500/20 border border-red-500/40'
+                          : 'opacity-0 hover:opacity-100 hover:bg-white/10'
+                      }`}
+                    >
+                      {confirmDeleteId === nearest.id ? (
+                        <span className="text-[10px] text-red-400 font-semibold px-1">确认?</span>
+                      ) : (
+                        <Trash2 size={12} className="text-zinc-500" />
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-zinc-600 mb-4">{nearest.examDate}</p>
+                  {(() => {
+                    const cd = getCountdown(nearest.examDate);
+                    return cd.passed ? (
+                      <span className="text-sm text-zinc-500">已结束</span>
+                    ) : (
+                      <div className="flex items-baseline gap-1">
+                        <span
+                          className="font-display font-bold text-5xl tabular-nums leading-none"
+                          style={{
+                            color: nearest.color,
+                            textShadow: `0 0 20px ${nearest.color}60, 0 0 60px ${nearest.color}20`,
+                          }}
+                        >
+                          {cd.days}
+                        </span>
+                        <span className="text-xs text-zinc-500 mr-3">天</span>
+                        <span
+                          className="font-display font-semibold text-2xl tabular-nums"
+                          style={{ color: nearest.color, textShadow: `0 0 12px ${nearest.color}40` }}
+                        >
+                          {String(cd.hours).padStart(2, '0')}
+                        </span>
+                        <span className="text-xs text-zinc-500 mx-0.5">:</span>
+                        <span
+                          className="font-display font-semibold text-2xl tabular-nums"
+                          style={{ color: nearest.color, textShadow: `0 0 12px ${nearest.color}40` }}
+                        >
+                          {String(cd.minutes).padStart(2, '0')}
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {/* 其他考试 — 紧凑列表 */}
+            {others.length > 0 && (
+              <div className="space-y-1.5">
+                {others.map((subject) => {
+                  const cd = getCountdown(subject.examDate);
+                  return (
+                    <div
+                      key={subject.id}
+                      className="flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors hover:bg-white/[0.02] group"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span
+                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                          style={{ background: subject.color, boxShadow: `0 0 6px ${subject.color}60` }}
+                        />
+                        <span className="text-xs text-zinc-400 truncate">{subject.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {cd.passed ? (
+                          <span className="text-[11px] text-zinc-600">已结束</span>
+                        ) : (
+                          <span
+                            className="text-xs font-display font-semibold tabular-nums"
+                            style={{ color: subject.color }}
+                          >
+                            {cd.days}天 {String(cd.hours).padStart(2, '0')}:{String(cd.minutes).padStart(2, '0')}
+                          </span>
+                        )}
                         <button
-                          ref={isConfirming ? confirmRef : undefined}
                           onClick={() => handleDelete(subject.id)}
-                          onBlur={() => { if (isConfirming) setConfirmDeleteId(null); }}
-                          className={`p-1 rounded transition-all ${
-                            isConfirming
+                          className={`p-0.5 rounded transition-all ${
+                            confirmDeleteId === subject.id
                               ? 'opacity-100 bg-red-500/20 border border-red-500/40'
                               : 'opacity-0 group-hover:opacity-100 hover:bg-white/10'
                           }`}
                         >
-                          {isConfirming ? (
-                            <span className="text-[10px] text-red-400 font-semibold px-1">确认?</span>
+                          {confirmDeleteId === subject.id ? (
+                            <span className="text-[9px] text-red-400 font-semibold px-0.5">确认?</span>
                           ) : (
-                            <Trash2 size={12} className="text-zinc-500" />
+                            <Trash2 size={11} className="text-zinc-500" />
                           )}
                         </button>
                       </div>
                     </div>
-                    <p className="text-xs text-zinc-600 mt-0.5 flex items-center gap-1">
-                      <Calendar size={10} /> {subject.examDate}
-                    </p>
-                  </div>
-                  <div className="relative z-10 mt-3">
-                    {cd.passed ? (
-                      <span className="text-sm text-zinc-500">已结束</span>
-                    ) : (
-                      <div className="flex items-baseline gap-1.5">
-                        <span
-                          className="font-display font-bold text-3xl tabular-nums"
-                          style={{ color: subject.color, textShadow: `0 0 14px ${subject.color}80, 0 0 40px ${subject.color}30` }}
-                        >
-                          {cd.days}
-                        </span>
-                        <span className="text-xs text-zinc-500">天</span>
-                        <span
-                          className="font-display font-semibold text-xl tabular-nums"
-                          style={{ color: subject.color, textShadow: `0 0 10px ${subject.color}60` }}
-                        >
-                          {cd.hours}
-                        </span>
-                        <span className="text-xs text-zinc-500">时</span>
-                        <span
-                          className="font-display font-semibold text-lg tabular-nums"
-                          style={{ color: subject.color, textShadow: `0 0 10px ${subject.color}40` }}
-                        >
-                          {cd.minutes}
-                        </span>
-                        <span className="text-xs text-zinc-500">分</span>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
-      {showAdd && <AddSubjectModal onClose={() => setShowAdd(false)} onAdd={handleAdd} />}
+
+      <AnimatePresence>
+        {showAdd && <AddSubjectModal onClose={() => setShowAdd(false)} onAdd={handleAdd} />}
+      </AnimatePresence>
     </>
   );
 }
@@ -288,74 +343,105 @@ function ExamCountdown() {
 function SubjectProgress() {
   const { subjects, updateSubjectProgress } = useAppStore();
   const addToast = useToastStore((s) => s.addToast);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState(0);
 
-  const adjust = (id: string, delta: number) => {
-    const s = subjects.find((s) => s.id === id);
-    if (!s) return;
-    const next = Math.max(0, Math.min(100, s.progress + delta));
-    updateSubjectProgress(id, next);
-    // 只在进度达到 0 或 100 时显示 toast，避免频繁弹出
-    if (next === 0 || next === 100) {
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const handleProgressClick = (id: string, currentProgress: number) => {
+    if (editingId === id) return;
+    setEditingId(id);
+    setEditValue(currentProgress);
+  };
+
+  const commitProgress = (id: string, value: number) => {
+    updateSubjectProgress(id, value);
+    setEditingId(null);
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
       addToast('success', '进度已更新');
-    } else {
-      // 防抖：连续调整时只显示一次
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-      toastTimerRef.current = setTimeout(() => {
-        addToast('success', '进度已更新');
-      }, 800);
-    }
+    }, 400);
   };
 
   return (
-    <div className="col-span-2 row-span-1 glass-card p-5 flex flex-col">
-      <div className="flex items-center gap-2 mb-4">
-        <Target size={18} className="text-neon-purple" />
+    <div className="col-span-1 glass-card p-5 flex flex-col min-h-[260px]">
+      <div className="flex items-center gap-2.5 mb-4">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(139,92,246,0.1)' }}>
+          <Target size={16} className="text-neon-purple" />
+        </div>
         <h3 className="font-display font-semibold text-white text-base">科目进度</h3>
       </div>
+
       {subjects.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-zinc-500">暂无科目数据</p>
+        <div className="flex-1 flex flex-col items-center justify-center gap-2">
+          <Inbox size={28} className="text-zinc-700" />
+          <p className="text-sm text-zinc-600">暂无科目数据</p>
         </div>
       ) : (
-        <div className="flex-1 space-y-3 overflow-auto">
-          {subjects.map((subject) => (
-            <div key={subject.id} className="flex items-center gap-3">
-              <span className="text-xs text-zinc-400 w-28 truncate flex-shrink-0">{subject.name}</span>
-              <div className="flex-1 h-3 rounded-full bg-white/5 overflow-hidden relative">
-                <motion.div
-                  className="h-full rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${subject.progress}%` }}
-                  transition={{ duration: 0.8, ease: 'easeOut' }}
-                  style={{
-                    background: `linear-gradient(90deg, ${subject.color}cc, ${subject.color})`,
-                    boxShadow: `0 0 8px ${subject.color}60`,
+        <div className="flex-1 space-y-4 overflow-auto">
+          {subjects.map((subject) => {
+            const isEditing = editingId === subject.id;
+            return (
+              <div key={subject.id}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs text-zinc-400 truncate max-w-[140px]">{subject.name}</span>
+                  {isEditing ? (
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={editValue}
+                      onChange={(e) => {
+                        const v = Math.max(0, Math.min(100, Number(e.target.value)));
+                        setEditValue(v);
+                      }}
+                      onBlur={() => commitProgress(subject.id, editValue)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') commitProgress(subject.id, editValue);
+                        if (e.key === 'Escape') setEditingId(null);
+                      }}
+                      autoFocus
+                      className="w-12 text-xs text-right bg-transparent outline-none tabular-nums font-display font-semibold"
+                      style={{ color: subject.color }}
+                    />
+                  ) : (
+                    <button
+                      onClick={() => handleProgressClick(subject.id, subject.progress)}
+                      className="text-xs font-display font-semibold tabular-nums cursor-pointer hover:underline"
+                      style={{ color: subject.color }}
+                    >
+                      {subject.progress}%
+                    </button>
+                  )}
+                </div>
+                <div
+                  className="h-2 rounded-full overflow-hidden cursor-pointer"
+                  style={{ background: 'rgba(255,255,255,0.04)' }}
+                  onClick={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const pct = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+                    const clamped = Math.max(0, Math.min(100, pct));
+                    updateSubjectProgress(subject.id, clamped);
+                    if (debounceTimer) clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => {
+                      addToast('success', '进度已更新');
+                    }, 400);
                   }}
-                />
-              </div>
-              <span
-                className="text-xs font-display font-semibold w-10 text-right tabular-nums"
-                style={{ color: subject.color }}
-              >
-                {subject.progress}%
-              </span>
-              <div className="flex items-center gap-0.5">
-                <button
-                  onClick={() => adjust(subject.id, -5)}
-                  className="w-5 h-5 rounded flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition-colors"
                 >
-                  <Minus size={12} />
-                </button>
-                <button
-                  onClick={() => adjust(subject.id, 5)}
-                  className="w-5 h-5 rounded flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition-colors"
-                >
-                  <Plus size={12} />
-                </button>
+                  <motion.div
+                    className="h-full rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${subject.progress}%` }}
+                    transition={{ duration: 0.6, ease: 'easeOut' }}
+                    style={{
+                      background: `linear-gradient(90deg, ${subject.color}aa, ${subject.color})`,
+                      boxShadow: `0 0 8px ${subject.color}40`,
+                    }}
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -378,14 +464,18 @@ function Heatmap() {
   const hasKnowledgePoints = knowledgePoints.length > 0;
 
   return (
-    <div className="col-span-2 row-span-2 glass-card p-5 flex flex-col">
-      <div className="flex items-center gap-2 mb-4">
-        <Flame size={18} className="text-neon-pink" />
+    <div className="col-span-1 glass-card p-5 flex flex-col min-h-[260px]">
+      <div className="flex items-center gap-2.5 mb-4">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,0,128,0.1)' }}>
+          <Brain size={16} className="text-neon-pink" />
+        </div>
         <h3 className="font-display font-semibold text-white text-base">盲区热力图</h3>
       </div>
+
       {!hasKnowledgePoints ? (
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-zinc-500">暂无知识点数据</p>
+        <div className="flex-1 flex flex-col items-center justify-center gap-2">
+          <Inbox size={28} className="text-zinc-700" />
+          <p className="text-sm text-zinc-600">暂无知识点数据</p>
         </div>
       ) : (
         <div className="flex-1 space-y-4 overflow-auto">
@@ -394,14 +484,14 @@ function Heatmap() {
             if (points.length === 0) return null;
             return (
               <div key={subject.id}>
-                <p className="text-xs text-zinc-500 mb-2 flex items-center gap-1.5">
+                <p className="text-[11px] text-zinc-500 mb-2 flex items-center gap-1.5">
                   <span
-                    className="inline-block w-2 h-2 rounded-full"
-                    style={{ background: subject.color, boxShadow: `0 0 6px ${subject.color}80` }}
+                    className="inline-block w-1.5 h-1.5 rounded-full"
+                    style={{ background: subject.color, boxShadow: `0 0 4px ${subject.color}80` }}
                   />
                   {subject.name}
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {points.map((kp) => {
                     const isHovered = hovered === kp.id;
                     return (
@@ -412,13 +502,13 @@ function Heatmap() {
                         onMouseLeave={() => setHovered(null)}
                       >
                         <motion.div
-                          whileHover={{ scale: 1.15 }}
-                          className="w-10 h-10 rounded-lg cursor-pointer flex items-center justify-center text-[10px] font-display font-semibold transition-colors"
+                          whileHover={{ scale: 1.12 }}
+                          className="w-9 h-9 rounded-lg cursor-pointer flex items-center justify-center text-[9px] font-display font-semibold transition-colors"
                           style={{
                             background: masteryBg(kp.mastery),
-                            border: `1px solid ${masteryColor(kp.mastery)}40`,
+                            border: `1px solid ${masteryColor(kp.mastery)}30`,
                             color: masteryColor(kp.mastery),
-                            boxShadow: isHovered ? `0 0 12px ${masteryColor(kp.mastery)}40` : 'none',
+                            boxShadow: isHovered ? `0 0 10px ${masteryColor(kp.mastery)}30` : 'none',
                           }}
                         >
                           {kp.mastery}
@@ -427,16 +517,16 @@ function Heatmap() {
                           <motion.div
                             initial={{ opacity: 0, y: 4 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 rounded-lg whitespace-nowrap pointer-events-none"
+                            className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 rounded-lg whitespace-nowrap pointer-events-none"
                             style={{
-                              background: 'rgba(18,18,26,0.95)',
-                              border: `1px solid ${masteryColor(kp.mastery)}50`,
-                              boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+                              background: 'rgba(12,12,20,0.95)',
+                              border: `1px solid ${masteryColor(kp.mastery)}40`,
+                              boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
                             }}
                           >
-                            <p className="text-xs text-zinc-200">{kp.name}</p>
+                            <p className="text-[11px] text-zinc-300">{kp.name}</p>
                             <p
-                              className="text-[10px] font-display font-semibold"
+                              className="text-[9px] font-display font-semibold"
                               style={{ color: masteryColor(kp.mastery) }}
                             >
                               掌握度 {kp.mastery}%
@@ -452,20 +542,89 @@ function Heatmap() {
           })}
         </div>
       )}
-      <div className="flex items-center gap-4 mt-4 pt-3 border-t border-white/5">
-        <span className="text-[10px] text-zinc-600">掌握度</span>
-        <div className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm" style={{ background: masteryBg(20), border: `1px solid ${masteryColor(20)}40` }} />
-          <span className="text-[10px] text-zinc-500">&lt;40</span>
+
+      {hasKnowledgePoints && (
+        <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/5">
+          <span className="text-[9px] text-zinc-600">掌握度</span>
+          <div className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-sm" style={{ background: masteryBg(20), border: `1px solid ${masteryColor(20)}30` }} />
+            <span className="text-[9px] text-zinc-500">&lt;40</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-sm" style={{ background: masteryBg(55), border: `1px solid ${masteryColor(55)}30` }} />
+            <span className="text-[9px] text-zinc-500">40-70</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-sm" style={{ background: masteryBg(80), border: `1px solid ${masteryColor(80)}30` }} />
+            <span className="text-[9px] text-zinc-500">&ge;70</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm" style={{ background: masteryBg(55), border: `1px solid ${masteryColor(55)}40` }} />
-          <span className="text-[10px] text-zinc-500">40-70</span>
+      )}
+    </div>
+  );
+}
+
+/** 4. 快捷操作 */
+function QuickActions() {
+  const navigate = useNavigate();
+
+  const actions = [
+    {
+      label: '上传资料复习',
+      icon: Zap,
+      color: '#00d4ff',
+      onClick: () => navigate('/ai-engine?mode=workflow'),
+    },
+    {
+      label: '开始番茄钟',
+      icon: Headphones,
+      color: '#00ff88',
+      onClick: () => navigate('/flow-chamber'),
+    },
+    {
+      label: '查看笔记',
+      icon: NotebookPen,
+      color: '#8b5cf6',
+      onClick: () => navigate('/my-notes'),
+    },
+  ];
+
+  return (
+    <div className="col-span-1 glass-card p-5 flex flex-col min-h-[260px]">
+      <div className="flex items-center gap-2.5 mb-4">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(0,255,136,0.1)' }}>
+          <Zap size={16} className="text-neon-green" />
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm" style={{ background: masteryBg(80), border: `1px solid ${masteryColor(80)}40` }} />
-          <span className="text-[10px] text-zinc-500">&ge;70</span>
-        </div>
+        <h3 className="font-display font-semibold text-white text-base">快捷操作</h3>
+      </div>
+
+      <div className="flex-1 flex flex-col gap-2.5">
+        {actions.map((action) => (
+          <motion.button
+            key={action.label}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={action.onClick}
+            className="glass-card-interactive flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all group"
+            style={{
+              background: `linear-gradient(135deg, ${action.color}06, transparent)`,
+              border: `1px solid ${action.color}15`,
+            }}
+          >
+            <div
+              className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
+              style={{ background: `${action.color}12` }}
+            >
+              <action.icon size={16} style={{ color: action.color }} />
+            </div>
+            <span className="text-sm text-zinc-300 group-hover:text-white transition-colors">{action.label}</span>
+            <span
+              className="ml-auto text-zinc-600 group-hover:text-zinc-400 transition-colors text-xs"
+            >
+              →
+            </span>
+          </motion.button>
+        ))}
       </div>
     </div>
   );
@@ -488,6 +647,9 @@ export default function Dashboard() {
       </motion.div>
       <motion.div variants={itemVariants} className="contents">
         <Heatmap />
+      </motion.div>
+      <motion.div variants={itemVariants} className="contents">
+        <QuickActions />
       </motion.div>
     </motion.div>
   );

@@ -6,11 +6,18 @@ import {
   User,
   Trash2,
   Settings,
-  Zap,
-  Cpu,
-  RotateCcw,
+  Upload,
+  FileText,
+  X,
   Check,
   AlertCircle,
+  ChevronDown,
+  ChevronRight,
+  Zap,
+  Play,
+  RotateCcw,
+  ArrowRight,
+  Cpu,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { useToastStore } from '@/components/Toast';
@@ -25,6 +32,7 @@ import { DEFAULT_PROVIDERS } from '@/lib/models/types';
 /* ================================================================== */
 
 type TabId = 'agent' | 'model';
+type WorkflowId = 'free-chat' | 'full-review' | 'exam-sprint' | 'feynman-understand';
 
 interface AgentMessage {
   id: string;
@@ -34,6 +42,75 @@ interface AgentMessage {
   timestamp: number;
   tokens?: number;
 }
+
+interface UploadedFile {
+  name: string;
+  size: number;
+  content: string;
+  type: string;
+}
+
+interface WorkflowStep {
+  agentId: string;
+  label: string;
+  prompt: string;
+}
+
+interface Workflow {
+  id: WorkflowId;
+  name: string;
+  icon: string;
+  steps: WorkflowStep[];
+}
+
+interface StepOutput {
+  agentId: string;
+  content: string;
+  tokens: number;
+  collapsed: boolean;
+}
+
+/* ================================================================== */
+/*  Workflow Definitions                                               */
+/* ================================================================== */
+
+const WORKFLOWS: Workflow[] = [
+  {
+    id: 'free-chat',
+    name: '自由对话',
+    icon: '💬',
+    steps: [],
+  },
+  {
+    id: 'full-review',
+    name: '完整复习流程',
+    icon: '📚',
+    steps: [
+      { agentId: 'knowledge-extractor', label: '知识提取', prompt: '请从以下材料中提取核心考点和知识框架：' },
+      { agentId: 'flashcard-master', label: '生成闪卡', prompt: '请基于以下知识点生成记忆闪卡：' },
+      { agentId: 'review-planner', label: '复习规划', prompt: '请根据以下内容制定科学的复习计划：' },
+    ],
+  },
+  {
+    id: 'exam-sprint',
+    name: '考前冲刺',
+    icon: '🚀',
+    steps: [
+      { agentId: 'knowledge-extractor', label: '知识提取', prompt: '请从以下材料中提取核心考点和知识框架：' },
+      { agentId: 'exam-coach', label: '模拟考试', prompt: '请基于以下知识点生成模拟试卷：' },
+      { agentId: 'review-planner', label: '复习规划', prompt: '请根据以下考试情况制定考前冲刺复习计划：' },
+    ],
+  },
+  {
+    id: 'feynman-understand',
+    name: '费曼理解',
+    icon: '💡',
+    steps: [
+      { agentId: 'study-mentor', label: '费曼解释', prompt: '请用最简单的话解释以下内容中的核心概念：' },
+      { agentId: 'knowledge-extractor', label: '知识提取', prompt: '请从以下解释中提取结构化的知识框架：' },
+    ],
+  },
+];
 
 /* ================================================================== */
 /*  Main Component                                                     */
@@ -51,13 +128,31 @@ export default function AIEngine() {
   /* ─── Tab State ─── */
   const [activeTab, setActiveTab] = useState<TabId>('agent');
 
-  /* ─── Agent State ─── */
+  /* ─── Workflow State ─── */
+  const [activeWorkflowId, setActiveWorkflowId] = useState<WorkflowId>('free-chat');
+  const activeWorkflow = WORKFLOWS.find((w) => w.id === activeWorkflowId)!;
+
+  /* ─── Agent State (Free Chat) ─── */
   const [selectedAgentId, setSelectedAgentId] = useState<string>('knowledge-extractor');
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  /* ─── Workflow Execution State ─── */
+  const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [workflowRunning, setWorkflowRunning] = useState(false);
+  const [currentStep, setCurrentStep] = useState(-1);
+  const [stepOutputs, setStepOutputs] = useState<StepOutput[]>([]);
+  const [workflowComplete, setWorkflowComplete] = useState(false);
+  const [workflowChatInput, setWorkflowChatInput] = useState('');
+  const [workflowChatAgent, setWorkflowChatAgent] = useState<string>('knowledge-extractor');
+  const [workflowChatMessages, setWorkflowChatMessages] = useState<AgentMessage[]>([]);
+  const [workflowChatTyping, setWorkflowChatTyping] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const workflowChatEndRef = useRef<HTMLDivElement>(null);
 
   /* ─── Model Settings State ─── */
   const [modelSettings, setModelSettings] = useState<ModelSettings>(loadModelSettings);
@@ -87,21 +182,200 @@ export default function AIEngine() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [latestSession?.messages, isTyping]);
 
-  /* ─── Chat Submit ─── */
+  useEffect(() => {
+    workflowChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [workflowChatMessages, workflowChatTyping]);
+
+  /* ─── Reset workflow state when switching workflows ─── */
+  useEffect(() => {
+    setUploadedFile(null);
+    setWorkflowRunning(false);
+    setCurrentStep(-1);
+    setStepOutputs([]);
+    setWorkflowComplete(false);
+    setWorkflowChatMessages([]);
+    setWorkflowChatInput('');
+  }, [activeWorkflowId]);
+
+  /* ================================================================== */
+  /*  File Upload                                                        */
+  /* ================================================================== */
+
+  const handleFileUpload = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      setUploadedFile({ name: file.name, size: file.size, content: text, type: file.type });
+      addToast('success', '文件上传成功');
+    };
+    if (file.type === 'text/plain' || file.name.endsWith('.md')) {
+      reader.readAsText(file);
+    } else if (file.name.endsWith('.pdf')) {
+      reader.readAsText(file);
+    } else {
+      reader.readAsText(file);
+    }
+  }, [addToast]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileUpload(file);
+  }, [handleFileUpload]);
+
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFileUpload(file);
+  }, [handleFileUpload]);
+
+  /* ================================================================== */
+  /*  Workflow Execution                                                  */
+  /* ================================================================== */
+
+  const executeWorkflow = useCallback(async (workflow: Workflow, input: string) => {
+    setWorkflowRunning(true);
+    setWorkflowComplete(false);
+    setStepOutputs([]);
+    setCurrentStep(-1);
+
+    const outputs: StepOutput[] = [];
+
+    for (let i = 0; i < workflow.steps.length; i++) {
+      setCurrentStep(i);
+      const step = workflow.steps[i];
+      const agent = getAgent(step.agentId);
+      if (!agent) continue;
+
+      const prompt = i === 0
+        ? `${step.prompt}\n\n${input}`
+        : `基于上一步的分析结果：\n${outputs[i - 1].content}\n\n${step.prompt}`;
+
+      try {
+        const result = await callModelWithCache(modelSettings, agent.systemPrompt, prompt);
+        const output: StepOutput = {
+          agentId: step.agentId,
+          content: result.content,
+          tokens: result.tokens,
+          collapsed: false,
+        };
+        outputs.push(output);
+        setStepOutputs([...outputs]);
+        addToast('success', `${agent.name} 完成`);
+
+        setModelSettings((prev) => ({
+          ...prev,
+          tokenUsed: prev.tokenUsed + result.tokens,
+        }));
+      } catch (error: any) {
+        const output: StepOutput = {
+          agentId: step.agentId,
+          content: `❌ 调用失败：${error.message || '未知错误'}`,
+          tokens: 0,
+          collapsed: false,
+        };
+        outputs.push(output);
+        setStepOutputs([...outputs]);
+        addToast('error', error.message || '工作流执行失败');
+        break;
+      }
+    }
+
+    setWorkflowRunning(false);
+    setWorkflowComplete(true);
+    if (outputs.length === workflow.steps.length) {
+      addToast('success', '工作流全部完成');
+    }
+  }, [modelSettings, addToast]);
+
+  const handleStartWorkflow = useCallback(() => {
+    if (!uploadedFile || activeWorkflow.steps.length === 0) return;
+    executeWorkflow(activeWorkflow, uploadedFile.content);
+  }, [uploadedFile, activeWorkflow, executeWorkflow]);
+
+  const handleResetWorkflow = useCallback(() => {
+    setUploadedFile(null);
+    setWorkflowRunning(false);
+    setCurrentStep(-1);
+    setStepOutputs([]);
+    setWorkflowComplete(false);
+    setWorkflowChatMessages([]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, []);
+
+  /* ================================================================== */
+  /*  Workflow Chat                                                      */
+  /* ================================================================== */
+
+  const handleWorkflowChatSend = useCallback(async () => {
+    if (!workflowChatInput.trim() || workflowChatTyping) return;
+
+    const userText = workflowChatInput.trim();
+    setWorkflowChatInput('');
+
+    const userMsg: AgentMessage = {
+      id: `wc-user-${Date.now()}`,
+      agentId: workflowChatAgent,
+      role: 'user',
+      content: userText,
+      timestamp: Date.now(),
+    };
+    setWorkflowChatMessages((prev) => [...prev, userMsg]);
+
+    const agent = getAgent(workflowChatAgent);
+    if (!agent) return;
+
+    // Include workflow context
+    const contextParts = stepOutputs
+      .map((o) => { const a = getAgent(o.agentId); return `${a?.name || o.agentId}的分析结果：\n${o.content}`; })
+      .join('\n\n---\n\n');
+    const fullPrompt = `【工作流上下文】\n${contextParts}\n\n【用户问题】${userText}`;
+
+    setWorkflowChatTyping(true);
+    try {
+      const result = await callModelWithCache(modelSettings, agent.systemPrompt, fullPrompt);
+      const aiMsg: AgentMessage = {
+        id: `wc-ai-${Date.now()}`,
+        agentId: workflowChatAgent,
+        role: 'assistant',
+        content: result.content,
+        timestamp: Date.now(),
+        tokens: result.tokens,
+      };
+      setWorkflowChatMessages((prev) => [...prev, aiMsg]);
+    } catch (error: any) {
+      addToast('error', error.message || 'AI 响应失败');
+    } finally {
+      setWorkflowChatTyping(false);
+    }
+  }, [workflowChatInput, workflowChatTyping, workflowChatAgent, stepOutputs, modelSettings, addToast]);
+
+  /* ================================================================== */
+  /*  Free Chat Submit                                                   */
+  /* ================================================================== */
+
   const handleSendMessage = useCallback(async () => {
     if (!chatInput.trim() || isTyping || !selectedAgent) return;
 
     const userText = chatInput.trim();
     setChatInput('');
 
-    // Get or create session
     let sessionId = activeSessionId;
     if (!sessionId) {
       sessionId = createAgentSession(selectedAgentId);
       setActiveSessionId(sessionId);
     }
 
-    // Build prompt
     let fullInput = userText;
     if (selectedSkill) {
       const skillPrompt = getAgentSkillPrompt(selectedAgentId, selectedSkill);
@@ -109,7 +383,6 @@ export default function AIEngine() {
     }
     const prompt = compressPrompt(selectedAgent, fullInput);
 
-    // Add user message
     const userMsg: AgentMessage = {
       id: `user-${Date.now()}`,
       agentId: selectedAgentId,
@@ -138,7 +411,6 @@ export default function AIEngine() {
       };
       addAgentMessage(sessionId, aiMsg);
 
-      // Update token usage in settings
       setModelSettings((prev) => ({
         ...prev,
         tokenUsed: prev.tokenUsed + result.tokens,
@@ -178,6 +450,13 @@ export default function AIEngine() {
     }
   };
 
+  const handleWorkflowChatKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleWorkflowChatSend();
+    }
+  };
+
   /* ─── Clear Session ─── */
   const handleClearSession = useCallback(() => {
     if (activeSessionId) {
@@ -211,7 +490,7 @@ export default function AIEngine() {
 
   const handleSaveSettings = useCallback(() => {
     saveModelSettings(modelSettings);
-    addToast('success', '模型配置已保存');
+    addToast('success', '配置已保存');
   }, [modelSettings, addToast]);
 
   const handleClearCache = useCallback(() => {
@@ -223,7 +502,6 @@ export default function AIEngine() {
   const displayMessages: AgentMessage[] = (() => {
     if (!latestSession) return [];
 
-    // Add welcome message if session is empty
     if (latestSession.messages.length === 0 && selectedAgent) {
       return [
         {
@@ -237,6 +515,254 @@ export default function AIEngine() {
     }
     return latestSession.messages;
   })();
+
+  /* ================================================================== */
+  /*  Render Helpers                                                     */
+  /* ================================================================== */
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const renderAgentOrb = (agent: AgentIdentity, isSelected: boolean, onClick: () => void, size: number = 48) => (
+    <motion.button
+      key={agent.id}
+      whileHover={{ scale: 1.08 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={onClick}
+      className="agent-orb flex flex-col items-center gap-1.5 cursor-pointer group"
+      style={{ width: size + 24 }}
+    >
+      <div
+        className="relative rounded-full flex items-center justify-center transition-all duration-300"
+        style={{
+          width: size,
+          height: size,
+          background: isSelected
+            ? `radial-gradient(circle at 40% 40%, ${agent.color}30, ${agent.color}10)`
+            : 'rgba(24,24,27,0.6)',
+          border: `2px solid ${isSelected ? agent.color : 'rgba(255,255,255,0.08)'}`,
+          boxShadow: isSelected ? `0 0 20px ${agent.color}40, 0 0 40px ${agent.color}15` : 'none',
+          animation: isSelected ? `pulse-glow-${agent.id} 2s ease-in-out infinite` : 'none',
+        }}
+      >
+        <span style={{ fontSize: size * 0.45 }}>{agent.avatar}</span>
+        {isSelected && (
+          <motion.div
+            layoutId="agent-orb-ring"
+            className="absolute inset-0 rounded-full"
+            style={{
+              border: `2px solid ${agent.color}`,
+              opacity: 0.4,
+            }}
+            animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0.15, 0.4] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        )}
+      </div>
+      <span
+        className="text-[10px] font-body truncate max-w-full text-center transition-colors"
+        style={{ color: isSelected ? agent.color : '#71717a' }}
+      >
+        {agent.name}
+      </span>
+    </motion.button>
+  );
+
+  /* ================================================================== */
+  /*  Pipeline Visualization                                             */
+  /* ================================================================== */
+
+  const renderPipeline = (steps: WorkflowStep[], current: number, outputs: StepOutput[]) => (
+    <div className="flex items-center justify-center gap-0 py-4 overflow-x-auto">
+      {steps.map((step, i) => {
+        const agent = getAgent(step.agentId);
+        const isCompleted = i < outputs.length && !outputs[i].content.startsWith('❌');
+        const isCurrent = i === current;
+        const isPending = i > current;
+
+        return (
+          <div key={`${step.agentId}-${i}`} className="flex items-center">
+            {/* Step orb */}
+            <div className="flex flex-col items-center gap-1.5">
+              <div
+                className="relative w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500"
+                style={{
+                  background: isCompleted
+                    ? `radial-gradient(circle at 40% 40%, ${agent?.color || '#8b5cf6'}30, ${agent?.color || '#8b5cf6'}10)`
+                    : isCurrent
+                    ? `radial-gradient(circle at 40% 40%, ${agent?.color || '#8b5cf6'}20, ${agent?.color || '#8b5cf6'}08)`
+                    : 'rgba(24,24,27,0.6)',
+                  border: `2px solid ${isCompleted ? (agent?.color || '#8b5cf6') : isCurrent ? `${agent?.color || '#8b5cf6'}80` : 'rgba(255,255,255,0.08)'}`,
+                  boxShadow: isCurrent
+                    ? `0 0 20px ${agent?.color || '#8b5cf6'}40, 0 0 40px ${agent?.color || '#8b5cf6'}15`
+                    : isCompleted
+                    ? `0 0 10px ${agent?.color || '#8b5cf6'}20`
+                    : 'none',
+                }}
+              >
+                {isCompleted ? (
+                  <Check size={18} style={{ color: agent?.color || '#8b5cf6' }} />
+                ) : isCurrent && workflowRunning ? (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                    className="w-5 h-5 border-2 border-t-transparent rounded-full"
+                    style={{ borderColor: agent?.color || '#8b5cf6', borderTopColor: 'transparent' }}
+                  />
+                ) : (
+                  <span style={{ fontSize: 20 }}>{agent?.avatar || '🤖'}</span>
+                )}
+                {isCurrent && workflowRunning && (
+                  <motion.div
+                    className="absolute inset-0 rounded-full"
+                    style={{ border: `2px solid ${agent?.color || '#8b5cf6'}` }}
+                    animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0, 0.5] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                )}
+              </div>
+              <span
+                className="text-[10px] font-body whitespace-nowrap"
+                style={{
+                  color: isCompleted
+                    ? (agent?.color || '#8b5cf6')
+                    : isCurrent
+                    ? '#e4e4e7'
+                    : '#52525b',
+                }}
+              >
+                {step.label}
+              </span>
+              {agent && (
+                <span className="text-[9px] font-body text-zinc-600">{agent.name}</span>
+              )}
+            </div>
+
+            {/* Connector line */}
+            {i < steps.length - 1 && (
+              <div className="flex items-center mx-2">
+                <motion.div
+                  className="h-[2px] w-8"
+                  style={{
+                    background: isCompleted
+                      ? `linear-gradient(90deg, ${agent?.color || '#8b5cf6'}, ${getAgent(steps[i + 1].agentId)?.color || '#8b5cf6'})`
+                      : 'rgba(255,255,255,0.06)',
+                  }}
+                  animate={isCurrent ? { opacity: [0.4, 1, 0.4] } : {}}
+                  transition={{ duration: 1, repeat: Infinity }}
+                />
+                <ArrowRight
+                  size={12}
+                  style={{
+                    color: isCompleted
+                      ? (getAgent(steps[i + 1].agentId)?.color || '#8b5cf6')
+                      : 'rgba(255,255,255,0.1)',
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  /* ================================================================== */
+  /*  Step Output Cards                                                  */
+  /* ================================================================== */
+
+  const renderStepOutputs = () => (
+    <div className="space-y-3">
+      {stepOutputs.map((output, i) => {
+        const agent = getAgent(output.agentId);
+        const isError = output.content.startsWith('❌');
+        return (
+          <motion.div
+            key={`step-${i}`}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05 }}
+            className="glass-card overflow-hidden"
+          >
+            {/* Card header */}
+            <button
+              onClick={() =>
+                setStepOutputs((prev) =>
+                  prev.map((o, idx) => (idx === i ? { ...o, collapsed: !o.collapsed } : o)),
+                )
+              }
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors cursor-pointer"
+            >
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: `${agent?.color || '#8b5cf6'}15`,
+                  border: `1px solid ${agent?.color || '#8b5cf6'}30`,
+                }}
+              >
+                <span className="text-sm">{agent?.avatar || '🤖'}</span>
+              </div>
+              <div className="flex-1 text-left min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-display font-semibold text-white">
+                    {agent?.name || 'Unknown'}
+                  </span>
+                  <span
+                    className="text-[10px] font-body px-2 py-0.5 rounded-full"
+                    style={{
+                      backgroundColor: isError
+                        ? 'rgba(255,68,68,0.1)'
+                        : `${agent?.color || '#8b5cf6'}10`,
+                      color: isError ? '#ff4444' : (agent?.color || '#8b5cf6'),
+                      border: `1px solid ${isError ? 'rgba(255,68,68,0.2)' : `${agent?.color || '#8b5cf6'}20`}`,
+                    }}
+                  >
+                    {isError ? '失败' : '完成'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-500 font-body">
+                  {activeWorkflow.steps[i]?.label}
+                  {output.tokens > 0 && ` · ${output.tokens} tokens`}
+                </p>
+              </div>
+              {output.collapsed ? (
+                <ChevronRight size={16} className="text-zinc-500" />
+              ) : (
+                <ChevronDown size={16} className="text-zinc-500" />
+              )}
+            </button>
+
+            {/* Card content */}
+            <AnimatePresence>
+              {!output.collapsed && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-4 pb-4 pt-1 border-t border-white/5">
+                    <div
+                      className="text-sm font-body text-zinc-300 leading-relaxed max-h-[400px] overflow-y-auto"
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(output.content) }}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+
+  /* ================================================================== */
+  /*  JSX                                                                */
+  /* ================================================================== */
 
   return (
     <div className="max-w-7xl mx-auto h-[calc(100vh-80px)] flex flex-col">
@@ -252,7 +778,7 @@ export default function AIEngine() {
           </div>
           <div>
             <h1 className="text-2xl font-display font-bold text-white">AI 引擎</h1>
-            <p className="text-xs text-zinc-500 font-body">多智能体控制台 · 模型配置</p>
+            <p className="text-xs text-zinc-500 font-body">多智能体协作 · 工作流 · 模型配置</p>
           </div>
         </div>
       </motion.div>
@@ -268,7 +794,7 @@ export default function AIEngine() {
             }`}
         >
           <Bot size={16} />
-          Agent 控制台
+          Agent 工作台
         </button>
         <button
           onClick={() => setActiveTab('model')}
@@ -292,288 +818,468 @@ export default function AIEngine() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="flex-1 flex gap-4 min-h-0 overflow-hidden"
+            className="flex-1 flex flex-col min-h-0 overflow-hidden"
           >
-            {/* ======== LEFT SIDEBAR: Agent Selection ======== */}
-            <div className="w-[280px] flex-shrink-0 glass-card overflow-y-auto p-4 flex flex-col gap-3">
-              <h2 className="text-sm font-display font-semibold text-zinc-400 flex items-center gap-2">
-                <Bot size={14} className="text-neon-purple" />
-                AI Agent
-              </h2>
-              <p className="text-[10px] text-zinc-600 -mt-1">选择一个 Agent 开始对话</p>
+            {/* ═══════════════ Workflow Selector ═══════════════ */}
+            <div className="flex-shrink-0 mb-4">
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+                {WORKFLOWS.map((wf) => {
+                  const isActive = activeWorkflowId === wf.id;
+                  return (
+                    <motion.button
+                      key={wf.id}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => setActiveWorkflowId(wf.id)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-body whitespace-nowrap transition-all duration-200 cursor-pointer
+                        ${isActive
+                          ? 'bg-neon-purple/15 border border-neon-purple/30 text-neon-purple shadow-[0_0_12px_rgba(139,92,246,0.15)]'
+                          : 'bg-dark-700/40 border border-white/5 text-zinc-500 hover:text-zinc-300 hover:border-white/10'
+                        }`}
+                    >
+                      <span>{wf.icon}</span>
+                      {wf.name}
+                    </motion.button>
+                  );
+                })}
+              </div>
 
-              {AGENTS.map((agent) => {
-                const isActive = selectedAgentId === agent.id;
-                return (
-                  <motion.button
-                    key={agent.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setSelectedAgentId(agent.id)}
-                    className={`w-full text-left p-3.5 rounded-xl border transition-all duration-200 cursor-pointer
-                      ${isActive
-                        ? 'border-opacity-50 bg-opacity-10 shadow-lg'
-                        : 'border-white/5 bg-dark-700/50 hover:bg-dark-600/50 hover:border-white/10'
-                      }`}
-                    style={
-                      isActive
-                        ? {
-                            borderColor: `${agent.color}60`,
-                            backgroundColor: `${agent.color}10`,
-                            boxShadow: `0 0 20px ${agent.color}20`,
-                          }
-                        : undefined
-                    }
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{agent.avatar}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-display font-semibold text-white truncate">
-                          {agent.name}
-                        </p>
-                        <p className="text-[11px] text-zinc-500 font-body truncate">
-                          {agent.role}
-                        </p>
-                      </div>
-                      <div
-                        className="w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: agent.color }}
-                      />
-                    </div>
-                    {isActive && (
-                      <motion.p
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        className="text-[11px] text-zinc-400 font-body mt-2 leading-relaxed"
-                      >
-                        {agent.description}
-                      </motion.p>
-                    )}
-                  </motion.button>
-                );
-              })}
-            </div>
-
-            {/* ======== MAIN CHAT AREA ======== */}
-            <div className="flex-1 glass-card flex flex-col min-h-0 overflow-hidden">
-              {/* Agent info bar */}
-              {selectedAgent && (
-                <div className="flex items-center gap-3 px-5 pt-4 pb-3 border-b border-white/5 flex-shrink-0">
-                  <span className="text-xl">{selectedAgent.avatar}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h2 className="font-display font-semibold text-white text-sm">
-                        {selectedAgent.name}
-                      </h2>
-                      <span
-                        className="text-[10px] font-body px-2 py-0.5 rounded-full"
-                        style={{
-                          backgroundColor: `${selectedAgent.color}15`,
-                          color: selectedAgent.color,
-                          border: `1px solid ${selectedAgent.color}30`,
-                        }}
-                      >
-                        {selectedAgent.role}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-zinc-500 font-body mt-0.5 line-clamp-1">
-                      {selectedAgent.description}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {latestSession && latestSession.messages.length > 0 && (
-                      <button
-                        onClick={handleClearSession}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body text-zinc-500 hover:text-red-400 hover:bg-red-400/5 transition-colors cursor-pointer"
-                      >
-                        <Trash2 size={12} />
-                        清除对话
-                      </button>
-                    )}
-                    <span className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
-                    <span className="text-[10px] text-zinc-500 font-body">在线</span>
-                  </div>
+              {/* Pipeline visualization for non-free-chat workflows */}
+              {activeWorkflowId !== 'free-chat' && activeWorkflow.steps.length > 0 && (
+                <div className="glass-card px-4 py-2 mt-2">
+                  {renderPipeline(activeWorkflow.steps, currentStep, stepOutputs)}
                 </div>
               )}
+            </div>
 
-              {/* Chat messages */}
-              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 min-h-0">
-                <AnimatePresence initial={false}>
-                  {displayMessages.map((msg) => (
-                    <motion.div
-                      key={msg.id}
-                      initial={{ opacity: 0, y: 12, scale: 0.97 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ duration: 0.3, ease: 'easeOut' }}
-                      className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
-                    >
-                      {msg.role === 'system' ? (
-                        /* System message: centered muted */
-                        <div className="w-full flex justify-center">
-                          <div className="max-w-[80%] px-4 py-2 rounded-xl bg-dark-600/30 border border-white/5 text-[11px] text-zinc-500 font-body text-center">
-                            {msg.content}
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          {/* Avatar */}
-                          <div
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0
-                              ${msg.role === 'assistant'
-                                ? 'shadow-[0_0_10px_rgba(139,92,246,0.2)]'
-                                : 'shadow-[0_0_10px_rgba(0,212,255,0.2)]'
-                              }`}
-                            style={
-                              msg.role === 'assistant' && selectedAgent
-                                ? {
-                                    backgroundColor: `${selectedAgent.color}15`,
-                                  }
-                                : undefined
-                            }
-                          >
-                            {msg.role === 'assistant' ? (
-                              <span>{selectedAgent?.avatar || '🤖'}</span>
-                            ) : (
-                              <User size={16} className="text-neon-blue" />
-                            )}
-                          </div>
-
-                          {/* Bubble */}
-                          <div
-                            className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm font-body leading-relaxed
-                              ${msg.role === 'assistant'
-                                ? 'bg-dark-600/60 border border-white/5 text-zinc-300 rounded-tl-sm'
-                                : 'bg-neon-blue/10 border border-neon-blue/20 text-zinc-200 rounded-tr-sm whitespace-pre-wrap'
-                              }`}
-                          >
-                            {msg.role === 'assistant' ? (
-                              <div
-                                dangerouslySetInnerHTML={{
-                                  __html: renderMarkdown(msg.content),
-                                }}
-                              />
-                            ) : (
-                              msg.content
-                            )}
-                            {msg.role === 'assistant' && msg.tokens && msg.tokens > 0 && (
-                              <p className="text-[9px] text-zinc-600 mt-1">
-                                {msg.tokens} tokens
-                              </p>
-                            )}
-                          </div>
-                        </>
+            {/* ═══════════════ Main Work Area ═══════════════ */}
+            <div className="flex-1 min-h-0 overflow-hidden">
+              {activeWorkflowId === 'free-chat' ? (
+                /* ──── Free Chat Mode ──── */
+                <div className="h-full flex flex-col glass-card">
+                  {/* Agent selector: horizontal scrollable orbs */}
+                  <div className="flex-shrink-0 px-4 pt-4 pb-3 border-b border-white/5">
+                    <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+                      {AGENTS.map((agent) =>
+                        renderAgentOrb(
+                          agent,
+                          selectedAgentId === agent.id,
+                          () => setSelectedAgentId(agent.id),
+                          44,
+                        )
                       )}
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-
-                {/* Typing indicator */}
-                {isTyping && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex gap-3"
-                  >
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={
-                        selectedAgent
-                          ? {
-                              backgroundColor: `${selectedAgent.color}15`,
-                              boxShadow: `0 0 10px ${selectedAgent.color}20`,
-                            }
-                          : undefined
-                      }
-                    >
-                      <span>{selectedAgent?.avatar || '🤖'}</span>
                     </div>
-                    <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-dark-600/60 border border-white/5">
-                      <div className="flex gap-1.5 items-center h-5">
-                        <span
-                          className="w-2 h-2 rounded-full animate-bounce"
-                          style={{
-                            backgroundColor: selectedAgent?.color || '#8b5cf6',
-                            animationDelay: '0ms',
-                          }}
-                        />
-                        <span
-                          className="w-2 h-2 rounded-full animate-bounce"
-                          style={{
-                            backgroundColor: selectedAgent?.color || '#8b5cf6',
-                            animationDelay: '150ms',
-                          }}
-                        />
-                        <span
-                          className="w-2 h-2 rounded-full animate-bounce"
-                          style={{
-                            backgroundColor: selectedAgent?.color || '#8b5cf6',
-                            animationDelay: '300ms',
-                          }}
-                        />
+                  </div>
+
+                  {/* Agent info bar */}
+                  {selectedAgent && (
+                    <div className="flex items-center gap-3 px-5 pt-3 pb-2 border-b border-white/5 flex-shrink-0">
+                      <span className="text-lg">{selectedAgent.avatar}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h2 className="font-display font-semibold text-white text-sm">
+                            {selectedAgent.name}
+                          </h2>
+                          <span
+                            className="text-[10px] font-body px-2 py-0.5 rounded-full"
+                            style={{
+                              backgroundColor: `${selectedAgent.color}15`,
+                              color: selectedAgent.color,
+                              border: `1px solid ${selectedAgent.color}30`,
+                            }}
+                          >
+                            {selectedAgent.role}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-zinc-500 font-body mt-0.5 line-clamp-1">
+                          {selectedAgent.description}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {latestSession && latestSession.messages.length > 0 && (
+                          <button
+                            onClick={handleClearSession}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body text-zinc-500 hover:text-red-400 hover:bg-red-400/5 transition-colors cursor-pointer"
+                          >
+                            <Trash2 size={12} />
+                            清除对话
+                          </button>
+                        )}
+                        <span className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
+                        <span className="text-[10px] text-zinc-500 font-body">在线</span>
                       </div>
                     </div>
-                  </motion.div>
-                )}
-                <div ref={chatEndRef} />
-              </div>
+                  )}
 
-              {/* Skill quick-select + Input area */}
-              <div className="px-4 pb-4 pt-2 flex-shrink-0 space-y-2">
-                {/* Skill buttons */}
-                {selectedAgent && selectedAgent.skills.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedAgent.skills.map((skill) => {
-                      const isActive = selectedSkill === skill.name;
-                      return (
-                        <button
-                          key={skill.name}
-                          onClick={() =>
-                            setSelectedSkill((prev) =>
-                              prev === skill.name ? null : skill.name,
-                            )
-                          }
-                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-body transition-all duration-200 cursor-pointer
-                            ${isActive
-                              ? 'bg-neon-purple/15 border border-neon-purple/30 text-neon-purple shadow-[0_0_8px_rgba(139,92,246,0.15)]'
-                              : 'bg-dark-600/40 border border-white/5 text-zinc-500 hover:text-zinc-300 hover:border-white/10'
-                            }`}
+                  {/* Chat messages */}
+                  <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 min-h-0">
+                    <AnimatePresence initial={false}>
+                      {displayMessages.map((msg) => (
+                        <motion.div
+                          key={msg.id}
+                          initial={{ opacity: 0, y: 12, scale: 0.97 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          transition={{ duration: 0.3, ease: 'easeOut' }}
+                          className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
                         >
-                          <span className="text-xs">{skill.icon}</span>
-                          {skill.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                          {msg.role === 'system' ? (
+                            <div className="w-full flex justify-center">
+                              <div className="max-w-[80%] px-4 py-2 rounded-xl bg-dark-600/30 border border-white/5 text-[11px] text-zinc-500 font-body text-center">
+                                {msg.content}
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0
+                                  ${msg.role === 'assistant'
+                                    ? 'shadow-[0_0_10px_rgba(139,92,246,0.2)]'
+                                    : 'shadow-[0_0_10px_rgba(0,212,255,0.2)]'
+                                  }`}
+                                style={
+                                  msg.role === 'assistant' && selectedAgent
+                                    ? { backgroundColor: `${selectedAgent.color}15` }
+                                    : undefined
+                                }
+                              >
+                                {msg.role === 'assistant' ? (
+                                  <span>{selectedAgent?.avatar || '🤖'}</span>
+                                ) : (
+                                  <User size={16} className="text-neon-blue" />
+                                )}
+                              </div>
+                              <div
+                                className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm font-body leading-relaxed
+                                  ${msg.role === 'assistant'
+                                    ? 'bg-dark-600/60 border border-white/5 text-zinc-300 rounded-tl-sm'
+                                    : 'bg-neon-blue/10 border border-neon-blue/20 text-zinc-200 rounded-tr-sm whitespace-pre-wrap'
+                                  }`}
+                              >
+                                {msg.role === 'assistant' ? (
+                                  <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                                ) : (
+                                  msg.content
+                                )}
+                                {msg.role === 'assistant' && msg.tokens && msg.tokens > 0 && (
+                                  <p className="text-[9px] text-zinc-600 mt-1">{msg.tokens} tokens</p>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
 
-                {/* Input row */}
-                <div className="flex items-end gap-2 bg-dark-700/60 border border-white/8 rounded-xl px-4 py-2 focus-within:border-neon-purple/40 focus-within:shadow-[0_0_15px_rgba(139,92,246,0.15)] transition-all duration-300">
-                  <textarea
-                    value={chatInput}
-                    onChange={(e) => {
-                      setChatInput(e.target.value);
-                      e.target.style.height = 'auto';
-                      e.target.style.height =
-                        Math.min(e.target.scrollHeight, 3 * 24) + 'px';
-                    }}
-                    onKeyDown={handleInputKeyDown}
-                    placeholder="输入你的问题... (Shift+Enter 换行)"
-                    rows={1}
-                    className="flex-1 bg-transparent text-sm font-body text-zinc-200 placeholder-zinc-600 outline-none resize-none leading-6"
-                    style={{ maxHeight: '72px' }}
-                    disabled={isTyping}
-                  />
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={!chatInput.trim() || isTyping}
-                    className="w-8 h-8 rounded-lg bg-neon-purple/15 flex items-center justify-center text-neon-purple hover:bg-neon-purple/25 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex-shrink-0"
-                  >
-                    <Send size={14} />
-                  </button>
+                    {/* Typing indicator */}
+                    {isTyping && (
+                      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3">
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={
+                            selectedAgent
+                              ? { backgroundColor: `${selectedAgent.color}15`, boxShadow: `0 0 10px ${selectedAgent.color}20` }
+                              : undefined
+                          }
+                        >
+                          <span>{selectedAgent?.avatar || '🤖'}</span>
+                        </div>
+                        <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-dark-600/60 border border-white/5">
+                          <div className="flex gap-1.5 items-center h-5">
+                            {[0, 150, 300].map((delay) => (
+                              <span
+                                key={delay}
+                                className="w-2 h-2 rounded-full animate-bounce"
+                                style={{
+                                  backgroundColor: selectedAgent?.color || '#8b5cf6',
+                                  animationDelay: `${delay}ms`,
+                                }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                    <div ref={chatEndRef} />
+                  </div>
+
+                  {/* Skill quick-select + Input area */}
+                  <div className="px-4 pb-4 pt-2 flex-shrink-0 space-y-2">
+                    {selectedAgent && selectedAgent.skills.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedAgent.skills.map((skill) => {
+                          const isActive = selectedSkill === skill.name;
+                          return (
+                            <button
+                              key={skill.name}
+                              onClick={() => setSelectedSkill((prev) => (prev === skill.name ? null : skill.name))}
+                              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-body transition-all duration-200 cursor-pointer
+                                ${isActive
+                                  ? 'bg-neon-purple/15 border border-neon-purple/30 text-neon-purple shadow-[0_0_8px_rgba(139,92,246,0.15)]'
+                                  : 'bg-dark-600/40 border border-white/5 text-zinc-500 hover:text-zinc-300 hover:border-white/10'
+                                }`}
+                            >
+                              <span className="text-xs">{skill.icon}</span>
+                              {skill.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <div className="flex items-end gap-2 bg-dark-700/60 border border-white/8 rounded-xl px-4 py-2 focus-within:border-neon-purple/40 focus-within:shadow-[0_0_15px_rgba(139,92,246,0.15)] transition-all duration-300">
+                      <textarea
+                        value={chatInput}
+                        onChange={(e) => {
+                          setChatInput(e.target.value);
+                          e.target.style.height = 'auto';
+                          e.target.style.height = Math.min(e.target.scrollHeight, 3 * 24) + 'px';
+                        }}
+                        onKeyDown={handleInputKeyDown}
+                        placeholder="输入你的问题... (Shift+Enter 换行)"
+                        rows={1}
+                        className="flex-1 bg-transparent text-sm font-body text-zinc-200 placeholder-zinc-600 outline-none resize-none leading-6"
+                        style={{ maxHeight: '72px' }}
+                        disabled={isTyping}
+                      />
+                      <button
+                        onClick={handleSendMessage}
+                        disabled={!chatInput.trim() || isTyping}
+                        className="w-8 h-8 rounded-lg bg-neon-purple/15 flex items-center justify-center text-neon-purple hover:bg-neon-purple/25 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex-shrink-0"
+                      >
+                        <Send size={14} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                /* ──── Workflow Mode ──── */
+                <div className="h-full flex flex-col gap-4 overflow-y-auto">
+                  {/* File Upload Zone */}
+                  {!uploadedFile ? (
+                    <div
+                      className={`file-drop-zone glass-card flex-shrink-0 flex flex-col items-center justify-center py-12 cursor-pointer transition-all duration-300
+                        ${isDragOver ? 'border-neon-purple/50 bg-neon-purple/5' : 'border-white/5'}`}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".pdf,.txt,.md,.docx"
+                        className="hidden"
+                        onChange={handleFileInputChange}
+                      />
+                      <motion.div
+                        animate={isDragOver ? { scale: 1.1, y: -4 } : { scale: 1, y: 0 }}
+                        className="w-16 h-16 rounded-2xl bg-dark-600/60 border border-white/5 flex items-center justify-center mb-4"
+                      >
+                        <Upload size={28} className="text-zinc-500" />
+                      </motion.div>
+                      <p className="text-sm font-body text-zinc-400 mb-1">
+                        拖拽文件到此处，或点击上传
+                      </p>
+                      <p className="text-[11px] font-body text-zinc-600">
+                        支持 PDF、TXT、MD、DOCX 格式
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="glass-card flex-shrink-0 px-5 py-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-neon-purple/10 border border-neon-purple/20 flex items-center justify-center flex-shrink-0">
+                          <FileText size={22} className="text-neon-purple" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-display font-semibold text-white truncate">
+                            {uploadedFile.name}
+                          </p>
+                          <p className="text-[11px] text-zinc-500 font-body">
+                            {formatFileSize(uploadedFile.size)} · {uploadedFile.type || '未知类型'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {!workflowRunning && !workflowComplete && (
+                            <button
+                              onClick={handleStartWorkflow}
+                              className="neon-btn-primary flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-body cursor-pointer"
+                            >
+                              <Play size={14} />
+                              开始分析
+                            </button>
+                          )}
+                          {!workflowRunning && (
+                            <button
+                              onClick={handleResetWorkflow}
+                              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-body text-zinc-500 hover:text-zinc-300 hover:bg-dark-600/50 transition-colors cursor-pointer"
+                            >
+                              <RotateCcw size={12} />
+                              重置
+                            </button>
+                          )}
+                          {workflowRunning && (
+                            <div className="flex items-center gap-2 text-neon-purple text-sm font-body">
+                              <motion.div
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                                className="w-4 h-4 border-2 border-t-transparent rounded-full border-neon-purple"
+                              />
+                              执行中...
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step Outputs */}
+                  {stepOutputs.length > 0 && (
+                    <div className="flex-shrink-0">
+                      {renderStepOutputs()}
+                    </div>
+                  )}
+
+                  {/* Workflow Chat Tab */}
+                  {(workflowComplete || stepOutputs.length > 0) && (
+                    <div className="glass-card flex-1 min-h-[300px] flex flex-col">
+                      <div className="flex items-center gap-3 px-5 pt-4 pb-3 border-b border-white/5 flex-shrink-0">
+                        <Bot size={16} className="text-neon-purple" />
+                        <h3 className="font-display font-semibold text-white text-sm">对话</h3>
+                        <span className="text-[10px] text-zinc-600 font-body">
+                          选择 Agent 继续探讨结果
+                        </span>
+                        <div className="flex-1" />
+                        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+                          {AGENTS.map((agent) => (
+                            <button
+                              key={agent.id}
+                              onClick={() => setWorkflowChatAgent(agent.id)}
+                              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-body transition-all cursor-pointer whitespace-nowrap
+                                ${workflowChatAgent === agent.id
+                                  ? 'border text-white'
+                                  : 'border border-white/5 text-zinc-500 hover:text-zinc-300'
+                                }`}
+                              style={
+                                workflowChatAgent === agent.id
+                                  ? {
+                                      backgroundColor: `${agent.color}15`,
+                                      borderColor: `${agent.color}40`,
+                                      color: agent.color,
+                                    }
+                                  : undefined
+                              }
+                            >
+                              <span className="text-xs">{agent.avatar}</span>
+                              {agent.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Chat messages */}
+                      <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3 min-h-0">
+                        {workflowChatMessages.length === 0 && (
+                          <div className="flex items-center justify-center h-full">
+                            <p className="text-sm text-zinc-600 font-body">
+                              选择一个 Agent，对工作流结果继续提问
+                            </p>
+                          </div>
+                        )}
+                        <AnimatePresence initial={false}>
+                          {workflowChatMessages.map((msg) => (
+                            <motion.div
+                              key={msg.id}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+                            >
+                              <div
+                                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                                style={
+                                  msg.role === 'assistant'
+                                    ? { backgroundColor: `${getAgent(msg.agentId)?.color || '#8b5cf6'}15` }
+                                    : undefined
+                                }
+                              >
+                                {msg.role === 'assistant' ? (
+                                  <span className="text-sm">{getAgent(msg.agentId)?.avatar || '🤖'}</span>
+                                ) : (
+                                  <User size={14} className="text-neon-blue" />
+                                )}
+                              </div>
+                              <div
+                                className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm font-body leading-relaxed
+                                  ${msg.role === 'assistant'
+                                    ? 'bg-dark-600/60 border border-white/5 text-zinc-300 rounded-tl-sm'
+                                    : 'bg-neon-blue/10 border border-neon-blue/20 text-zinc-200 rounded-tr-sm whitespace-pre-wrap'
+                                  }`}
+                              >
+                                {msg.role === 'assistant' ? (
+                                  <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                                ) : (
+                                  msg.content
+                                )}
+                              </div>
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                        {workflowChatTyping && (
+                          <div className="flex gap-3">
+                            <div
+                              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                              style={{ backgroundColor: `${getAgent(workflowChatAgent)?.color || '#8b5cf6'}15` }}
+                            >
+                              <span className="text-sm">{getAgent(workflowChatAgent)?.avatar || '🤖'}</span>
+                            </div>
+                            <div className="px-3.5 py-2.5 rounded-2xl rounded-tl-sm bg-dark-600/60 border border-white/5">
+                              <div className="flex gap-1.5 items-center h-4">
+                                {[0, 150, 300].map((delay) => (
+                                  <span
+                                    key={delay}
+                                    className="w-1.5 h-1.5 rounded-full animate-bounce"
+                                    style={{
+                                      backgroundColor: getAgent(workflowChatAgent)?.color || '#8b5cf6',
+                                      animationDelay: `${delay}ms`,
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        <div ref={workflowChatEndRef} />
+                      </div>
+
+                      {/* Input */}
+                      <div className="px-4 pb-4 pt-2 flex-shrink-0">
+                        <div className="flex items-end gap-2 bg-dark-700/60 border border-white/8 rounded-xl px-4 py-2 focus-within:border-neon-purple/40 focus-within:shadow-[0_0_15px_rgba(139,92,246,0.15)] transition-all duration-300">
+                          <textarea
+                            value={workflowChatInput}
+                            onChange={(e) => {
+                              setWorkflowChatInput(e.target.value);
+                              e.target.style.height = 'auto';
+                              e.target.style.height = Math.min(e.target.scrollHeight, 3 * 24) + 'px';
+                            }}
+                            onKeyDown={handleWorkflowChatKeyDown}
+                            placeholder={`向 ${getAgent(workflowChatAgent)?.name || 'Agent'} 提问...`}
+                            rows={1}
+                            className="flex-1 bg-transparent text-sm font-body text-zinc-200 placeholder-zinc-600 outline-none resize-none leading-6"
+                            style={{ maxHeight: '72px' }}
+                            disabled={workflowChatTyping}
+                          />
+                          <button
+                            onClick={handleWorkflowChatSend}
+                            disabled={!workflowChatInput.trim() || workflowChatTyping}
+                            className="w-8 h-8 rounded-lg bg-neon-purple/15 flex items-center justify-center text-neon-purple hover:bg-neon-purple/25 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex-shrink-0"
+                          >
+                            <Send size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </motion.div>
         ) : (
@@ -628,15 +1334,11 @@ export default function AIEngine() {
 
                     {/* Model name */}
                     <div>
-                      <label className="text-[10px] text-zinc-500 font-body block mb-1">
-                        模型名称
-                      </label>
+                      <label className="text-[10px] text-zinc-500 font-body block mb-1">模型名称</label>
                       <input
                         type="text"
                         value={config.model}
-                        onChange={(e) =>
-                          handleProviderChange(key, 'model', e.target.value)
-                        }
+                        onChange={(e) => handleProviderChange(key, 'model', e.target.value)}
                         placeholder="模型名称"
                         className="w-full bg-dark-700/60 border border-white/8 rounded-lg px-3 py-2 text-xs font-body text-zinc-200 placeholder-zinc-600 outline-none focus:border-neon-purple/40 transition-all"
                       />
@@ -644,15 +1346,11 @@ export default function AIEngine() {
 
                     {/* Base URL */}
                     <div>
-                      <label className="text-[10px] text-zinc-500 font-body block mb-1">
-                        Base URL
-                      </label>
+                      <label className="text-[10px] text-zinc-500 font-body block mb-1">Base URL</label>
                       <input
                         type="text"
                         value={config.baseUrl}
-                        onChange={(e) =>
-                          handleProviderChange(key, 'baseUrl', e.target.value)
-                        }
+                        onChange={(e) => handleProviderChange(key, 'baseUrl', e.target.value)}
                         placeholder="API 端点地址"
                         className="w-full bg-dark-700/60 border border-white/8 rounded-lg px-3 py-2 text-xs font-body text-zinc-200 placeholder-zinc-600 outline-none focus:border-neon-purple/40 transition-all"
                       />
@@ -660,15 +1358,11 @@ export default function AIEngine() {
 
                     {/* API Key */}
                     <div>
-                      <label className="text-[10px] text-zinc-500 font-body block mb-1">
-                        API Key
-                      </label>
+                      <label className="text-[10px] text-zinc-500 font-body block mb-1">API Key</label>
                       <input
                         type="password"
                         value={config.apiKey}
-                        onChange={(e) =>
-                          handleProviderChange(key, 'apiKey', e.target.value)
-                        }
+                        onChange={(e) => handleProviderChange(key, 'apiKey', e.target.value)}
                         placeholder="输入 API Key"
                         className="w-full bg-dark-700/60 border border-white/8 rounded-lg px-3 py-2 text-xs font-body text-zinc-200 placeholder-zinc-600 outline-none focus:border-neon-purple/40 transition-all"
                       />
@@ -685,13 +1379,7 @@ export default function AIEngine() {
                         max="2"
                         step="0.1"
                         value={config.temperature}
-                        onChange={(e) =>
-                          handleProviderChange(
-                            key,
-                            'temperature',
-                            parseFloat(e.target.value),
-                          )
-                        }
+                        onChange={(e) => handleProviderChange(key, 'temperature', parseFloat(e.target.value))}
                         className="w-full accent-neon-purple"
                       />
                       <div className="flex justify-between text-[9px] text-zinc-600">
@@ -702,19 +1390,11 @@ export default function AIEngine() {
 
                     {/* Max Tokens */}
                     <div>
-                      <label className="text-[10px] text-zinc-500 font-body block mb-1">
-                        Max Tokens
-                      </label>
+                      <label className="text-[10px] text-zinc-500 font-body block mb-1">Max Tokens</label>
                       <input
                         type="number"
                         value={config.maxTokens}
-                        onChange={(e) =>
-                          handleProviderChange(
-                            key,
-                            'maxTokens',
-                            parseInt(e.target.value) || 2048,
-                          )
-                        }
+                        onChange={(e) => handleProviderChange(key, 'maxTokens', parseInt(e.target.value) || 2048)}
                         className="w-full bg-dark-700/60 border border-white/8 rounded-lg px-3 py-2 text-xs font-body text-zinc-200 outline-none focus:border-neon-purple/40 transition-all"
                       />
                     </div>
@@ -730,26 +1410,16 @@ export default function AIEngine() {
                         max="1"
                         step="0.05"
                         value={config.topP}
-                        onChange={(e) =>
-                          handleProviderChange(
-                            key,
-                            'topP',
-                            parseFloat(e.target.value),
-                          )
-                        }
+                        onChange={(e) => handleProviderChange(key, 'topP', parseFloat(e.target.value))}
                         className="w-full accent-neon-purple"
                       />
                     </div>
 
                     {/* Enable toggle */}
                     <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                      <span className="text-[11px] text-zinc-400 font-body">
-                        启用此提供者
-                      </span>
+                      <span className="text-[11px] text-zinc-400 font-body">启用此提供者</span>
                       <button
-                        onClick={() =>
-                          handleProviderChange(key, 'enabled', !config.enabled)
-                        }
+                        onClick={() => handleProviderChange(key, 'enabled', !config.enabled)}
                         className={`relative w-10 h-5 rounded-full transition-colors duration-200 cursor-pointer
                           ${config.enabled ? 'bg-neon-green/60' : 'bg-dark-500'}`}
                       >
@@ -782,18 +1452,14 @@ export default function AIEngine() {
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-zinc-400 font-body">Token 用量显示</span>
                   <span className="text-[11px] text-zinc-400 font-body">
-                    {modelSettings.tokenUsed.toLocaleString()} /{' '}
-                    {modelSettings.tokenBudget.toLocaleString()}
+                    {modelSettings.tokenUsed.toLocaleString()} / {modelSettings.tokenBudget.toLocaleString()}
                   </span>
                 </div>
                 <div className="w-full h-2 bg-dark-600 rounded-full overflow-hidden">
                   <motion.div
                     className="h-full bg-gradient-to-r from-neon-purple to-neon-blue rounded-full"
                     animate={{
-                      width: `${Math.min(
-                        (modelSettings.tokenUsed / modelSettings.tokenBudget) * 100,
-                        100,
-                      )}%`,
+                      width: `${Math.min((modelSettings.tokenUsed / modelSettings.tokenBudget) * 100, 100)}%`,
                     }}
                     transition={{ duration: 0.5, ease: 'easeOut' }}
                   />
@@ -807,9 +1473,7 @@ export default function AIEngine() {
                   <span className="text-xs text-zinc-400 font-body">开启响应缓存</span>
                 </div>
                 <button
-                  onClick={() =>
-                    handleSettingsChange('enableCache', !modelSettings.enableCache)
-                  }
+                  onClick={() => handleSettingsChange('enableCache', !modelSettings.enableCache)}
                   className={`relative w-10 h-5 rounded-full transition-colors duration-200 cursor-pointer
                     ${modelSettings.enableCache ? 'bg-neon-green/60' : 'bg-dark-500'}`}
                 >
@@ -828,12 +1492,7 @@ export default function AIEngine() {
                   <span className="text-xs text-zinc-400 font-body">开启 Prompt 压缩</span>
                 </div>
                 <button
-                  onClick={() =>
-                    handleSettingsChange(
-                      'enableCompression',
-                      !modelSettings.enableCompression,
-                    )
-                  }
+                  onClick={() => handleSettingsChange('enableCompression', !modelSettings.enableCompression)}
                   className={`relative w-10 h-5 rounded-full transition-colors duration-200 cursor-pointer
                     ${modelSettings.enableCompression ? 'bg-neon-green/60' : 'bg-dark-500'}`}
                 >
@@ -903,9 +1562,7 @@ function renderMarkdown(text: string): string {
 
     if (/^[ \t]*[-•]\s/.test(line)) {
       if (!inUl) {
-        processedLines.push(
-          '<ul style="padding-left:1.2em;margin:0.3em 0;list-style:disc">',
-        );
+        processedLines.push('<ul style="padding-left:1.2em;margin:0.3em 0;list-style:disc">');
         inUl = true;
       }
       const content = line.replace(/^[ \t]*[-•]\s/, '');
@@ -915,9 +1572,7 @@ function renderMarkdown(text: string): string {
 
     if (/^[ \t]*\d+\.\s/.test(line)) {
       if (!inOl) {
-        processedLines.push(
-          '<ol style="padding-left:1.2em;margin:0.3em 0;list-style:decimal">',
-        );
+        processedLines.push('<ol style="padding-left:1.2em;margin:0.3em 0;list-style:decimal">');
         inOl = true;
       }
       const content = line.replace(/^[ \t]*\d+\.\s/, '');
