@@ -36,10 +36,10 @@ const iconMap: Record<ToastType, typeof Check> = {
 };
 
 const colorMap: Record<ToastType, { bg: string; border: string; text: string; iconBg: string }> = {
-  success: { bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.25)', text: '#34d399', iconBg: 'rgba(52,211,153,0.15)' },
-  error: { bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.25)', text: '#f87171', iconBg: 'rgba(248,113,113,0.15)' },
-  warning: { bg: 'rgba(251,191,36,0.1)', border: 'rgba(251,191,36,0.25)', text: '#fbbf24', iconBg: 'rgba(251,191,36,0.15)' },
-  info: { bg: 'rgba(108,124,255,0.1)', border: 'rgba(108,124,255,0.25)', text: '#6C7CFF', iconBg: 'rgba(108,124,255,0.15)' },
+  success: { bg: 'rgba(0,217,36,0.1)', border: 'rgba(0,217,36,0.25)', text: '#00D924', iconBg: 'rgba(0,217,36,0.15)' },
+  error: { bg: 'rgba(255,61,0,0.1)', border: 'rgba(255,61,0,0.25)', text: '#FF3D00', iconBg: 'rgba(255,61,0,0.15)' },
+  warning: { bg: 'rgba(255,184,0,0.1)', border: 'rgba(255,184,0,0.25)', text: '#FFB800', iconBg: 'rgba(255,184,0,0.15)' },
+  info: { bg: 'rgba(99,91,255,0.1)', border: 'rgba(99,91,255,0.25)', text: '#635BFF', iconBg: 'rgba(99,91,255,0.15)' },
 };
 
 export function ToastContainer() {
@@ -79,7 +79,7 @@ export function ToastContainer() {
                 onClick={() => removeToast(toast.id)}
                 className="p-1 rounded hover:bg-white/5 transition-colors flex-shrink-0"
               >
-                <X size={12} className="text-[#5c5f73]" />
+                <X size={12} className="text-[#6b7c93]" />
               </button>
             </motion.div>
           );

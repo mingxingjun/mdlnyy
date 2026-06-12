@@ -5,38 +5,38 @@
 @tailwind utilities;
 
 /* ═══════════════════════════════════════════════════════
-   NEXUS — Dark Premium Academic Design System
+   STRIPE — Professional Gradient Design System
    ═══════════════════════════════════════════════════════ */
 
 :root {
-  --bg-primary: #0a0b14;
-  --bg-secondary: #12131f;
-  --bg-tertiary: #1a1b2e;
-  --bg-card: #12131f;
-  --bg-card-hover: #1a1b2e;
-  --border-light: rgba(255,255,255,0.06);
-  --border-medium: rgba(255,255,255,0.1);
-  --border-accent: rgba(108,124,255,0.3);
-  --text-primary: #e8eaf0;
-  --text-secondary: #8b8fa3;
-  --text-muted: #5c5f73;
-  --accent: #6C7CFF;
+  --bg-primary: #0A2540;
+  --bg-secondary: #0d2d4a;
+  --bg-tertiary: #1a3a5c;
+  --bg-card: #0d2d4a;
+  --bg-card-hover: #1a3a5c;
+  --border-light: rgba(255,255,255,0.08);
+  --border-medium: rgba(255,255,255,0.12);
+  --border-accent: rgba(99,91,255,0.4);
+  --text-primary: #ffffff;
+  --text-secondary: #a3b5cc;
+  --text-muted: #6b7c93;
+  --accent: #635BFF;
   --accent-secondary: #7C5CFF;
-  --accent-cyan: #4FD1C5;
-  --accent-light: rgba(108,124,255,0.12);
-  --accent-hover: #5a6aff;
-  --success: #34d399;
-  --warning: #fbbf24;
-  --error: #f87171;
-  --info: #6C7CFF;
+  --accent-cyan: #00D4FF;
+  --accent-light: rgba(99,91,255,0.15);
+  --accent-hover: #7c75ff;
+  --success: #00D924;
+  --warning: #FFB800;
+  --error: #FF3D00;
+  --info: #635BFF;
   --radius-sm: 8px;
   --radius-md: 10px;
   --radius-lg: 16px;
   --radius-xl: 20px;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
-  --shadow-glow: 0 0 20px rgba(108,124,255,0.15);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+  --shadow-glow: 0 0 24px rgba(99,91,255,0.2);
 
   font-family: 'Inter', 'Noto Sans SC', sans-serif;
   line-height: 1.6;

@@ -34,13 +34,13 @@ function getCountdown(examDate: string) {
 const tags = ['重点', '易错', '公式', '证明', '计算'];
 
 const knowledgeNodes = [
-  { id: 'center', label: '微积分', x: 50, y: 50, size: 'lg', color: '#6C7CFF' },
+  { id: 'center', label: '微积分', x: 50, y: 50, size: 'lg', color: '#635BFF' },
   { id: 'n1', label: '极限', x: 22, y: 25, size: 'md', color: '#7C5CFF' },
   { id: 'n2', label: '导数', x: 78, y: 25, size: 'md', color: '#4FD1C5' },
-  { id: 'n3', label: '积分', x: 22, y: 75, size: 'md', color: '#fbbf24' },
-  { id: 'n4', label: '微分方程', x: 78, y: 75, size: 'md', color: '#f87171' },
+  { id: 'n3', label: '积分', x: 22, y: 75, size: 'md', color: '#FFB800' },
+  { id: 'n4', label: '微分方程', x: 78, y: 75, size: 'md', color: '#FF3D00' },
   { id: 'n5', label: '连续性', x: 10, y: 50, size: 'sm', color: '#8b5cf6' },
-  { id: 'n6', label: '求导法则', x: 90, y: 50, size: 'sm', color: '#34d399' },
+  { id: 'n6', label: '求导法则', x: 90, y: 50, size: 'sm', color: '#00D924' },
   { id: 'n7', label: '定积分', x: 38, y: 88, size: 'sm', color: '#fb923c' },
   { id: 'n8', label: '数列极限', x: 8, y: 15, size: 'sm', color: '#a78bfa' },
 ];
@@ -87,8 +87,8 @@ function StatsOverview() {
       label: '今日完成率',
       value: `${todayRate}%`,
       icon: CheckCircle2,
-      iconBg: 'bg-[#34d399]/10',
-      iconColor: 'text-[#34d399]',
+      iconBg: 'bg-[#00D924]/10',
+      iconColor: 'text-[#00D924]',
       trend: '+12%',
       trendUp: true,
       ring: true,
@@ -99,8 +99,8 @@ function StatsOverview() {
       value: `${nearestDays}`,
       valueSuffix: '天',
       icon: Clock,
-      iconBg: 'bg-[#6C7CFF]/10',
-      iconColor: 'text-[#6C7CFF]',
+      iconBg: 'bg-[#635BFF]/10',
+      iconColor: 'text-[#635BFF]',
       trend: '高数最近',
       trendUp: false,
       ring: false,
@@ -109,8 +109,8 @@ function StatsOverview() {
       label: '掌握度',
       value: `${avgMastery}%`,
       icon: Target,
-      iconBg: 'bg-[#fbbf24]/10',
-      iconColor: 'text-[#fbbf24]',
+      iconBg: 'bg-[#FFB800]/10',
+      iconColor: 'text-[#FFB800]',
       trend: '+5%',
       trendUp: true,
       bar: true,
@@ -141,23 +141,23 @@ function StatsOverview() {
           key={stat.label}
           variants={fadeUp}
           whileHover={{ y: -2, transition: { duration: 0.2 } }}
-          className="bg-[#12131f] border border-white/[0.06] rounded-[24px] p-5 transition-all hover:border-[#6C7CFF]/30 hover:shadow-[0_0_20px_rgba(108,124,255,0.08)]"
+          className="bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-5 transition-all hover:border-[#635BFF]/30 hover:shadow-[0_0_20px_rgba(99,91,255,0.08)]"
         >
           <div className="flex items-center justify-between mb-3">
             <div className={`w-9 h-9 rounded-[12px] flex items-center justify-center ${stat.iconBg}`}>
               <stat.icon size={18} className={stat.iconColor} />
             </div>
-            <span className={`text-[11px] font-medium ${stat.trendUp ? 'text-[#34d399]' : 'text-[#8b8fa3]'}`}>
+            <span className={`text-[11px] font-medium ${stat.trendUp ? 'text-[#00D924]' : 'text-[#a3b5cc]'}`}>
               {stat.trend}
             </span>
           </div>
 
-          <p className="text-[12px] text-[#8b8fa3] mb-1">{stat.label}</p>
+          <p className="text-[12px] text-[#a3b5cc] mb-1">{stat.label}</p>
 
           <div className="flex items-baseline gap-1">
-            <span className="text-[28px] font-bold text-[#e8eaf0] leading-none tabular-nums">{stat.value}</span>
+            <span className="text-[28px] font-bold text-[#ffffff] leading-none tabular-nums">{stat.value}</span>
             {stat.valueSuffix && (
-              <span className="text-[13px] text-[#5c5f73]">{stat.valueSuffix}</span>
+              <span className="text-[13px] text-[#6b7c93]">{stat.valueSuffix}</span>
             )}
           </div>
 
@@ -168,7 +168,7 @@ function StatsOverview() {
                 <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="4" />
                 <circle
                   cx="28" cy="28" r="22" fill="none"
-                  stroke="#34d399" strokeWidth="4" strokeLinecap="round"
+                  stroke="#00D924" strokeWidth="4" strokeLinecap="round"
                   strokeDasharray={`${(stat.ringValue! / 100) * 138.2} 138.2`}
                   transform="rotate(-90 28 28)"
                   className="transition-all duration-700"
@@ -182,7 +182,7 @@ function StatsOverview() {
             <div className="mt-3 h-2 rounded-full bg-white/[0.06] overflow-hidden">
               <motion.div
                 className="h-full rounded-full"
-                style={{ background: 'linear-gradient(90deg, #fbbf24, #f97316)' }}
+                style={{ background: 'linear-gradient(90deg, #FFB800, #f97316)' }}
                 initial={{ width: 0 }}
                 whileInView={{ width: `${stat.barValue}%` }}
                 viewport={{ once: true }}
@@ -202,12 +202,12 @@ function AgentWorkflow() {
 
   const agentWorkflow = useMemo(() => {
     const agentDefs = [
-      { name: '导入资料', agentId: 'importer', color: '#6C7CFF', output: '' },
+      { name: '导入资料', agentId: 'importer', color: '#635BFF', output: '' },
       { name: '提取重点', agentId: 'extractor', color: '#7C5CFF', output: '' },
       { name: '生成题库', agentId: 'examiner', color: '#4FD1C5', output: '' },
-      { name: '错题诊断', agentId: 'analyst', color: '#fbbf24', output: '' },
-      { name: '复习计划', agentId: 'planner', color: '#f87171', output: '' },
-      { name: '强化记忆', agentId: 'reviewer', color: '#34d399', output: '' },
+      { name: '错题诊断', agentId: 'analyst', color: '#FFB800', output: '' },
+      { name: '复习计划', agentId: 'planner', color: '#FF3D00', output: '' },
+      { name: '强化记忆', agentId: 'reviewer', color: '#00D924', output: '' },
     ];
 
     return agentDefs.map((def) => {
@@ -234,11 +234,11 @@ function AgentWorkflow() {
   const statusBadge = (status: 'completed' | 'active' | 'pending') => {
     switch (status) {
       case 'completed':
-        return <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#34d399]/10 text-[#34d399]">已完成</span>;
+        return <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#00D924]/10 text-[#00D924]">已完成</span>;
       case 'active':
-        return <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#6C7CFF]/10 text-[#6C7CFF]">进行中</span>;
+        return <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#635BFF]/10 text-[#635BFF]">进行中</span>;
       case 'pending':
-        return <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/[0.06] text-[#5c5f73]">待执行</span>;
+        return <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/[0.06] text-[#6b7c93]">待执行</span>;
     }
   };
 
@@ -250,25 +250,25 @@ function AgentWorkflow() {
       viewport={{ once: true, margin: '-40px' }}
       className="mt-8"
     >
-      <h2 className="text-[16px] font-semibold text-[#e8eaf0] mb-4">Agent 协作工作流</h2>
+      <h2 className="text-[16px] font-semibold text-[#ffffff] mb-4">Agent 协作工作流</h2>
       <div className="flex overflow-x-auto gap-4 pb-2 lg:grid lg:grid-cols-6 lg:overflow-visible">
         {agentWorkflow.map((agent, i) => (
           <div key={agent.name} className="flex items-center gap-2 flex-shrink-0 lg:flex-shrink">
             <motion.div
               whileHover={{ y: -2, transition: { duration: 0.2 } }}
-              className="bg-[#12131f] border border-white/[0.06] rounded-[20px] p-4 min-w-[150px] lg:min-w-0 transition-all hover:border-[#6C7CFF]/30 hover:shadow-[0_0_20px_rgba(108,124,255,0.08)]"
+              className="bg-[#0d2d4a] border border-white/[0.06] rounded-[20px] p-4 min-w-[150px] lg:min-w-0 transition-all hover:border-[#635BFF]/30 hover:shadow-[0_0_20px_rgba(99,91,255,0.08)]"
             >
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: agent.color }} />
-                <span className="text-[13px] font-medium text-[#e8eaf0]">{agent.name}</span>
+                <span className="text-[13px] font-medium text-[#ffffff]">{agent.name}</span>
               </div>
               <div className="mb-2">{statusBadge(agent.status)}</div>
               {agent.output && (
-                <p className="text-[11px] text-[#5c5f73] leading-relaxed">{agent.output}</p>
+                <p className="text-[11px] text-[#6b7c93] leading-relaxed">{agent.output}</p>
               )}
             </motion.div>
             {i < agentWorkflow.length - 1 && (
-              <ArrowRight size={14} className="text-[#5c5f73] flex-shrink-0 hidden lg:block" />
+              <ArrowRight size={14} className="text-[#6b7c93] flex-shrink-0 hidden lg:block" />
             )}
           </div>
         ))}
@@ -307,8 +307,8 @@ function KnowledgeNav() {
   const displayChapters = fallbackChapters;
 
   return (
-    <div className="w-full lg:w-[220px] flex-shrink-0 min-w-0 bg-[#12131f] border border-white/[0.06] rounded-[24px] p-5">
-      <h3 className="text-[13px] font-semibold text-[#e8eaf0] mb-3">知识导航</h3>
+    <div className="w-full lg:w-[220px] flex-shrink-0 min-w-0 bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-5">
+      <h3 className="text-[13px] font-semibold text-[#ffffff] mb-3">知识导航</h3>
 
       {/* Course selector */}
       <div className="relative mb-4">
@@ -317,16 +317,16 @@ function KnowledgeNav() {
             <select
               value={selectedSubjectId}
               onChange={(e) => setSelectedSubjectId(e.target.value)}
-              className="w-full appearance-none bg-[#1a1b2e] border border-white/[0.06] rounded-[12px] px-3 py-2 text-[12px] text-[#e8eaf0] outline-none focus:border-[#6C7CFF]/30 transition-colors"
+              className="w-full appearance-none bg-[#1a3a5c] border border-white/[0.06] rounded-[12px] px-3 py-2 text-[12px] text-[#ffffff] outline-none focus:border-[#635BFF]/30 transition-colors"
             >
               {subjects.map((sub) => (
                 <option key={sub.id} value={sub.id}>{sub.name}</option>
               ))}
             </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5c5f73] pointer-events-none" />
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7c93] pointer-events-none" />
           </>
         ) : (
-          <div className="w-full bg-[#1a1b2e] border border-white/[0.06] rounded-[12px] px-3 py-2 text-[12px] text-[#5c5f73]">
+          <div className="w-full bg-[#1a3a5c] border border-white/[0.06] rounded-[12px] px-3 py-2 text-[12px] text-[#6b7c93]">
             添加科目后显示章节目录
           </div>
         )}
@@ -339,12 +339,12 @@ function KnowledgeNav() {
             <div key={ch.name}>
               <button
                 onClick={() => toggleChapter(idx)}
-                className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-[8px] text-[12px] text-[#8b8fa3] hover:bg-white/[0.04] transition-colors"
+                className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-[8px] text-[12px] text-[#a3b5cc] hover:bg-white/[0.04] transition-colors"
               >
                 {expandedChapters.has(idx) ? (
-                  <ChevronDown size={12} className="text-[#5c5f73] flex-shrink-0" />
+                  <ChevronDown size={12} className="text-[#6b7c93] flex-shrink-0" />
                 ) : (
-                  <ChevronRight size={12} className="text-[#5c5f73] flex-shrink-0" />
+                  <ChevronRight size={12} className="text-[#6b7c93] flex-shrink-0" />
                 )}
                 <span className="truncate">{ch.name}</span>
               </button>
@@ -363,8 +363,8 @@ function KnowledgeNav() {
                         onClick={() => setActiveItem(child)}
                         className={`w-full text-left pl-7 pr-2 py-1.5 text-[11px] rounded-[8px] transition-colors ${
                           activeItem === child
-                            ? 'border-l-2 border-[#6C7CFF] bg-[#6C7CFF]/5 text-[#e8eaf0]'
-                            : 'text-[#5c5f73] hover:bg-white/[0.04]'
+                            ? 'border-l-2 border-[#635BFF] bg-[#635BFF]/5 text-[#ffffff]'
+                            : 'text-[#6b7c93] hover:bg-white/[0.04]'
                         }`}
                       >
                         {child}
@@ -377,7 +377,7 @@ function KnowledgeNav() {
           ))}
         </div>
       ) : (
-        <div className="mb-4 py-6 text-center text-[12px] text-[#5c5f73]">
+        <div className="mb-4 py-6 text-center text-[12px] text-[#6b7c93]">
           添加科目后显示章节目录
         </div>
       )}
@@ -390,8 +390,8 @@ function KnowledgeNav() {
             onClick={() => setActiveTag(activeTag === tag ? null : tag)}
             className={`text-[10px] px-2.5 py-1 rounded-full transition-colors ${
               activeTag === tag
-                ? 'bg-[#6C7CFF]/10 text-[#6C7CFF] border border-[#6C7CFF]/30'
-                : 'bg-white/[0.04] text-[#5c5f73] border border-white/[0.06] hover:text-[#8b8fa3]'
+                ? 'bg-[#635BFF]/10 text-[#635BFF] border border-[#635BFF]/30'
+                : 'bg-white/[0.04] text-[#6b7c93] border border-white/[0.06] hover:text-[#a3b5cc]'
             }`}
           >
             {tag}
@@ -415,8 +415,8 @@ function KnowledgeGraph() {
   };
 
   return (
-    <div className="w-full lg:flex-1 min-w-0 bg-[#12131f] border border-white/[0.06] rounded-[24px] p-5 relative overflow-hidden">
-      <h3 className="text-[13px] font-semibold text-[#e8eaf0] mb-3">知识图谱</h3>
+    <div className="w-full lg:flex-1 min-w-0 bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-5 relative overflow-hidden">
+      <h3 className="text-[13px] font-semibold text-[#ffffff] mb-3">知识图谱</h3>
       <div className="relative w-full" style={{ paddingBottom: '80%' }}>
         {/* SVG Edges */}
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -428,7 +428,7 @@ function KnowledgeGraph() {
               <line
                 key={`${from}-${to}`}
                 x1={f.x} y1={f.y} x2={t.x} y2={t.y}
-                stroke={isActive ? 'rgba(108,124,255,0.4)' : 'rgba(255,255,255,0.06)'}
+                stroke={isActive ? 'rgba(99,91,255,0.4)' : 'rgba(255,255,255,0.06)'}
                 strokeWidth={isActive ? 0.5 : 0.3}
                 className="transition-all duration-300"
               />
@@ -445,7 +445,7 @@ function KnowledgeGraph() {
             whileTap={{ scale: 0.95 }}
             className={`absolute rounded-full flex items-center justify-center font-medium transition-all duration-300 cursor-pointer ${nodeSize(node.size)} ${
               selectedNode === node.id
-                ? 'ring-2 ring-offset-1 ring-offset-[#12131f]'
+                ? 'ring-2 ring-offset-1 ring-offset-[#0d2d4a]'
                 : ''
             }`}
             style={{
@@ -499,15 +499,15 @@ function SmartPanel() {
         const cd = getCountdown(s.examDate);
         const dateStr = new Date(s.examDate + 'T00:00:00');
         const monthDay = `${dateStr.getMonth() + 1}月${dateStr.getDate()}日`;
-        let urgencyColor = 'text-[#5c5f73]';
+        let urgencyColor = 'text-[#6b7c93]';
         if (cd.passed) {
-          urgencyColor = 'text-[#5c5f73]';
+          urgencyColor = 'text-[#6b7c93]';
         } else if (cd.days <= 3) {
-          urgencyColor = 'text-[#f87171]';
+          urgencyColor = 'text-[#FF3D00]';
         } else if (cd.days <= 7) {
-          urgencyColor = 'text-[#fbbf24]';
+          urgencyColor = 'text-[#FFB800]';
         } else {
-          urgencyColor = 'text-[#34d399]';
+          urgencyColor = 'text-[#00D924]';
         }
         return { name: s.name, date: monthDay, urgencyColor, days: cd.days };
       });
@@ -516,25 +516,25 @@ function SmartPanel() {
   return (
     <div className="w-full lg:w-[280px] flex-shrink-0 min-w-0 space-y-4">
       {/* AI 复习建议 */}
-      <div className="bg-[#12131f] border border-white/[0.06] rounded-[24px] p-5">
+      <div className="bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-5">
         <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-[10px] flex items-center justify-center bg-[#6C7CFF]/10">
-            <Sparkles size={14} className="text-[#6C7CFF]" />
+          <div className="w-7 h-7 rounded-[10px] flex items-center justify-center bg-[#635BFF]/10">
+            <Sparkles size={14} className="text-[#635BFF]" />
           </div>
-          <h3 className="text-[13px] font-semibold text-[#e8eaf0]">AI 复习建议</h3>
+          <h3 className="text-[13px] font-semibold text-[#ffffff]">AI 复习建议</h3>
         </div>
-        <p className="text-[12px] text-[#8b8fa3] leading-relaxed">
-          根据你的错题分布，建议今天优先复习<strong className="text-[#fbbf24]">微分方程</strong>章节，该章节掌握度仅 42%，且与上次错题高度相关。
+        <p className="text-[12px] text-[#a3b5cc] leading-relaxed">
+          根据你的错题分布，建议今天优先复习<strong className="text-[#FFB800]">微分方程</strong>章节，该章节掌握度仅 42%，且与上次错题高度相关。
         </p>
       </div>
 
       {/* 今日待办 */}
-      <div className="bg-[#12131f] border border-white/[0.06] rounded-[24px] p-5">
+      <div className="bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-5">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-7 h-7 rounded-[10px] flex items-center justify-center bg-[#4FD1C5]/10">
             <ListChecks size={14} className="text-[#4FD1C5]" />
           </div>
-          <h3 className="text-[13px] font-semibold text-[#e8eaf0]">今日待办</h3>
+          <h3 className="text-[13px] font-semibold text-[#ffffff]">今日待办</h3>
         </div>
         <div className="space-y-2">
           {todoItems.map((todo) => (
@@ -546,14 +546,14 @@ function SmartPanel() {
                 onClick={() => toggleTodo(todo.id)}
                 className={`w-4 h-4 rounded-[4px] flex items-center justify-center flex-shrink-0 transition-all ${
                   todo.done
-                    ? 'bg-[#34d399] border-[#34d399]'
-                    : 'border border-white/[0.12] group-hover:border-[#6C7CFF]/40'
+                    ? 'bg-[#00D924] border-[#00D924]'
+                    : 'border border-white/[0.12] group-hover:border-[#635BFF]/40'
                 }`}
               >
                 {todo.done && <CheckCircle2 size={10} className="text-white" />}
               </button>
               <span className={`text-[12px] transition-colors ${
-                todo.done ? 'text-[#5c5f73] line-through' : 'text-[#8b8fa3] group-hover:text-[#e8eaf0]'
+                todo.done ? 'text-[#6b7c93] line-through' : 'text-[#a3b5cc] group-hover:text-[#ffffff]'
               }`}>
                 {todo.text}
               </span>
@@ -563,34 +563,34 @@ function SmartPanel() {
       </div>
 
       {/* 考试提醒 */}
-      <div className="bg-[#12131f] border border-white/[0.06] rounded-[24px] p-5">
+      <div className="bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-5">
         <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-[10px] flex items-center justify-center bg-[#f87171]/10">
-            <Bell size={14} className="text-[#f87171]" />
+          <div className="w-7 h-7 rounded-[10px] flex items-center justify-center bg-[#FF3D00]/10">
+            <Bell size={14} className="text-[#FF3D00]" />
           </div>
-          <h3 className="text-[13px] font-semibold text-[#e8eaf0]">考试提醒</h3>
+          <h3 className="text-[13px] font-semibold text-[#ffffff]">考试提醒</h3>
         </div>
         {examReminders.length > 0 ? (
           <div className="space-y-2">
             {examReminders.map((r) => (
               <div key={r.name} className="flex items-center justify-between">
-                <span className="text-[12px] text-[#8b8fa3]">{r.name}</span>
+                <span className="text-[12px] text-[#a3b5cc]">{r.name}</span>
                 <span className={`text-[11px] font-medium ${r.urgencyColor}`}>{r.date}</span>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-[12px] text-[#5c5f73]">暂无考试安排</p>
+          <p className="text-[12px] text-[#6b7c93]">暂无考试安排</p>
         )}
       </div>
 
       {/* 快速提问 */}
-      <div className="bg-[#12131f] border border-white/[0.06] rounded-[24px] p-5">
+      <div className="bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-5">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-7 h-7 rounded-[10px] flex items-center justify-center bg-[#7C5CFF]/10">
             <HelpCircle size={14} className="text-[#7C5CFF]" />
           </div>
-          <h3 className="text-[13px] font-semibold text-[#e8eaf0]">快速提问</h3>
+          <h3 className="text-[13px] font-semibold text-[#ffffff]">快速提问</h3>
         </div>
         <div className="flex items-center gap-2">
           <input
@@ -598,10 +598,10 @@ function SmartPanel() {
             value={quickQuestion}
             onChange={(e) => setQuickQuestion(e.target.value)}
             placeholder="输入你的问题..."
-            className="flex-1 bg-[#1a1b2e] border border-white/[0.06] rounded-[12px] px-3 py-2 text-[12px] text-[#e8eaf0] placeholder-[#5c5f73] outline-none focus:border-[#6C7CFF]/30 transition-colors"
+            className="flex-1 bg-[#1a3a5c] border border-white/[0.06] rounded-[12px] px-3 py-2 text-[12px] text-[#ffffff] placeholder-[#6b7c93] outline-none focus:border-[#635BFF]/30 transition-colors"
           />
-          <button className="w-8 h-8 rounded-[10px] bg-[#6C7CFF]/10 flex items-center justify-center hover:bg-[#6C7CFF]/20 transition-colors">
-            <Send size={14} className="text-[#6C7CFF]" />
+          <button className="w-8 h-8 rounded-[10px] bg-[#635BFF]/10 flex items-center justify-center hover:bg-[#635BFF]/20 transition-colors">
+            <Send size={14} className="text-[#635BFF]" />
           </button>
         </div>
       </div>
@@ -631,12 +631,12 @@ function QuizPractice() {
       ? otherCards.slice(0, 3).map(c => c.back)
       : [
           ...otherCards.map(c => c.back),
-          ...Array(3 - otherCards.length).fill('').map((_, i) => `选项 ${String.fromCharCode(68 - i)}`),
+          ...Array(3 - otherCards.length).fill('').map(() => `选项 ${String.fromCharCode(68)}`),
         ];
 
     // Shuffle options with correct answer
     const allOptions = [card.back, ...wrongOptions.slice(0, 3)];
-    const shuffled = allOptions.map((opt, i) => ({ opt, sort: Math.random() }));
+    const shuffled = allOptions.map((opt) => ({ opt, sort: Math.random() }));
     shuffled.sort((a, b) => a.sort - b.sort);
 
     const correctIndex = shuffled.findIndex(s => s.opt === card.back);
@@ -683,13 +683,13 @@ function QuizPractice() {
         viewport={{ once: true, margin: '-40px' }}
         className="mt-8"
       >
-        <h2 className="text-[16px] font-semibold text-[#e8eaf0] mb-4">智能出题练习</h2>
-        <div className="bg-[#12131f] border border-white/[0.06] rounded-[24px] p-6 flex flex-col items-center justify-center py-12">
-          <Brain size={40} className="text-[#5c5f73] mb-3" />
-          <p className="text-[14px] text-[#5c5f73] mb-4">添加闪卡后开始练习</p>
+        <h2 className="text-[16px] font-semibold text-[#ffffff] mb-4">智能出题练习</h2>
+        <div className="bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-6 flex flex-col items-center justify-center py-12">
+          <Brain size={40} className="text-[#6b7c93] mb-3" />
+          <p className="text-[14px] text-[#6b7c93] mb-4">添加闪卡后开始练习</p>
           <button
             onClick={() => navigate('/ai-engine')}
-            className="text-[13px] px-4 py-2 rounded-[12px] bg-[#6C7CFF]/10 text-[#6C7CFF] border border-[#6C7CFF]/20 hover:bg-[#6C7CFF]/20 transition-colors"
+            className="text-[13px] px-4 py-2 rounded-[12px] bg-[#635BFF]/10 text-[#635BFF] border border-[#635BFF]/20 hover:bg-[#635BFF]/20 transition-colors"
           >
             前往 AI 冲刺核
           </button>
@@ -706,25 +706,25 @@ function QuizPractice() {
       viewport={{ once: true, margin: '-40px' }}
       className="mt-8"
     >
-      <h2 className="text-[16px] font-semibold text-[#e8eaf0] mb-4">智能出题练习</h2>
-      <div className="bg-[#12131f] border border-white/[0.06] rounded-[24px] p-6">
+      <h2 className="text-[16px] font-semibold text-[#ffffff] mb-4">智能出题练习</h2>
+      <div className="bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-[#6C7CFF]/10 text-[#6C7CFF]">{quizState.subjectName}</span>
+            <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-[#635BFF]/10 text-[#635BFF]">{quizState.subjectName}</span>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsStarred(!isStarred)}
               className="p-1.5 rounded-[8px] hover:bg-white/[0.04] transition-colors"
             >
-              <Star size={16} className={isStarred ? 'text-[#fbbf24] fill-[#fbbf24]' : 'text-[#5c5f73]'} />
+              <Star size={16} className={isStarred ? 'text-[#FFB800] fill-[#FFB800]' : 'text-[#6b7c93]'} />
             </button>
             <button
               onClick={() => setIsBookmarked(!isBookmarked)}
               className="p-1.5 rounded-[8px] hover:bg-white/[0.04] transition-colors"
             >
-              <Bookmark size={16} className={isBookmarked ? 'text-[#6C7CFF] fill-[#6C7CFF]' : 'text-[#5c5f73]'} />
+              <Bookmark size={16} className={isBookmarked ? 'text-[#635BFF] fill-[#635BFF]' : 'text-[#6b7c93]'} />
             </button>
           </div>
         </div>
@@ -732,25 +732,25 @@ function QuizPractice() {
         {/* Progress */}
         <div className="flex items-center gap-3 mb-4">
           <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
-            <div className="h-full rounded-full bg-gradient-to-r from-[#6C7CFF] to-[#7C5CFF]" style={{ width: `${((quizIndex % flashCards.length) + 1) / flashCards.length * 100}%` }} />
+            <div className="h-full rounded-full bg-gradient-to-r from-[#635BFF] to-[#7C5CFF]" style={{ width: `${((quizIndex % flashCards.length) + 1) / flashCards.length * 100}%` }} />
           </div>
-          <span className="text-[11px] text-[#5c5f73] tabular-nums">{(quizIndex % flashCards.length) + 1}/{flashCards.length}</span>
+          <span className="text-[11px] text-[#6b7c93] tabular-nums">{(quizIndex % flashCards.length) + 1}/{flashCards.length}</span>
         </div>
 
         {/* Question */}
-        <p className="text-[14px] text-[#e8eaf0] leading-relaxed mb-5">{quizState.question}</p>
+        <p className="text-[14px] text-[#ffffff] leading-relaxed mb-5">{quizState.question}</p>
 
         {/* Options */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           {quizState.options.map((opt, idx) => {
-            let optClass = 'border border-white/[0.08] rounded-[12px] p-3 text-[13px] text-[#8b8fa3] cursor-pointer transition-all hover:border-[#6C7CFF]/30 hover:text-[#e8eaf0]';
+            let optClass = 'border border-white/[0.08] rounded-[12px] p-3 text-[13px] text-[#a3b5cc] cursor-pointer transition-all hover:border-[#635BFF]/30 hover:text-[#ffffff]';
             if (isAnswered) {
               if (idx === quizState.correctIndex) {
-                optClass = 'border border-[#34d399] bg-[#34d399]/10 rounded-[12px] p-3 text-[13px] text-[#34d399] cursor-default';
+                optClass = 'border border-[#00D924] bg-[#00D924]/10 rounded-[12px] p-3 text-[13px] text-[#00D924] cursor-default';
               } else if (idx === selectedOption && !isCorrect) {
-                optClass = 'border border-[#f87171] bg-[#f87171]/10 rounded-[12px] p-3 text-[13px] text-[#f87171] cursor-default';
+                optClass = 'border border-[#FF3D00] bg-[#FF3D00]/10 rounded-[12px] p-3 text-[13px] text-[#FF3D00] cursor-default';
               } else {
-                optClass = 'border border-white/[0.04] rounded-[12px] p-3 text-[13px] text-[#5c5f73] cursor-default opacity-50';
+                optClass = 'border border-white/[0.04] rounded-[12px] p-3 text-[13px] text-[#6b7c93] cursor-default opacity-50';
               }
             }
             return (
@@ -776,17 +776,17 @@ function QuizPractice() {
               transition={{ duration: 0.3 }}
               className="overflow-hidden"
             >
-              <div className="bg-[#1a1b2e] border border-white/[0.06] rounded-[16px] p-4 mt-2">
+              <div className="bg-[#1a3a5c] border border-white/[0.06] rounded-[16px] p-4 mt-2">
                 <div className="flex items-center gap-2 mb-2">
-                  <Lightbulb size={14} className="text-[#fbbf24]" />
-                  <span className="text-[12px] font-semibold text-[#e8eaf0]">AI 解析</span>
+                  <Lightbulb size={14} className="text-[#FFB800]" />
+                  <span className="text-[12px] font-semibold text-[#ffffff]">AI 解析</span>
                   {isCorrect ? (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#34d399]/10 text-[#34d399]">回答正确</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#00D924]/10 text-[#00D924]">回答正确</span>
                   ) : (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#f87171]/10 text-[#f87171]">回答错误</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#FF3D00]/10 text-[#FF3D00]">回答错误</span>
                   )}
                 </div>
-                <p className="text-[12px] text-[#8b8fa3] leading-relaxed">{quizState.explanation}</p>
+                <p className="text-[12px] text-[#a3b5cc] leading-relaxed">{quizState.explanation}</p>
               </div>
             </motion.div>
           )}
@@ -800,18 +800,18 @@ function QuizPractice() {
             className="flex items-center justify-between mt-4 pt-4 border-t border-white/[0.06]"
           >
             <div className="flex items-center gap-4">
-              <button className="text-[12px] text-[#6C7CFF] hover:text-[#7C5CFF] transition-colors flex items-center gap-1">
+              <button className="text-[12px] text-[#635BFF] hover:text-[#7C5CFF] transition-colors flex items-center gap-1">
                 <Sparkles size={12} />
                 逐步提示
               </button>
-              <button className="text-[12px] text-[#4FD1C5] hover:text-[#34d399] transition-colors flex items-center gap-1">
+              <button className="text-[12px] text-[#4FD1C5] hover:text-[#00D924] transition-colors flex items-center gap-1">
                 <RotateCcw size={12} />
                 生成同类题
               </button>
             </div>
             <button
               onClick={handleReset}
-              className="text-[12px] text-[#8b8fa3] hover:text-[#e8eaf0] transition-colors flex items-center gap-1"
+              className="text-[12px] text-[#a3b5cc] hover:text-[#ffffff] transition-colors flex items-center gap-1"
             >
               <RotateCcw size={12} />
               下一题
@@ -867,14 +867,14 @@ function ReviewTimeline() {
       className="mt-8"
     >
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-[16px] font-semibold text-[#e8eaf0]">复习计划时间线</h2>
-        <button className="text-[12px] text-[#6C7CFF] hover:text-[#7C5CFF] transition-colors flex items-center gap-1 px-3 py-1.5 rounded-[10px] border border-[#6C7CFF]/20 hover:border-[#6C7CFF]/40">
+        <h2 className="text-[16px] font-semibold text-[#ffffff]">复习计划时间线</h2>
+        <button className="text-[12px] text-[#635BFF] hover:text-[#7C5CFF] transition-colors flex items-center gap-1 px-3 py-1.5 rounded-[10px] border border-[#635BFF]/20 hover:border-[#635BFF]/40">
           <Sparkles size={12} />
           智能调整计划
         </button>
       </div>
 
-      <div className="bg-[#12131f] border border-white/[0.06] rounded-[24px] p-6 overflow-x-auto">
+      <div className="bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-6 overflow-x-auto">
         {timelineData.length > 0 ? (
           <div className="relative">
             {timelineData.map((item, idx) => {
@@ -885,24 +885,24 @@ function ReviewTimeline() {
                   <div className="flex flex-col items-center">
                     <div className="relative">
                       {item.status === 'completed' && (
-                        <div className="w-3 h-3 rounded-full bg-[#34d399] flex items-center justify-center">
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#12131f]" />
+                        <div className="w-3 h-3 rounded-full bg-[#00D924] flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#0d2d4a]" />
                         </div>
                       )}
                       {item.status === 'today' && (
                         <motion.div
-                          className="w-3.5 h-3.5 rounded-full bg-gradient-to-br from-[#6C7CFF] to-[#7C5CFF]"
-                          animate={{ boxShadow: ['0 0 0 0 rgba(108,124,255,0.4)', '0 0 0 6px rgba(108,124,255,0)', '0 0 0 0 rgba(108,124,255,0.4)'] }}
+                          className="w-3.5 h-3.5 rounded-full bg-gradient-to-br from-[#635BFF] to-[#7C5CFF]"
+                          animate={{ boxShadow: ['0 0 0 0 rgba(99,91,255,0.4)', '0 0 0 6px rgba(99,91,255,0)', '0 0 0 0 rgba(99,91,255,0.4)'] }}
                           transition={{ duration: 2, repeat: Infinity }}
                         />
                       )}
                       {item.status === 'future' && (
-                        <div className="w-3 h-3 rounded-full bg-[#5c5f73]/40" />
+                        <div className="w-3 h-3 rounded-full bg-[#6b7c93]/40" />
                       )}
                     </div>
                     {!isLast && (
                       <div className={`w-px flex-1 min-h-[40px] ${
-                        item.status === 'completed' ? 'bg-[#34d399]/30' : 'bg-white/[0.06]'
+                        item.status === 'completed' ? 'bg-[#00D924]/30' : 'bg-white/[0.06]'
                       }`} />
                     )}
                   </div>
@@ -911,24 +911,24 @@ function ReviewTimeline() {
                   <div className={`pb-6 ${isLast ? 'pb-0' : ''}`}>
                     <div className="flex items-center gap-3 mb-1">
                       <span className={`text-[11px] font-medium tabular-nums ${
-                        item.status === 'completed' ? 'text-[#34d399]' :
-                        item.status === 'today' ? 'text-[#6C7CFF]' :
-                        'text-[#5c5f73]'
+                        item.status === 'completed' ? 'text-[#00D924]' :
+                        item.status === 'today' ? 'text-[#635BFF]' :
+                        'text-[#6b7c93]'
                       }`}>
                         {item.date}
                       </span>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                        item.status === 'completed' ? 'bg-[#34d399]/10 text-[#34d399]' :
-                        item.status === 'today' ? 'bg-[#6C7CFF]/10 text-[#6C7CFF]' :
-                        'bg-white/[0.04] text-[#5c5f73]'
+                        item.status === 'completed' ? 'bg-[#00D924]/10 text-[#00D924]' :
+                        item.status === 'today' ? 'bg-[#635BFF]/10 text-[#635BFF]' :
+                        'bg-white/[0.04] text-[#6b7c93]'
                       }`}>
                         {item.duration}
                       </span>
                     </div>
                     <p className={`text-[13px] ${
-                      item.status === 'completed' ? 'text-[#8b8fa3]' :
-                      item.status === 'today' ? 'text-[#e8eaf0] font-medium' :
-                      'text-[#5c5f73]'
+                      item.status === 'completed' ? 'text-[#a3b5cc]' :
+                      item.status === 'today' ? 'text-[#ffffff] font-medium' :
+                      'text-[#6b7c93]'
                     }`}>
                       {item.task}
                     </p>
@@ -939,8 +939,8 @@ function ReviewTimeline() {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-8">
-            <Clock size={32} className="text-[#5c5f73] mb-3" />
-            <p className="text-[13px] text-[#5c5f73]">添加科目后生成复习计划</p>
+            <Clock size={32} className="text-[#6b7c93] mb-3" />
+            <p className="text-[13px] text-[#6b7c93]">添加科目后生成复习计划</p>
           </div>
         )}
       </div>
@@ -954,8 +954,8 @@ function FloatingAssistant() {
   const navigate = useNavigate();
 
   const commands = [
-    { icon: FileText, label: '帮我出题', color: '#6C7CFF', action: () => navigate('/ai-engine?agent=examiner') },
-    { icon: AlertCircle, label: '分析错题', color: '#f87171', action: () => navigate('/ai-engine?agent=analyst') },
+    { icon: FileText, label: '帮我出题', color: '#635BFF', action: () => navigate('/ai-engine?agent=examiner') },
+    { icon: AlertCircle, label: '分析错题', color: '#FF3D00', action: () => navigate('/ai-engine?agent=analyst') },
     { icon: BookOpen, label: '整理重点', color: '#4FD1C5', action: () => navigate('/ai-engine?agent=extractor') },
   ];
 
@@ -968,12 +968,12 @@ function FloatingAssistant() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.9 }}
             transition={{ duration: 0.2 }}
-            className="absolute bottom-16 right-0 bg-[#12131f] border border-white/[0.06] rounded-[20px] p-4 w-[200px] shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
+            className="absolute bottom-16 right-0 bg-[#0d2d4a] border border-white/[0.06] rounded-[20px] p-4 w-[200px] shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
           >
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[12px] font-semibold text-[#e8eaf0]">Agent 助手</span>
+              <span className="text-[12px] font-semibold text-[#ffffff]">Agent 助手</span>
               <button onClick={() => setIsOpen(false)} className="p-1 rounded-[6px] hover:bg-white/[0.04]">
-                <X size={12} className="text-[#5c5f73]" />
+                <X size={12} className="text-[#6b7c93]" />
               </button>
             </div>
             <div className="space-y-1.5">
@@ -981,7 +981,7 @@ function FloatingAssistant() {
                 <button
                   key={cmd.label}
                   onClick={() => { cmd.action(); setIsOpen(false); }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[12px] text-[12px] text-[#8b8fa3] hover:bg-white/[0.04] hover:text-[#e8eaf0] transition-colors"
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[12px] text-[12px] text-[#a3b5cc] hover:bg-white/[0.04] hover:text-[#ffffff] transition-colors"
                 >
                   <cmd.icon size={14} style={{ color: cmd.color }} />
                   {cmd.label}
@@ -996,7 +996,7 @@ function FloatingAssistant() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-12 h-12 rounded-full bg-gradient-to-br from-[#6C7CFF] to-[#7C5CFF] flex items-center justify-center shadow-[0_4px_16px_rgba(108,124,255,0.3)]"
+        className="w-12 h-12 rounded-full bg-gradient-to-br from-[#635BFF] to-[#7C5CFF] flex items-center justify-center shadow-[0_4px_16px_rgba(99,91,255,0.3)]"
       >
         {isOpen ? (
           <X size={20} className="text-white" />

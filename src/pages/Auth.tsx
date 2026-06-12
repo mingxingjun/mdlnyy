@@ -24,12 +24,12 @@ interface FormErrors {
 
 /* ─── Agent Nodes Data ─── */
 const agentNodes = [
-  { id: 1, x: 30, y: 25, color: '#6C7CFF', size: 8 },
+  { id: 1, x: 30, y: 25, color: '#635BFF', size: 8 },
   { id: 2, x: 65, y: 18, color: '#7C5CFF', size: 6 },
   { id: 3, x: 78, y: 50, color: '#4FD1C5', size: 7 },
-  { id: 4, x: 55, y: 72, color: '#34d399', size: 6 },
-  { id: 5, x: 22, y: 65, color: '#fbbf24', size: 7 },
-  { id: 6, x: 48, y: 45, color: '#6C7CFF', size: 5 },
+  { id: 4, x: 55, y: 72, color: '#00D924', size: 6 },
+  { id: 5, x: 22, y: 65, color: '#FFB800', size: 7 },
+  { id: 6, x: 48, y: 45, color: '#635BFF', size: 5 },
 ];
 
 const agentLines = [
@@ -146,13 +146,13 @@ function InputField({
   return (
     <div>
       <div className="relative">
-        <Icon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#5c5f73]" />
+        <Icon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#6b7c93]" />
         <input
           type={type}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full bg-[#1a1b2e] border border-white/[0.06] rounded-[12px] px-4 py-3 pl-11 text-[#e8eaf0] placeholder-[#5c5f73] text-sm outline-none transition-all duration-200 focus:border-[#6C7CFF] focus:shadow-[0_0_0_3px_rgba(108,124,255,0.15)]"
+          className="w-full bg-[#1a3a5c] border border-white/[0.06] rounded-[12px] px-4 py-3 pl-11 text-[#ffffff] placeholder-[#6b7c93] text-sm outline-none transition-all duration-200 focus:border-[#635BFF] focus:shadow-[0_0_0_3px_rgba(99,91,255,0.15)]"
         />
         {rightElement && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">{rightElement}</div>
@@ -165,7 +165,7 @@ function InputField({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.2 }}
-            className="text-[#f87171] text-xs mt-1.5 ml-1"
+            className="text-[#FF3D00] text-xs mt-1.5 ml-1"
           >
             {error}
           </motion.p>
@@ -180,7 +180,7 @@ function SocialButton({ icon: Icon, label }: { icon: React.ComponentType<{ size?
   return (
     <button
       type="button"
-      className="flex-1 flex items-center justify-center gap-2 border border-white/[0.08] rounded-[12px] py-2.5 text-[#8b8fa3] text-sm hover:border-white/[0.15] hover:text-[#e8eaf0] transition-all duration-200"
+      className="flex-1 flex items-center justify-center gap-2 border border-white/[0.08] rounded-[12px] py-2.5 text-[#a3b5cc] text-sm hover:border-white/[0.15] hover:text-[#ffffff] transition-all duration-200"
     >
       <Icon size={16} />
       <span>{label}</span>
@@ -233,13 +233,13 @@ export default function Auth() {
   return (
     <div className="min-h-screen flex font-sans">
       {/* ═══════════════════════ Left Panel ═══════════════════════ */}
-      <div className="hidden lg:flex w-[40%] bg-[#0a0b14] relative flex-col items-center justify-center p-12 overflow-hidden">
+      <div className="hidden lg:flex w-[40%] bg-[#0A2540] relative flex-col items-center justify-center p-12 overflow-hidden">
         {/* Background radial gradient */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              'radial-gradient(ellipse at 20% 80%, rgba(108,124,255,0.12) 0%, transparent 50%), radial-gradient(ellipse at 80% 20%, rgba(124,92,255,0.08) 0%, transparent 50%)',
+              'radial-gradient(ellipse at 20% 80%, rgba(99,91,255,0.12) 0%, transparent 50%), radial-gradient(ellipse at 80% 20%, rgba(124,92,255,0.08) 0%, transparent 50%)',
           }}
         />
 
@@ -250,7 +250,7 @@ export default function Auth() {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
-            className="w-14 h-14 rounded-[10px] bg-gradient-to-br from-[#6C7CFF] to-[#7C5CFF] flex items-center justify-center shadow-[0_0_24px_rgba(108,124,255,0.3)] mb-6"
+            className="w-14 h-14 rounded-[10px] bg-gradient-to-br from-[#635BFF] to-[#7C5CFF] flex items-center justify-center shadow-[0_0_24px_rgba(99,91,255,0.3)] mb-6"
           >
             <span className="text-white text-[18px] font-bold tracking-tight">UF</span>
           </motion.div>
@@ -260,7 +260,7 @@ export default function Auth() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-[28px] font-bold text-[#e8eaf0] mb-3"
+            className="text-[28px] font-bold text-[#ffffff] mb-3"
           >
             UniFlow
           </motion.h1>
@@ -270,7 +270,7 @@ export default function Auth() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-[18px] text-[#8b8fa3] leading-relaxed"
+            className="text-[18px] text-[#a3b5cc] leading-relaxed"
           >
             你的期末复习，<br />被多 Agent 接管了。
           </motion.p>
@@ -288,19 +288,19 @@ export default function Auth() {
       </div>
 
       {/* ═══════════════════════ Right Panel ═══════════════════════ */}
-      <div className="flex-1 bg-[#0e0f1a] flex items-center justify-center p-6 sm:p-8">
+      <div className="flex-1 bg-[#0A2540] flex items-center justify-center p-6 sm:p-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
-          className="bg-[#12131f]/80 backdrop-blur-xl border border-white/[0.06] rounded-[24px] p-6 sm:p-8 w-full max-w-[420px] mx-4 sm:mx-auto"
+          className="bg-[#0d2d4a]/80 backdrop-blur-xl border border-white/[0.06] rounded-[24px] p-6 sm:p-8 w-full max-w-[420px] mx-4 sm:mx-auto"
         >
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center justify-center gap-2.5 mb-8">
-            <div className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-[#6C7CFF] to-[#7C5CFF] flex items-center justify-center shadow-[0_0_16px_rgba(108,124,255,0.3)]">
+            <div className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-[#635BFF] to-[#7C5CFF] flex items-center justify-center shadow-[0_0_16px_rgba(99,91,255,0.3)]">
               <span className="text-white text-[12px] font-bold tracking-tight">UF</span>
             </div>
-            <span className="text-[18px] font-bold text-[#e8eaf0]">UniFlow</span>
+            <span className="text-[18px] font-bold text-[#ffffff]">UniFlow</span>
           </div>
 
           {/* Tab switcher */}
@@ -310,7 +310,7 @@ export default function Auth() {
                 key={tab}
                 onClick={() => switchMode(tab)}
                 className="relative pb-2.5 text-[16px] font-medium transition-colors duration-200"
-                style={{ color: mode === tab ? '#e8eaf0' : '#5c5f73' }}
+                style={{ color: mode === tab ? '#ffffff' : '#6b7c93' }}
               >
                 {tab === 'login' ? '登录' : '注册'}
                 {mode === tab && (
@@ -318,7 +318,7 @@ export default function Auth() {
                     layoutId="activeTab"
                     className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full"
                     style={{
-                      background: 'linear-gradient(to right, #6C7CFF, #7C5CFF)',
+                      background: 'linear-gradient(to right, #635BFF, #7C5CFF)',
                     }}
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   />
@@ -358,7 +358,7 @@ export default function Auth() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="text-[#5c5f73] hover:text-[#8b8fa3] transition-colors"
+                      className="text-[#6b7c93] hover:text-[#a3b5cc] transition-colors"
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -369,7 +369,7 @@ export default function Auth() {
                 <div className="flex justify-end">
                   <button
                     type="button"
-                    className="text-[#6C7CFF] text-sm hover:text-[#7C5CFF] transition-colors"
+                    className="text-[#635BFF] text-sm hover:text-[#7C5CFF] transition-colors"
                   >
                     忘记密码?
                   </button>
@@ -378,7 +378,7 @@ export default function Auth() {
                 {/* Submit */}
                 <button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-[#6C7CFF] to-[#7C5CFF] text-white rounded-[12px] py-3 font-medium shadow-[0_4px_16px_rgba(108,124,255,0.25)] hover:shadow-[0_4px_24px_rgba(108,124,255,0.35)] transition-shadow duration-300 text-sm"
+                  className="w-full bg-gradient-to-r from-[#635BFF] to-[#7C5CFF] text-white rounded-[12px] py-3 font-medium shadow-[0_4px_16px_rgba(99,91,255,0.25)] hover:shadow-[0_4px_24px_rgba(99,91,255,0.35)] transition-shadow duration-300 text-sm"
                 >
                   登录
                 </button>
@@ -386,7 +386,7 @@ export default function Auth() {
                 {/* Divider */}
                 <div className="flex items-center gap-3 my-2">
                   <div className="flex-1 h-[1px] bg-white/[0.06]" />
-                  <span className="text-[#5c5f73] text-xs">或</span>
+                  <span className="text-[#6b7c93] text-xs">或</span>
                   <div className="flex-1 h-[1px] bg-white/[0.06]" />
                 </div>
 
@@ -455,7 +455,7 @@ export default function Auth() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="text-[#5c5f73] hover:text-[#8b8fa3] transition-colors"
+                      className="text-[#6b7c93] hover:text-[#a3b5cc] transition-colors"
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -473,18 +473,18 @@ export default function Auth() {
                 {/* Submit */}
                 <button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-[#6C7CFF] to-[#7C5CFF] text-white rounded-[12px] py-3 font-medium shadow-[0_4px_16px_rgba(108,124,255,0.25)] hover:shadow-[0_4px_24px_rgba(108,124,255,0.35)] transition-shadow duration-300 text-sm"
+                  className="w-full bg-gradient-to-r from-[#635BFF] to-[#7C5CFF] text-white rounded-[12px] py-3 font-medium shadow-[0_4px_16px_rgba(99,91,255,0.25)] hover:shadow-[0_4px_24px_rgba(99,91,255,0.35)] transition-shadow duration-300 text-sm"
                 >
                   创建账户
                 </button>
 
                 {/* Switch to login */}
-                <p className="text-center text-sm text-[#5c5f73]">
+                <p className="text-center text-sm text-[#6b7c93]">
                   已有账户？{' '}
                   <button
                     type="button"
                     onClick={() => switchMode('login')}
-                    className="text-[#6C7CFF] hover:text-[#7C5CFF] transition-colors"
+                    className="text-[#635BFF] hover:text-[#7C5CFF] transition-colors"
                   >
                     登录
                   </button>

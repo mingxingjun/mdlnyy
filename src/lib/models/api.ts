@@ -13,7 +13,9 @@ export function loadModelSettings(): ModelSettings {
         providers: { ...DEFAULT_PROVIDERS, ...parsed.providers },
       };
     }
-  } catch {}
+  } catch {
+    // ignore parse errors
+  }
   return {
     activeProvider: 'deepseek',
     providers: { ...DEFAULT_PROVIDERS },
