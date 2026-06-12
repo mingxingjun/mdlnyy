@@ -147,7 +147,10 @@ export default function Landing() {
 
           {/* Right: Actions (desktop) */}
           <div className="hidden md:flex items-center gap-3">
-            <button className="text-[13px] text-[#a3b5cc] hover:text-white transition-colors duration-200 px-4 py-2">
+            <button
+              onClick={() => navigate('/auth')}
+              className="text-[13px] text-[#a3b5cc] hover:text-white transition-colors duration-200 px-4 py-2"
+            >
               登录
             </button>
             <button
