@@ -11,27 +11,27 @@
 
 :root {
   --bg-primary: #ffffff;
-  --bg-secondary: #f8f9fa;
-  --bg-tertiary: #f1f3f5;
+  --bg-secondary: #f9f9f9;
+  --bg-tertiary: #f5f5f5;
   --bg-card: #ffffff;
-  --bg-card-hover: #fafbfc;
-  --border-light: #e9ecef;
-  --border-medium: #dee2e6;
-  --border-accent: #2563eb;
-  --text-primary: #1a1a2e;
-  --text-secondary: #6b7280;
-  --text-muted: #9ca3af;
-  --accent: #2563eb;
-  --accent-light: #eff6ff;
-  --accent-hover: #1d4ed8;
+  --bg-card-hover: #fcfcfc;
+  --border-light: #eaeaea;
+  --border-medium: #e0e0e0;
+  --border-accent: #2383e2;
+  --text-primary: #111111;
+  --text-secondary: #666666;
+  --text-muted: #999999;
+  --accent: #2383e2;
+  --accent-light: #eef4ff;
+  --accent-hover: #1a6fc2;
   --success: #10b981;
   --warning: #f59e0b;
   --error: #ef4444;
-  --info: #3b82f6;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --info: #2383e2;
+  --radius-sm: 4px;
+  --radius-md: 5px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
   --shadow-md: 0 2px 8px rgba(0,0,0,0.06);
   --shadow-lg: 0 4px 16px rgba(0,0,0,0.08);
@@ -85,7 +85,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 8px 20px;
-  background: var(--accent);
+  background: #111111;
   color: #ffffff;
   border: none;
   border-radius: var(--radius-md);
@@ -97,7 +97,7 @@ body {
 }
 
 .accent-btn:hover {
-  background: var(--accent-hover);
+  background: #2a2a2a;
 }
 
 /* ─── Ghost Button ─────────────────────────────────── */
@@ -108,18 +108,19 @@ body {
   justify-content: center;
   padding: 8px 20px;
   background: transparent;
-  color: var(--accent);
-  border: none;
+  color: #666666;
+  border: 1px solid #EAEAEA;
   border-radius: var(--radius-md);
   font-family: 'Inter', 'Noto Sans SC', sans-serif;
   font-weight: 500;
   font-size: 14px;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: all 0.15s ease;
 }
 
 .ghost-btn:hover {
-  background: var(--accent-light);
+  color: #111111;
+  border-color: #111111;
 }
 
 /* ─── Bento Grid ───────────────────────────────────── */

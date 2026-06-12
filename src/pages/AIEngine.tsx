@@ -540,8 +540,8 @@ export default function AIEngine() {
         style={{
           width: size,
           height: size,
-          background: isSelected ? '#eff6ff' : '#ffffff',
-          border: `2px solid ${isSelected ? '#2563eb' : '#e9ecef'}`,
+          background: isSelected ? '#EEF4FF' : '#ffffff',
+          border: `2px solid ${isSelected ? '#2383E2' : '#EAEAEA'}`,
         }}
       >
         <span style={{ fontSize: size * 0.45 }}>{agent.avatar}</span>
@@ -550,7 +550,7 @@ export default function AIEngine() {
             layoutId="agent-orb-ring"
             className="absolute inset-0 rounded-full"
             style={{
-              border: '2px solid #2563eb',
+              border: '2px solid #2383E2',
               opacity: 0.3,
             }}
             animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.1, 0.3] }}
@@ -560,7 +560,7 @@ export default function AIEngine() {
       </div>
       <span
         className="text-[10px] font-sans truncate max-w-full text-center transition-colors"
-        style={{ color: isSelected ? '#2563eb' : '#6b7280' }}
+        style={{ color: isSelected ? '#2383E2' : '#666666' }}
       >
         {agent.name}
       </span>
@@ -589,9 +589,9 @@ export default function AIEngine() {
                   background: isCompleted
                     ? '#f0fdf4'
                     : isCurrent
-                    ? '#eff6ff'
+                    ? '#EEF4FF'
                     : '#ffffff',
-                  border: `2px solid ${isCompleted ? '#10b981' : isCurrent ? '#2563eb' : '#e9ecef'}`,
+                  border: `2px solid ${isCompleted ? '#10b981' : isCurrent ? '#2383E2' : '#EAEAEA'}`,
                 }}
               >
                 {isCompleted ? (
@@ -601,7 +601,7 @@ export default function AIEngine() {
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
                     className="w-5 h-5 border-2 border-t-transparent rounded-full"
-                    style={{ borderColor: '#2563eb', borderTopColor: 'transparent' }}
+                    style={{ borderColor: '#2383E2', borderTopColor: 'transparent' }}
                   />
                 ) : (
                   <span style={{ fontSize: 20 }}>{agent?.avatar || '🤖'}</span>
@@ -613,14 +613,14 @@ export default function AIEngine() {
                   color: isCompleted
                     ? '#10b981'
                     : isCurrent
-                    ? '#1a1a2e'
-                    : '#9ca3af',
+                    ? '#111111'
+                    : '#999999',
                 }}
               >
                 {step.label}
               </span>
               {agent && (
-                <span className="text-[9px] font-sans text-gray-400">{agent.name}</span>
+                <span className="text-[9px] font-sans text-[#999999]">{agent.name}</span>
               )}
             </div>
 
@@ -630,7 +630,7 @@ export default function AIEngine() {
                 <div
                   className="h-[2px] w-8"
                   style={{
-                    background: isCompleted ? '#10b981' : '#e9ecef',
+                    background: isCompleted ? '#10b981' : '#EAEAEA',
                   }}
                 />
                 <ArrowRight
@@ -671,12 +671,12 @@ export default function AIEngine() {
                   prev.map((o, idx) => (idx === i ? { ...o, collapsed: !o.collapsed } : o)),
                 )
               }
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer"
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#f9f9f9] transition-colors cursor-pointer"
             >
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
                 style={{
-                  background: isError ? '#fef2f2' : '#eff6ff',
+                  background: isError ? '#fef2f2' : '#EEF4FF',
                   border: `1px solid ${isError ? '#fecaca' : '#bfdbfe'}`,
                 }}
               >
@@ -684,7 +684,7 @@ export default function AIEngine() {
               </div>
               <div className="flex-1 text-left min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-sans font-semibold text-gray-900">
+                  <span className="text-sm font-sans font-semibold text-[#111111]">
                     {agent?.name || 'Unknown'}
                   </span>
                   <span
@@ -693,15 +693,15 @@ export default function AIEngine() {
                     {isError ? '失败' : '完成'}
                   </span>
                 </div>
-                <p className="text-[11px] text-gray-400 font-sans">
+                <p className="text-[11px] text-[#999999] font-sans">
                   {activeWorkflow.steps[i]?.label}
                   {output.tokens > 0 && ` · ${output.tokens} tokens`}
                 </p>
               </div>
               {output.collapsed ? (
-                <ChevronRight size={16} className="text-gray-400" />
+                <ChevronRight size={16} className="text-[#999999]" />
               ) : (
-                <ChevronDown size={16} className="text-gray-400" />
+                <ChevronDown size={16} className="text-[#999999]" />
               )}
             </button>
 
@@ -715,9 +715,9 @@ export default function AIEngine() {
                   transition={{ duration: 0.2 }}
                   className="overflow-hidden"
                 >
-                  <div className="px-4 pb-4 pt-1 border-t border-gray-100">
+                  <div className="px-4 pb-4 pt-1 border-t border-[#EAEAEA]">
                     <div
-                      className="text-sm font-sans text-gray-700 leading-relaxed max-h-[400px] overflow-y-auto"
+                      className="text-sm font-sans text-[#666666] leading-relaxed max-h-[400px] overflow-y-auto"
                       dangerouslySetInnerHTML={{ __html: renderMarkdown(output.content) }}
                     />
                   </div>
@@ -737,13 +737,13 @@ export default function AIEngine() {
   return (
     <div className="max-w-7xl mx-auto h-[calc(100vh-80px)] flex flex-col">
       {/* Tab bar */}
-      <div className="flex gap-0 mb-4 flex-shrink-0 border-b border-gray-200">
+      <div className="flex gap-0 mb-4 flex-shrink-0 border-b border-[#EAEAEA]">
         <button
           onClick={() => setActiveTab('agent')}
           className={`flex items-center gap-2 px-5 py-2.5 text-sm font-sans transition-all duration-200 cursor-pointer border-b-2
             ${activeTab === 'agent'
               ? 'border-[var(--accent)] text-[var(--accent)] font-medium'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              : 'border-transparent text-[#999999] hover:text-[#666666]'
             }`}
         >
           <Bot size={16} />
@@ -754,7 +754,7 @@ export default function AIEngine() {
           className={`flex items-center gap-2 px-5 py-2.5 text-sm font-sans transition-all duration-200 cursor-pointer border-b-2
             ${activeTab === 'model'
               ? 'border-[var(--accent)] text-[var(--accent)] font-medium'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              : 'border-transparent text-[#999999] hover:text-[#666666]'
             }`}
         >
           <Settings size={16} />
@@ -787,7 +787,7 @@ export default function AIEngine() {
                       className={`badge flex items-center gap-2 cursor-pointer transition-all duration-200 whitespace-nowrap
                         ${isActive
                           ? 'badge-blue'
-                          : 'bg-white border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                          : 'bg-white border border-[#EAEAEA] text-[#999999] hover:text-[#666666] hover:border-gray-300'
                         }`}
                     >
                       <span>{wf.icon}</span>
@@ -811,7 +811,7 @@ export default function AIEngine() {
                 /* ──── Free Chat Mode ──── */
                 <div className="h-full flex flex-col card">
                   {/* Agent selector: horizontal scrollable orbs */}
-                  <div className="flex-shrink-0 px-4 pt-4 pb-3 border-b border-gray-100">
+                  <div className="flex-shrink-0 px-4 pt-4 pb-3 border-b border-[#EAEAEA]">
                     <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
                       {AGENTS.map((agent) =>
                         renderAgentOrb(
@@ -826,18 +826,18 @@ export default function AIEngine() {
 
                   {/* Agent info bar */}
                   {selectedAgent && (
-                    <div className="flex items-center gap-3 px-5 pt-3 pb-2 border-b border-gray-100 flex-shrink-0">
+                    <div className="flex items-center gap-3 px-5 pt-3 pb-2 border-b border-[#EAEAEA] flex-shrink-0">
                       <span className="text-lg">{selectedAgent.avatar}</span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <h2 className="font-sans font-semibold text-gray-900 text-sm">
+                          <h2 className="font-sans font-semibold text-[#111111] text-sm">
                             {selectedAgent.name}
                           </h2>
                           <span className="badge badge-blue">
                             {selectedAgent.role}
                           </span>
                         </div>
-                        <p className="text-[11px] text-gray-400 font-sans mt-0.5 line-clamp-1">
+                        <p className="text-[11px] text-[#999999] font-sans mt-0.5 line-clamp-1">
                           {selectedAgent.description}
                         </p>
                       </div>
@@ -852,7 +852,7 @@ export default function AIEngine() {
                           </button>
                         )}
                         <span className="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse" />
-                        <span className="text-[10px] text-gray-400 font-sans">在线</span>
+                        <span className="text-[10px] text-[#999999] font-sans">在线</span>
                       </div>
                     </div>
                   )}
@@ -870,18 +870,18 @@ export default function AIEngine() {
                         >
                           {msg.role === 'system' ? (
                             <div className="w-full flex justify-center">
-                              <div className="max-w-[80%] px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[11px] text-gray-500 font-sans text-center">
+                              <div className="max-w-[80%] px-4 py-2 rounded-[6px] bg-[#f9f9f9] border border-[#EAEAEA] text-[11px] text-[#999999] font-sans text-center">
                                 {msg.content}
                               </div>
                             </div>
                           ) : (
                             <>
                               <div
-                                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                                className="w-8 h-8 rounded-[5px] flex items-center justify-center flex-shrink-0"
                                 style={
                                   msg.role === 'assistant' && selectedAgent
-                                    ? { backgroundColor: '#eff6ff' }
-                                    : { backgroundColor: '#eff6ff' }
+                                    ? { backgroundColor: '#EEF4FF' }
+                                    : { backgroundColor: '#EEF4FF' }
                                 }
                               >
                                 {msg.role === 'assistant' ? (
@@ -891,10 +891,10 @@ export default function AIEngine() {
                                 )}
                               </div>
                               <div
-                                className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm font-sans leading-relaxed
+                                className={`max-w-[80%] px-4 py-3 rounded-[6px] text-sm font-sans leading-relaxed
                                   ${msg.role === 'assistant'
-                                    ? 'bg-[#f8f9fa] border border-gray-100 text-gray-800 rounded-tl-sm'
-                                    : 'bg-blue-50 border border-blue-100 text-gray-800 rounded-tr-sm whitespace-pre-wrap'
+                                    ? 'bg-[#f9f9f9] border border-[#EAEAEA] text-[#111111] rounded-tl-sm'
+                                    : 'bg-[#EEF4FF] border border-blue-100 text-[#111111] rounded-tr-sm whitespace-pre-wrap'
                                   }`}
                               >
                                 {msg.role === 'assistant' ? (
@@ -903,7 +903,7 @@ export default function AIEngine() {
                                   msg.content
                                 )}
                                 {msg.role === 'assistant' && msg.tokens && msg.tokens > 0 && (
-                                  <p className="text-[9px] text-gray-400 mt-1">{msg.tokens} tokens</p>
+                                  <p className="text-[9px] text-[#999999] mt-1">{msg.tokens} tokens</p>
                                 )}
                               </div>
                             </>
@@ -915,17 +915,17 @@ export default function AIEngine() {
                     {/* Typing indicator */}
                     {isTyping && (
                       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-[#f8f9fa]">
+                        <div className="w-8 h-8 rounded-[5px] flex items-center justify-center flex-shrink-0 bg-[#f9f9f9]">
                           <span>{selectedAgent?.avatar || '🤖'}</span>
                         </div>
-                        <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-[#f8f9fa] border border-gray-100">
+                        <div className="px-4 py-3 rounded-[6px] rounded-tl-sm bg-[#f9f9f9] border border-[#EAEAEA]">
                           <div className="flex gap-1.5 items-center h-5">
                             {[0, 150, 300].map((delay) => (
                               <span
                                 key={delay}
                                 className="w-2 h-2 rounded-full animate-bounce"
                                 style={{
-                                  backgroundColor: '#2563eb',
+                                  backgroundColor: '#2383E2',
                                   animationDelay: `${delay}ms`,
                                 }}
                               />
@@ -950,7 +950,7 @@ export default function AIEngine() {
                               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-sans transition-all duration-200 cursor-pointer
                                 ${isActive
                                   ? 'badge-blue'
-                                  : 'bg-white border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                  : 'bg-white border border-[#EAEAEA] text-[#999999] hover:text-[#666666] hover:border-gray-300'
                                 }`}
                             >
                               <span className="text-xs">{skill.icon}</span>
@@ -961,7 +961,7 @@ export default function AIEngine() {
                       </div>
                     )}
 
-                    <div className="flex items-end gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2 focus-within:border-[var(--accent)] focus-within:ring-2 focus-within:ring-blue-100 transition-all duration-300">
+                    <div className="flex items-end gap-2 bg-white border border-[#EAEAEA] rounded-[6px] px-4 py-2 focus-within:border-[#2383E2] focus-within:ring-2 focus-within:ring-blue-100 transition-all duration-300">
                       <textarea
                         value={chatInput}
                         onChange={(e) => {
@@ -972,14 +972,14 @@ export default function AIEngine() {
                         onKeyDown={handleInputKeyDown}
                         placeholder="输入你的问题... (Shift+Enter 换行)"
                         rows={1}
-                        className="flex-1 bg-transparent text-sm font-sans text-gray-800 placeholder-gray-400 outline-none resize-none leading-6"
+                        className="flex-1 bg-transparent text-sm font-sans text-[#111111] placeholder-gray-400 outline-none resize-none leading-6"
                         style={{ maxHeight: '72px' }}
                         disabled={isTyping}
                       />
                       <button
                         onClick={handleSendMessage}
                         disabled={!chatInput.trim() || isTyping}
-                        className="accent-btn w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex-shrink-0"
+                        className="accent-btn w-8 h-8 rounded-[5px] flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex-shrink-0"
                       >
                         <Send size={14} />
                       </button>
@@ -993,7 +993,7 @@ export default function AIEngine() {
                   {!uploadedFile ? (
                     <div
                       className={`file-drop-zone card flex-shrink-0 flex flex-col items-center justify-center py-12 cursor-pointer transition-all duration-300
-                        ${isDragOver ? 'border-[var(--accent)] bg-blue-50' : ''}`}
+                        ${isDragOver ? 'border-[var(--accent)] bg-[#EEF4FF]' : ''}`}
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
@@ -1008,28 +1008,28 @@ export default function AIEngine() {
                       />
                       <motion.div
                         animate={isDragOver ? { scale: 1.1, y: -4 } : { scale: 1, y: 0 }}
-                        className="w-16 h-16 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-center mb-4"
+                        className="w-16 h-16 rounded-[6px] bg-[#f9f9f9] border border-[#EAEAEA] flex items-center justify-center mb-4"
                       >
-                        <Upload size={28} className="text-gray-400" />
+                        <Upload size={28} className="text-[#999999]" />
                       </motion.div>
-                      <p className="text-sm font-sans text-gray-600 mb-1">
+                      <p className="text-sm font-sans text-[#666666] mb-1">
                         拖拽文件到此处，或点击上传
                       </p>
-                      <p className="text-[11px] font-sans text-gray-400">
+                      <p className="text-[11px] font-sans text-[#999999]">
                         支持 PDF、TXT、MD、DOCX 格式
                       </p>
                     </div>
                   ) : (
                     <div className="card flex-shrink-0 px-5 py-4">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
+                        <div className="w-12 h-12 rounded-[6px] bg-[#EEF4FF] border border-blue-100 flex items-center justify-center flex-shrink-0">
                           <FileText size={22} className="text-[var(--accent)]" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-sans font-semibold text-gray-900 truncate">
+                          <p className="text-sm font-sans font-semibold text-[#111111] truncate">
                             {uploadedFile.name}
                           </p>
-                          <p className="text-[11px] text-gray-400 font-sans">
+                          <p className="text-[11px] text-[#999999] font-sans">
                             {formatFileSize(uploadedFile.size)} · {uploadedFile.type || '未知类型'}
                           </p>
                         </div>
@@ -1037,7 +1037,7 @@ export default function AIEngine() {
                           {!workflowRunning && !workflowComplete && (
                             <button
                               onClick={handleStartWorkflow}
-                              className="accent-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-sans cursor-pointer"
+                              className="accent-btn flex items-center gap-2 px-4 py-2 rounded-[5px] text-sm font-sans cursor-pointer"
                             >
                               <Play size={14} />
                               开始分析
@@ -1046,7 +1046,7 @@ export default function AIEngine() {
                           {!workflowRunning && (
                             <button
                               onClick={handleResetWorkflow}
-                              className="ghost-btn flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-sans cursor-pointer"
+                              className="ghost-btn flex items-center gap-1.5 px-3 py-2 rounded-[5px] text-xs font-sans cursor-pointer"
                             >
                               <RotateCcw size={12} />
                               重置
@@ -1077,10 +1077,10 @@ export default function AIEngine() {
                   {/* Workflow Chat Tab */}
                   {(workflowComplete || stepOutputs.length > 0) && (
                     <div className="card flex-1 min-h-[300px] flex flex-col">
-                      <div className="flex items-center gap-3 px-5 pt-4 pb-3 border-b border-gray-100 flex-shrink-0">
+                      <div className="flex items-center gap-3 px-5 pt-4 pb-3 border-b border-[#EAEAEA] flex-shrink-0">
                         <Bot size={16} className="text-[var(--accent)]" />
-                        <h3 className="font-sans font-semibold text-gray-900 text-sm">对话</h3>
-                        <span className="text-[10px] text-gray-400 font-sans">
+                        <h3 className="font-sans font-semibold text-[#111111] text-sm">对话</h3>
+                        <span className="text-[10px] text-[#999999] font-sans">
                           选择 Agent 继续探讨结果
                         </span>
                         <div className="flex-1" />
@@ -1092,7 +1092,7 @@ export default function AIEngine() {
                               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-sans transition-all cursor-pointer whitespace-nowrap
                                 ${workflowChatAgent === agent.id
                                   ? 'badge-blue'
-                                  : 'bg-white border border-gray-200 text-gray-500 hover:text-gray-700'
+                                  : 'bg-white border border-[#EAEAEA] text-[#999999] hover:text-[#666666]'
                                 }`}
                             >
                               <span className="text-xs">{agent.avatar}</span>
@@ -1106,7 +1106,7 @@ export default function AIEngine() {
                       <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3 min-h-0">
                         {workflowChatMessages.length === 0 && (
                           <div className="flex items-center justify-center h-full">
-                            <p className="text-sm text-gray-400 font-sans">
+                            <p className="text-sm text-[#999999] font-sans">
                               选择一个 Agent，对工作流结果继续提问
                             </p>
                           </div>
@@ -1120,11 +1120,11 @@ export default function AIEngine() {
                               className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
                             >
                               <div
-                                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                                className="w-7 h-7 rounded-[5px] flex items-center justify-center flex-shrink-0"
                                 style={
                                   msg.role === 'assistant'
-                                    ? { backgroundColor: '#eff6ff' }
-                                    : { backgroundColor: '#eff6ff' }
+                                    ? { backgroundColor: '#EEF4FF' }
+                                    : { backgroundColor: '#EEF4FF' }
                                 }
                               >
                                 {msg.role === 'assistant' ? (
@@ -1134,10 +1134,10 @@ export default function AIEngine() {
                                 )}
                               </div>
                               <div
-                                className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm font-sans leading-relaxed
+                                className={`max-w-[80%] px-3.5 py-2.5 rounded-[6px] text-sm font-sans leading-relaxed
                                   ${msg.role === 'assistant'
-                                    ? 'bg-[#f8f9fa] border border-gray-100 text-gray-800 rounded-tl-sm'
-                                    : 'bg-blue-50 border border-blue-100 text-gray-800 rounded-tr-sm whitespace-pre-wrap'
+                                    ? 'bg-[#f9f9f9] border border-[#EAEAEA] text-[#111111] rounded-tl-sm'
+                                    : 'bg-[#EEF4FF] border border-blue-100 text-[#111111] rounded-tr-sm whitespace-pre-wrap'
                                   }`}
                               >
                                 {msg.role === 'assistant' ? (
@@ -1151,17 +1151,17 @@ export default function AIEngine() {
                         </AnimatePresence>
                         {workflowChatTyping && (
                           <div className="flex gap-3">
-                            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 bg-[#eff6ff]">
+                            <div className="w-7 h-7 rounded-[5px] flex items-center justify-center flex-shrink-0 bg-[#EEF4FF]">
                               <span className="text-sm">{getAgent(workflowChatAgent)?.avatar || '🤖'}</span>
                             </div>
-                            <div className="px-3.5 py-2.5 rounded-2xl rounded-tl-sm bg-[#f8f9fa] border border-gray-100">
+                            <div className="px-3.5 py-2.5 rounded-[6px] rounded-tl-sm bg-[#f9f9f9] border border-[#EAEAEA]">
                               <div className="flex gap-1.5 items-center h-4">
                                 {[0, 150, 300].map((delay) => (
                                   <span
                                     key={delay}
                                     className="w-1.5 h-1.5 rounded-full animate-bounce"
                                     style={{
-                                      backgroundColor: '#2563eb',
+                                      backgroundColor: '#2383E2',
                                       animationDelay: `${delay}ms`,
                                     }}
                                   />
@@ -1175,7 +1175,7 @@ export default function AIEngine() {
 
                       {/* Input */}
                       <div className="px-4 pb-4 pt-2 flex-shrink-0">
-                        <div className="flex items-end gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2 focus-within:border-[var(--accent)] focus-within:ring-2 focus-within:ring-blue-100 transition-all duration-300">
+                        <div className="flex items-end gap-2 bg-white border border-[#EAEAEA] rounded-[6px] px-4 py-2 focus-within:border-[#2383E2] focus-within:ring-2 focus-within:ring-blue-100 transition-all duration-300">
                           <textarea
                             value={workflowChatInput}
                             onChange={(e) => {
@@ -1186,14 +1186,14 @@ export default function AIEngine() {
                             onKeyDown={handleWorkflowChatKeyDown}
                             placeholder={`向 ${getAgent(workflowChatAgent)?.name || 'Agent'} 提问...`}
                             rows={1}
-                            className="flex-1 bg-transparent text-sm font-sans text-gray-800 placeholder-gray-400 outline-none resize-none leading-6"
+                            className="flex-1 bg-transparent text-sm font-sans text-[#111111] placeholder-gray-400 outline-none resize-none leading-6"
                             style={{ maxHeight: '72px' }}
                             disabled={workflowChatTyping}
                           />
                           <button
                             onClick={handleWorkflowChatSend}
                             disabled={!workflowChatInput.trim() || workflowChatTyping}
-                            className="accent-btn w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex-shrink-0"
+                            className="accent-btn w-8 h-8 rounded-[5px] flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex-shrink-0"
                           >
                             <Send size={14} />
                           </button>
@@ -1239,7 +1239,7 @@ export default function AIEngine() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Cpu size={16} className="text-[var(--accent)]" />
-                        <h3 className="font-sans font-semibold text-gray-900 text-sm">
+                        <h3 className="font-sans font-semibold text-[#111111] text-sm">
                           {config.name}
                         </h3>
                       </div>
@@ -1252,43 +1252,43 @@ export default function AIEngine() {
 
                     {/* Model name */}
                     <div>
-                      <label className="text-[10px] text-gray-500 font-sans block mb-1">模型名称</label>
+                      <label className="text-[10px] text-[#999999] font-sans block mb-1">模型名称</label>
                       <input
                         type="text"
                         value={config.model}
                         onChange={(e) => handleProviderChange(key, 'model', e.target.value)}
                         placeholder="模型名称"
-                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans text-gray-800 placeholder-gray-400 outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-blue-100 transition-all"
+                        className="w-full bg-white border border-[#EAEAEA] rounded-[5px] px-3 py-2 text-xs font-sans text-[#111111] placeholder-gray-400 outline-none focus:border-[#2383E2] focus:ring-2 focus:ring-blue-100 transition-all"
                       />
                     </div>
 
                     {/* Base URL */}
                     <div>
-                      <label className="text-[10px] text-gray-500 font-sans block mb-1">Base URL</label>
+                      <label className="text-[10px] text-[#999999] font-sans block mb-1">Base URL</label>
                       <input
                         type="text"
                         value={config.baseUrl}
                         onChange={(e) => handleProviderChange(key, 'baseUrl', e.target.value)}
                         placeholder="API 端点地址"
-                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans text-gray-800 placeholder-gray-400 outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-blue-100 transition-all"
+                        className="w-full bg-white border border-[#EAEAEA] rounded-[5px] px-3 py-2 text-xs font-sans text-[#111111] placeholder-gray-400 outline-none focus:border-[#2383E2] focus:ring-2 focus:ring-blue-100 transition-all"
                       />
                     </div>
 
                     {/* API Key */}
                     <div>
-                      <label className="text-[10px] text-gray-500 font-sans block mb-1">API Key</label>
+                      <label className="text-[10px] text-[#999999] font-sans block mb-1">API Key</label>
                       <input
                         type="password"
                         value={config.apiKey}
                         onChange={(e) => handleProviderChange(key, 'apiKey', e.target.value)}
                         placeholder="输入 API Key"
-                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans text-gray-800 placeholder-gray-400 outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-blue-100 transition-all"
+                        className="w-full bg-white border border-[#EAEAEA] rounded-[5px] px-3 py-2 text-xs font-sans text-[#111111] placeholder-gray-400 outline-none focus:border-[#2383E2] focus:ring-2 focus:ring-blue-100 transition-all"
                       />
                     </div>
 
                     {/* Temperature */}
                     <div>
-                      <label className="text-[10px] text-gray-500 font-sans block mb-1">
+                      <label className="text-[10px] text-[#999999] font-sans block mb-1">
                         Temperature: {config.temperature.toFixed(1)}
                       </label>
                       <input
@@ -1300,7 +1300,7 @@ export default function AIEngine() {
                         onChange={(e) => handleProviderChange(key, 'temperature', parseFloat(e.target.value))}
                         className="w-full accent-[var(--accent)]"
                       />
-                      <div className="flex justify-between text-[9px] text-gray-400">
+                      <div className="flex justify-between text-[9px] text-[#999999]">
                         <span>精确 0</span>
                         <span>创意 2</span>
                       </div>
@@ -1308,18 +1308,18 @@ export default function AIEngine() {
 
                     {/* Max Tokens */}
                     <div>
-                      <label className="text-[10px] text-gray-500 font-sans block mb-1">Max Tokens</label>
+                      <label className="text-[10px] text-[#999999] font-sans block mb-1">Max Tokens</label>
                       <input
                         type="number"
                         value={config.maxTokens}
                         onChange={(e) => handleProviderChange(key, 'maxTokens', parseInt(e.target.value) || 2048)}
-                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans text-gray-800 outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-blue-100 transition-all"
+                        className="w-full bg-white border border-[#EAEAEA] rounded-[5px] px-3 py-2 text-xs font-sans text-[#111111] outline-none focus:border-[#2383E2] focus:ring-2 focus:ring-blue-100 transition-all"
                       />
                     </div>
 
                     {/* Top P */}
                     <div>
-                      <label className="text-[10px] text-gray-500 font-sans block mb-1">
+                      <label className="text-[10px] text-[#999999] font-sans block mb-1">
                         Top P: {config.topP.toFixed(2)}
                       </label>
                       <input
@@ -1334,8 +1334,8 @@ export default function AIEngine() {
                     </div>
 
                     {/* Enable toggle */}
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                      <span className="text-[11px] text-gray-500 font-sans">启用此提供者</span>
+                    <div className="flex items-center justify-between pt-2 border-t border-[#EAEAEA]">
+                      <span className="text-[11px] text-[#999999] font-sans">启用此提供者</span>
                       <button
                         onClick={() => handleProviderChange(key, 'enabled', !config.enabled)}
                         className={`relative w-10 h-5 rounded-full transition-colors duration-200 cursor-pointer
@@ -1360,7 +1360,7 @@ export default function AIEngine() {
               transition={{ delay: 0.1 }}
               className="card p-5 space-y-4"
             >
-              <h3 className="font-sans font-semibold text-gray-900 text-sm flex items-center gap-2">
+              <h3 className="font-sans font-semibold text-[#111111] text-sm flex items-center gap-2">
                 <Settings size={16} className="text-[var(--accent)]" />
                 全局设置
               </h3>
@@ -1368,12 +1368,12 @@ export default function AIEngine() {
               {/* Token usage */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-gray-500 font-sans">Token 用量显示</span>
-                  <span className="text-[11px] text-gray-500 font-sans">
+                  <span className="text-[11px] text-[#999999] font-sans">Token 用量显示</span>
+                  <span className="text-[11px] text-[#999999] font-sans">
                     {modelSettings.tokenUsed.toLocaleString()} / {modelSettings.tokenBudget.toLocaleString()}
                   </span>
                 </div>
-                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="w-full h-2 bg-[#f5f5f5] rounded-full overflow-hidden">
                   <motion.div
                     className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full"
                     animate={{
@@ -1388,7 +1388,7 @@ export default function AIEngine() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Zap size={14} className="text-[var(--accent)]" />
-                  <span className="text-xs text-gray-500 font-sans">开启响应缓存</span>
+                  <span className="text-xs text-[#999999] font-sans">开启响应缓存</span>
                 </div>
                 <button
                   onClick={() => handleSettingsChange('enableCache', !modelSettings.enableCache)}
@@ -1407,7 +1407,7 @@ export default function AIEngine() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <AlertCircle size={14} className="text-[var(--warning)]" />
-                  <span className="text-xs text-gray-500 font-sans">开启 Prompt 压缩</span>
+                  <span className="text-xs text-[#999999] font-sans">开启 Prompt 压缩</span>
                 </div>
                 <button
                   onClick={() => handleSettingsChange('enableCompression', !modelSettings.enableCompression)}
@@ -1423,17 +1423,17 @@ export default function AIEngine() {
               </div>
 
               {/* Action buttons */}
-              <div className="flex gap-3 pt-2 border-t border-gray-100">
+              <div className="flex gap-3 pt-2 border-t border-[#EAEAEA]">
                 <button
                   onClick={handleSaveSettings}
-                  className="accent-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-sans cursor-pointer"
+                  className="accent-btn flex items-center gap-2 px-4 py-2 rounded-[5px] text-sm font-sans cursor-pointer"
                 >
                   <Check size={14} />
                   保存配置
                 </button>
                 <button
                   onClick={handleClearCache}
-                  className="ghost-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-sans cursor-pointer"
+                  className="ghost-btn flex items-center gap-2 px-4 py-2 rounded-[5px] text-sm font-sans cursor-pointer"
                 >
                   <RotateCcw size={14} />
                   清除缓存
