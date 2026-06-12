@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import Landing from '@/pages/Landing';
+import Auth from '@/pages/Auth';
 import Dashboard from '@/pages/Dashboard';
 import AIEngine from '@/pages/AIEngine';
 import MyNotes from '@/pages/MyNotes';
@@ -13,6 +14,7 @@ export default function App() {
       <ToastContainer />
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/auth" element={<Auth />} />
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/ai-engine" element={<AIEngine />} />
