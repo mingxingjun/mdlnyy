@@ -213,7 +213,7 @@ function PomodoroTimer() {
 
   const currentSubject = subjects.find((s) => s.id === selectedSubject);
 
-  const strokeColor = mode === 'work' ? '#2383E2' : '#10b981';
+  const strokeColor = mode === 'work' ? '#6C7CFF' : '#34d399';
 
   return (
     <motion.div
@@ -223,7 +223,7 @@ function PomodoroTimer() {
       className="flex flex-col items-center gap-8"
     >
       {/* 模式切换 */}
-      <div className="flex items-center gap-2 bg-[#f5f5f5] rounded-full p-1">
+      <div className="flex items-center gap-2 bg-[#1a1b2e] rounded-full p-1">
         {(['work', 'break'] as const).map((m) => (
           <button
             key={m}
@@ -235,9 +235,9 @@ function PomodoroTimer() {
             className={`px-5 py-1.5 rounded-full text-sm font-medium transition-all duration-300 ${
               mode === m
                 ? m === 'work'
-                  ? 'bg-[#EEF4FF] text-[#2383E2] shadow-sm'
-                  : 'bg-[#ECFDF5] text-[#10b981] shadow-sm'
-                : 'text-[#999999] hover:text-[#999999]'
+                  ? 'bg-[#6C7CFF]/10 text-[#6C7CFF] shadow-sm'
+                  : 'bg-[#34d399]/10 text-[#34d399] shadow-sm'
+                : 'text-[#5c5f73] hover:text-[#5c5f73]'
             }`}
           >
             {m === 'work' ? '专注' : '休息'}
@@ -256,7 +256,7 @@ function PomodoroTimer() {
           <circle
             cx="160" cy="160" r={radius}
             fill="none"
-            stroke="#f5f5f5"
+            stroke="#1a1b2e"
             strokeWidth="6"
           />
           {/* 进度圆 */}
@@ -274,10 +274,10 @@ function PomodoroTimer() {
 
         {/* 中心内容 */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="font-sans text-6xl font-bold tracking-widest tabular-nums text-[#111111] transition-all duration-300">
+          <span className="font-sans text-6xl font-bold tracking-widest tabular-nums text-[#e8eaf0] transition-all duration-300">
             {minutes}:{seconds}
           </span>
-          <span className="text-[#999999] text-xs tracking-widest uppercase mt-2">
+          <span className="text-[#5c5f73] text-xs tracking-widest uppercase mt-2">
             {mode === 'work' ? '专注中' : '休息中'}
           </span>
           {currentSubject && (
@@ -295,7 +295,7 @@ function PomodoroTimer() {
       <div className="flex items-center gap-3">
         <button
           onClick={handleReset}
-          className="w-10 h-10 rounded-full border border-[#EAEAEA] flex items-center justify-center text-[#999999] hover:text-[#666666] hover:border-[#E0E0E0] transition-all bg-white"
+          className="w-10 h-10 rounded-full border border-white/[0.06] flex items-center justify-center text-[#5c5f73] hover:text-[#8b8fa3] hover:border-white/[0.12] transition-all bg-[#12131f]"
         >
           <RotateCcw size={16} />
         </button>
@@ -303,8 +303,8 @@ function PomodoroTimer() {
           onClick={running ? handlePause : handleStart}
           className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 ${
             mode === 'work'
-              ? 'bg-[#2383E2] hover:bg-[#1a6fc2]'
-              : 'bg-[#10b981] hover:bg-[#059669]'
+              ? 'bg-[#6C7CFF] hover:bg-[#5a6aff]'
+              : 'bg-[#34d399] hover:bg-[#2dd4a0]'
           } text-white`}
         >
           {running ? <Pause size={22} /> : <Play size={22} className="ml-0.5" />}
@@ -317,14 +317,14 @@ function PomodoroTimer() {
         <select
           value={selectedSubject}
           onChange={(e) => setSelectedSubject(e.target.value)}
-          className="bg-white border border-[#EAEAEA] rounded-[5px] px-4 py-2 text-sm text-[#666666] focus:outline-none focus:border-[#2383E2] transition-colors"
+          className="bg-[#12131f] border border-white/[0.06] rounded-[10px] px-4 py-2 text-sm text-[#8b8fa3] focus:outline-none focus:border-[#6C7CFF]/30 transition-colors"
         >
           {subjects.map((s) => (
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
       ) : (
-        <p className="text-xs text-[#999999]">请先在仪表盘添加考试科目</p>
+        <p className="text-xs text-[#5c5f73]">请先在仪表盘添加考试科目</p>
       )}
     </motion.div>
   );
@@ -412,8 +412,8 @@ function WhiteNoisePanel() {
       transition={{ duration: 0.5, delay: 0.15 }}
       className="card p-5"
     >
-      <h3 className="font-sans text-sm font-semibold text-[#666666] mb-4 flex items-center gap-2 tracking-wide">
-        <Headphones size={14} className="text-[#2383E2]" />
+      <h3 className="font-sans text-sm font-semibold text-[#8b8fa3] mb-4 flex items-center gap-2 tracking-wide">
+        <Headphones size={14} className="text-[#6C7CFF]" />
         白噪音
       </h3>
 
@@ -423,28 +423,28 @@ function WhiteNoisePanel() {
           return (
             <div
               key={type}
-              className={`flex flex-col items-center gap-2 p-3 rounded-[6px] border transition-all duration-300 ${
+              className={`flex flex-col items-center gap-2 p-3 rounded-[16px] border transition-all duration-300 ${
                 isActive
-                  ? 'bg-[#EEF4FF] border-[#2383E2]'
-                  : 'bg-white border-[#EAEAEA] hover:border-[#E0E0E0]'
+                  ? 'bg-[#6C7CFF]/10 border-[#6C7CFF]/30'
+                  : 'bg-[#12131f] border-white/[0.06] hover:border-white/[0.12]'
               }`}
             >
               <button
                 onClick={() => handleToggle(type)}
-                className={`w-10 h-10 rounded-[5px] flex items-center justify-center transition-all duration-300 ${
+                className={`w-10 h-10 rounded-[10px] flex items-center justify-center transition-all duration-300 ${
                   isActive
-                    ? 'bg-[#EEF4FF] text-[#2383E2]'
-                    : 'bg-[#f9f9f9] text-[#999999]'
+                    ? 'bg-[#6C7CFF]/10 text-[#6C7CFF]'
+                    : 'bg-[#0e0f1a] text-[#5c5f73]'
                 }`}
               >
                 {isActive ? <Volume2 size={18} /> : <VolumeX size={18} />}
               </button>
               <Icon
                 size={16}
-                className={isActive ? 'text-[#2383E2]' : 'text-[#999999]'}
+                className={isActive ? 'text-[#6C7CFF]' : 'text-[#5c5f73]'}
               />
               <span
-                className={`text-[11px] font-medium ${isActive ? 'text-[#2383E2]' : 'text-[#999999]'}`}
+                className={`text-[11px] font-medium ${isActive ? 'text-[#6C7CFF]' : 'text-[#5c5f73]'}`}
               >
                 {label}
               </span>
@@ -455,9 +455,9 @@ function WhiteNoisePanel() {
                   max={100}
                   value={volumes[type]}
                   onChange={(e) => handleVolumeChange(type, Number(e.target.value))}
-                  className="w-full h-0.5 rounded-full appearance-none cursor-pointer accent-[#2383E2]"
+                  className="w-full h-0.5 rounded-full appearance-none cursor-pointer accent-[#6C7CFF]"
                   style={{
-                    background: `linear-gradient(to right, #2383E2 ${volumes[type]}%, #EAEAEA ${volumes[type]}%)`,
+                    background: `linear-gradient(to right, #6C7CFF ${volumes[type]}%, rgba(255,255,255,0.06) ${volumes[type]}%)`,
                   }}
                 />
               )}
@@ -494,8 +494,8 @@ function StudyRoomsPanel() {
       transition={{ duration: 0.5, delay: 0.25 }}
       className="card p-5"
     >
-      <h3 className="font-sans text-sm font-semibold text-[#666666] mb-4 flex items-center gap-2 tracking-wide">
-        <Users size={14} className="text-[#10b981]" />
+      <h3 className="font-sans text-sm font-semibold text-[#8b8fa3] mb-4 flex items-center gap-2 tracking-wide">
+        <Users size={14} className="text-[#34d399]" />
         自习室
       </h3>
 
@@ -505,29 +505,29 @@ function StudyRoomsPanel() {
           return (
             <div
               key={room.id}
-              className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-[5px] border transition-all duration-200 ${
+              className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-[10px] border transition-all duration-200 ${
                 isJoined
-                  ? 'bg-[#ECFDF5] border-[#10b981]'
-                  : 'bg-white border-[#EAEAEA] hover:border-[#E0E0E0]'
+                  ? 'bg-[#34d399]/10 border-[#34d399]/30'
+                  : 'bg-[#12131f] border-white/[0.06] hover:border-white/[0.12]'
               }`}
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-[#111111] truncate">{room.name}</span>
+                  <span className="text-sm text-[#e8eaf0] truncate">{room.name}</span>
                   {room.isActive && (
                     <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
                   )}
                 </div>
-                <span className="text-[11px] text-[#999999]">
+                <span className="text-[11px] text-[#5c5f73]">
                   {room.members}/{room.maxMembers} 人
                 </span>
               </div>
               <button
                 onClick={() => handleJoinLeave(room.id, room.name)}
-                className={`flex items-center gap-1 text-[11px] px-3 py-1 rounded-[4px] font-medium transition-all duration-200 flex-shrink-0 ${
+                className={`flex items-center gap-1 text-[11px] px-3 py-1 rounded-[8px] font-medium transition-all duration-200 flex-shrink-0 ${
                   isJoined
-                    ? 'bg-[#ECFDF5] border border-[#10b981] text-[#10b981]'
-                    : 'bg-[#111111] text-white hover:bg-[#2a2a2a]'
+                    ? 'bg-[#34d399]/10 border border-[#34d399]/30 text-[#34d399]'
+                    : 'bg-gradient-to-r from-[#6C7CFF] to-[#7C5CFF] text-white hover:opacity-90'
                 }`}
               >
                 {isJoined ? (
@@ -576,30 +576,30 @@ function FocusStats() {
       className="card px-6 py-4 flex items-center gap-8"
     >
       <div className="flex items-center gap-3">
-        <Clock size={16} className="text-[#2383E2]" />
+        <Clock size={16} className="text-[#6C7CFF]" />
         <div>
-          <p className="text-[10px] text-[#999999] uppercase tracking-widest">今日专注</p>
-          <p className="font-sans text-xl font-bold text-[#111111]">
+          <p className="text-[10px] text-[#5c5f73] uppercase tracking-widest">今日专注</p>
+          <p className="font-sans text-xl font-bold text-[#e8eaf0]">
             {hours}h {mins}m
           </p>
         </div>
       </div>
-      <div className="w-px h-8 bg-[#EAEAEA]" />
+      <div className="w-px h-8 bg-white/[0.06]" />
       <div className="flex items-center gap-3">
-        <Flame size={16} className="text-[#2383E2]" />
+        <Flame size={16} className="text-[#6C7CFF]" />
         <div>
-          <p className="text-[10px] text-[#999999] uppercase tracking-widest">完成番茄</p>
-          <p className="font-sans text-xl font-bold text-[#111111]">
+          <p className="text-[10px] text-[#5c5f73] uppercase tracking-widest">完成番茄</p>
+          <p className="font-sans text-xl font-bold text-[#e8eaf0]">
             {completedToday}
           </p>
         </div>
       </div>
-      <div className="w-px h-8 bg-[#EAEAEA]" />
+      <div className="w-px h-8 bg-white/[0.06]" />
       <div className="flex items-center gap-3">
-        <Check size={16} className="text-[#10b981]" />
+        <Check size={16} className="text-[#34d399]" />
         <div>
-          <p className="text-[10px] text-[#999999] uppercase tracking-widest">连续轮次</p>
-          <p className="font-sans text-xl font-bold text-[#111111]">
+          <p className="text-[10px] text-[#5c5f73] uppercase tracking-widest">连续轮次</p>
+          <p className="font-sans text-xl font-bold text-[#e8eaf0]">
             {completedToday}
           </p>
         </div>

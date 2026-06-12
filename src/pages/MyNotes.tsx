@@ -54,8 +54,8 @@ function generateId(): string {
 
 /* ───────── 输入框样式 ───────── */
 const inputBase =
-  'w-full px-3 py-2 rounded-[4px] bg-white border border-[#EAEAEA] text-sm text-[#111111] placeholder-[#999999] outline-none transition-all duration-150 focus:border-[#2383E2] focus:ring-2 focus:ring-[#EEF4FF]';
-const inputError = 'border-[#ef4444] focus:border-[#ef4444] focus:ring-[#FEF2F2]';
+  'w-full px-3 py-2 rounded-[8px] bg-[#1a1b2e] border border-white/[0.06] text-sm text-[#e8eaf0] placeholder-[#5c5f73] outline-none transition-all duration-200 focus:border-[#6C7CFF] focus:ring-2 focus:ring-[#6C7CFF]/20';
+const inputError = 'border-[#f87171] focus:border-[#f87171] focus:ring-[#f87171]/20';
 
 /* ═══════════════════════════════════════════
    MyNotes 主组件
@@ -220,23 +220,23 @@ export default function MyNotes() {
               {/* 表单头部 */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-[5px] bg-[#EEF4FF] flex items-center justify-center">
-                    <BookOpen size={16} className="text-[#2383E2]" />
+                  <div className="w-8 h-8 rounded-[10px] bg-[#6C7CFF]/10 flex items-center justify-center">
+                    <BookOpen size={16} className="text-[#6C7CFF]" />
                   </div>
-                  <h3 className="font-sans font-semibold text-sm text-[#111111]">新建笔记</h3>
+                  <h3 className="font-sans font-semibold text-sm text-[#e8eaf0]">新建笔记</h3>
                 </div>
                 <button
                   onClick={resetUploadForm}
-                  className="p-1.5 rounded-[5px] hover:bg-[#f5f5f5] transition-colors"
+                  className="p-1.5 rounded-[10px] hover:bg-[#1a1b2e] transition-colors"
                 >
-                  <X size={15} className="text-[#999999]" />
+                  <X size={15} className="text-[#5c5f73]" />
                 </button>
               </div>
 
               {/* 标题 + 科目 */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                 <div>
-                  <label className="block text-[11px] text-[#999999] mb-1 font-medium tracking-wide uppercase">标题</label>
+                  <label className="block text-[11px] text-[#5c5f73] mb-1 font-medium tracking-wide uppercase">标题</label>
                   <input
                     type="text"
                     value={uploadTitle}
@@ -252,7 +252,7 @@ export default function MyNotes() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-[11px] text-[#999999] mb-1 font-medium tracking-wide uppercase">科目</label>
+                  <label className="block text-[11px] text-[#5c5f73] mb-1 font-medium tracking-wide uppercase">科目</label>
                   <select
                     value={uploadSubjectId}
                     onChange={(e) => {
@@ -261,9 +261,9 @@ export default function MyNotes() {
                     }}
                     className={`${inputBase} ${validationErrors.subjectId ? inputError : ''}`}
                   >
-                    <option value="" className="bg-white text-[#999999]">选择科目</option>
+                    <option value="" className="bg-[#12131f] text-[#5c5f73]">选择科目</option>
                     {subjects.map((s) => (
-                      <option key={s.id} value={s.id} className="bg-white text-[#111111]">
+                      <option key={s.id} value={s.id} className="bg-[#12131f] text-[#e8eaf0]">
                         {s.name}
                       </option>
                     ))}
@@ -276,7 +276,7 @@ export default function MyNotes() {
 
               {/* 标签 */}
               <div className="mb-3">
-                <label className="block text-[11px] text-[#999999] mb-1 font-medium tracking-wide uppercase">标签</label>
+                <label className="block text-[11px] text-[#5c5f73] mb-1 font-medium tracking-wide uppercase">标签</label>
                 <input
                   type="text"
                   value={uploadTagsInput}
@@ -289,7 +289,7 @@ export default function MyNotes() {
                     {parseTags(uploadTagsInput).map((tag, i) => (
                       <span
                         key={i}
-                        className="px-2 py-0.5 rounded-[4px] text-[11px] bg-[#f5f5f5] text-[#666666] border border-[#EAEAEA]"
+                        className="px-2 py-0.5 rounded-[8px] text-[11px] bg-white/[0.04] text-[#8b8fa3] border border-white/[0.06]"
                       >
                         {tag}
                       </span>
@@ -300,7 +300,7 @@ export default function MyNotes() {
 
               {/* 内容 */}
               <div className="mb-4">
-                <label className="block text-[11px] text-[#999999] mb-1 font-medium tracking-wide uppercase">内容</label>
+                <label className="block text-[11px] text-[#5c5f73] mb-1 font-medium tracking-wide uppercase">内容</label>
                 <textarea
                   value={uploadContent}
                   onChange={(e) => {
@@ -317,7 +317,7 @@ export default function MyNotes() {
                   ) : (
                     <span />
                   )}
-                  <span className="text-[11px] text-[#999999] tabular-nums">{uploadContent.length} 字</span>
+                  <span className="text-[11px] text-[#5c5f73] tabular-nums">{uploadContent.length} 字</span>
                 </div>
               </div>
 
@@ -326,14 +326,14 @@ export default function MyNotes() {
                 <button
                   onClick={handleUpload}
                   disabled={!uploadTitle.trim() || !uploadSubjectId || !uploadContent.trim()}
-                  className="bg-[#111111] text-white hover:bg-[#2a2a2a] flex items-center gap-2 px-4 py-2 rounded-[4px] text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="bg-gradient-to-r from-[#6C7CFF] to-[#7C5CFF] text-white hover:from-[#5a6aff] hover:to-[#6a5aff] flex items-center gap-2 px-4 py-2 rounded-[8px] text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <Check size={15} />
                   保存
                 </button>
                 <button
                   onClick={resetUploadForm}
-                  className="text-[#666666] hover:text-[#111111] px-4 py-2 rounded-[4px] text-sm transition-colors"
+                  className="text-[#8b8fa3] hover:text-[#e8eaf0] px-4 py-2 rounded-[8px] text-sm transition-colors"
                 >
                   取消
                 </button>
@@ -349,10 +349,10 @@ export default function MyNotes() {
         <div className="flex items-center gap-1.5 flex-wrap">
           <button
             onClick={() => setSelectedSubjectId('')}
-            className={`px-3 py-1.5 rounded-[4px] text-xs font-medium transition-all duration-200 ${
+            className={`px-3 py-1.5 rounded-[8px] text-xs font-medium transition-all duration-200 ${
               selectedSubjectId === ''
-                ? 'bg-[#EEF4FF] text-[#2383E2] border border-[#2383E2]'
-                : 'text-[#999999] hover:text-[#666666] border border-transparent'
+                ? 'bg-[#6C7CFF]/10 text-[#6C7CFF] border border-[#6C7CFF]'
+                : 'text-[#5c5f73] hover:text-[#8b8fa3] border border-transparent'
             }`}
           >
             全部
@@ -361,10 +361,10 @@ export default function MyNotes() {
             <button
               key={s.id}
               onClick={() => setSelectedSubjectId(selectedSubjectId === s.id ? '' : s.id)}
-              className={`px-3 py-1.5 rounded-[4px] text-xs font-medium transition-all duration-200 ${
+              className={`px-3 py-1.5 rounded-[8px] text-xs font-medium transition-all duration-200 ${
                 selectedSubjectId === s.id
                   ? 'border'
-                  : 'text-[#999999] hover:text-[#666666] border border-transparent'
+                  : 'text-[#5c5f73] hover:text-[#8b8fa3] border border-transparent'
               }`}
               style={
                 selectedSubjectId === s.id
@@ -381,20 +381,20 @@ export default function MyNotes() {
 
         {/* 搜索框 */}
         <div className="relative w-52">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#999999]" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5c5f73]" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="搜索..."
-            className="w-full pl-9 pr-8 py-1.5 rounded-[4px] bg-white border border-[#EAEAEA] text-xs text-[#111111] placeholder-[#999999] outline-none transition-all focus:border-[#2383E2] focus:ring-2 focus:ring-[#EEF4FF]"
+            className="w-full pl-9 pr-8 py-1.5 rounded-[8px] bg-[#12131f] border border-white/[0.06] text-xs text-[#e8eaf0] placeholder-[#5c5f73] outline-none transition-all focus:border-[#6C7CFF] focus:ring-2 focus:ring-[#6C7CFF]/20"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-[4px] hover:bg-[#f5f5f5]"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-[8px] hover:bg-[#1a1b2e]"
             >
-              <X size={12} className="text-[#999999]" />
+              <X size={12} className="text-[#5c5f73]" />
             </button>
           )}
         </div>
@@ -403,10 +403,10 @@ export default function MyNotes() {
         <div className="relative">
           <button
             onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-[4px] bg-white border border-[#EAEAEA] text-xs text-[#666666] hover:border-[#E0E0E0] transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-[#12131f] border border-white/[0.06] text-xs text-[#8b8fa3] hover:border-white/[0.12] transition-colors"
           >
             {sortOptions.find((o) => o.value === sortOption)?.label}
-            <ChevronDown size={12} className="text-[#999999]" />
+            <ChevronDown size={12} className="text-[#5c5f73]" />
           </button>
           <AnimatePresence>
             {sortDropdownOpen && (
@@ -415,7 +415,7 @@ export default function MyNotes() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.12 }}
-                className="absolute right-0 z-20 mt-1 w-32 rounded-[5px] bg-white border border-[#EAEAEA] shadow-lg overflow-hidden"
+                className="absolute right-0 z-20 mt-1 w-32 rounded-[10px] bg-[#12131f] border border-white/[0.06] shadow-lg overflow-hidden"
               >
                 {sortOptions.map((opt) => (
                   <button
@@ -425,8 +425,8 @@ export default function MyNotes() {
                       setSortOption(opt.value);
                       setSortDropdownOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-2 text-xs hover:bg-[#f9f9f9] transition-colors ${
-                      sortOption === opt.value ? 'text-[#2383E2] font-medium' : 'text-[#666666]'
+                    className={`w-full text-left px-3 py-2 text-xs hover:bg-[#0e0f1a] transition-colors ${
+                      sortOption === opt.value ? 'text-[#6C7CFF] font-medium' : 'text-[#8b8fa3]'
                     }`}
                   >
                     {opt.label}
@@ -440,7 +440,7 @@ export default function MyNotes() {
         {/* 新建按钮 */}
         <button
           onClick={() => setShowUploadForm(!showUploadForm)}
-          className="bg-[#111111] text-white hover:bg-[#2a2a2a] flex items-center gap-1.5 text-xs !py-1.5 !px-3 rounded-[4px] font-medium transition-colors"
+          className="bg-gradient-to-r from-[#6C7CFF] to-[#7C5CFF] text-white hover:from-[#5a6aff] hover:to-[#6a5aff] flex items-center gap-1.5 text-xs !py-1.5 !px-3 rounded-[8px] font-medium transition-colors"
         >
           <Plus size={14} />
           新建
@@ -452,19 +452,19 @@ export default function MyNotes() {
         /* 全空状态 */
         <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
           <NotebookPen size={64} className="text-[#CCCCCC] mb-4" strokeWidth={1.2} />
-          <p className="text-[#999999] text-sm font-medium">还没有笔记，点击上方新建</p>
+          <p className="text-[#5c5f73] text-sm font-medium">还没有笔记，点击上方新建</p>
         </div>
       ) : filteredNotes.length === 0 ? (
         /* 筛选空状态 */
         <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
           <Search size={40} className="text-[#CCCCCC] mb-3" strokeWidth={1.2} />
-          <p className="text-[#999999] text-sm">没有匹配的笔记</p>
+          <p className="text-[#5c5f73] text-sm">没有匹配的笔记</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 overflow-y-auto flex-1 pb-4 pr-1">
           {filteredNotes.map((note, i) => {
             const subject = getSubject(note.subjectId);
-            const subjectColor = subject?.color ?? '#2383E2';
+            const subjectColor = subject?.color ?? '#6C7CFF';
             const contentPreview = note.content.replace(/\n/g, ' ').slice(0, 90);
 
             return (
@@ -481,7 +481,7 @@ export default function MyNotes() {
                 <div className="p-4 pl-4">
                   {/* 标题行 */}
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <h4 className="font-sans font-semibold text-[13px] text-[#111111] leading-snug flex-1 line-clamp-2">
+                    <h4 className="font-sans font-semibold text-[13px] text-[#e8eaf0] leading-snug flex-1 line-clamp-2">
                       {note.title}
                     </h4>
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5">
@@ -491,20 +491,20 @@ export default function MyNotes() {
                           openDetail(note);
                           setIsEditing(true);
                         }}
-                        className="p-1.5 rounded-[4px] hover:bg-[#f5f5f5] transition-colors"
+                        className="p-1.5 rounded-[8px] hover:bg-[#1a1b2e] transition-colors"
                         title="编辑"
                       >
-                        <Edit3 size={12} className="text-[#999999]" />
+                        <Edit3 size={12} className="text-[#5c5f73]" />
                       </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDelete(note.id);
                         }}
-                        className="p-1.5 rounded-[4px] hover:bg-[#FEF2F2] transition-colors"
+                        className="p-1.5 rounded-[8px] hover:bg-[#f87171]/10 transition-colors"
                         title="删除"
                       >
-                        <Trash2 size={12} className="text-[#999999] hover:text-[#ef4444]" />
+                        <Trash2 size={12} className="text-[#5c5f73] hover:text-[#f87171]" />
                       </button>
                     </div>
                   </div>
@@ -515,9 +515,9 @@ export default function MyNotes() {
                       className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                       style={{ backgroundColor: subjectColor }}
                     />
-                    <span className="text-[11px] text-[#999999]">{subject?.name ?? '未知科目'}</span>
+                    <span className="text-[11px] text-[#5c5f73]">{subject?.name ?? '未知科目'}</span>
                     <span className="text-[#CCCCCC]">·</span>
-                    <span className="text-[11px] text-[#999999]">{formatDate(note.createdAt)}</span>
+                    <span className="text-[11px] text-[#5c5f73]">{formatDate(note.createdAt)}</span>
                   </div>
 
                   {/* 标签 */}
@@ -526,7 +526,7 @@ export default function MyNotes() {
                       {note.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="px-1.5 py-px rounded-[4px] text-[10px] bg-[#f5f5f5] text-[#666666] border border-[#EAEAEA]"
+                          className="px-1.5 py-px rounded-[8px] text-[10px] bg-white/[0.04] text-[#8b8fa3] border border-white/[0.06]"
                         >
                           {tag}
                         </span>
@@ -535,9 +535,9 @@ export default function MyNotes() {
                   )}
 
                   {/* 内容预览 */}
-                  <p className="text-xs text-[#999999] leading-relaxed line-clamp-2">
+                  <p className="text-xs text-[#5c5f73] leading-relaxed line-clamp-2">
                     {contentPreview}
-                    {note.content.length > 90 && <span className="text-[#999999]">...</span>}
+                    {note.content.length > 90 && <span className="text-[#5c5f73]">...</span>}
                   </p>
                 </div>
               </motion.div>
@@ -554,7 +554,7 @@ export default function MyNotes() {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
             onClick={() => setSelectedNote(null)}
           >
             <motion.div
@@ -563,14 +563,14 @@ export default function MyNotes() {
               animate="visible"
               exit="exit"
               onClick={(e) => e.stopPropagation()}
-              className="bg-white border border-[#EAEAEA] rounded-[6px] w-full max-w-lg p-6 relative max-h-[85vh] overflow-y-auto"
+              className="bg-[#12131f] border border-white/[0.06] rounded-[16px] w-full max-w-lg p-6 relative max-h-[85vh] overflow-y-auto"
             >
               {/* 关闭按钮 */}
               <button
                 onClick={() => setSelectedNote(null)}
-                className="absolute top-4 right-4 p-1.5 rounded-[5px] hover:bg-[#f5f5f5] transition-colors z-10"
+                className="absolute top-4 right-4 p-1.5 rounded-[10px] hover:bg-[#1a1b2e] transition-colors z-10"
               >
-                <X size={16} className="text-[#999999]" />
+                <X size={16} className="text-[#5c5f73]" />
               </button>
 
               {!isEditing ? (
@@ -578,7 +578,7 @@ export default function MyNotes() {
                   {/* ── 查看模式 ── */}
                   {(() => {
                     const subject = getSubject(selectedNote.subjectId);
-                    const color = subject?.color ?? '#2383E2';
+                    const color = subject?.color ?? '#6C7CFF';
                     return (
                       <div className="flex items-center gap-2 mb-4">
                         <span
@@ -593,7 +593,7 @@ export default function MyNotes() {
                   })()}
 
                   {/* 标题 */}
-                  <h2 className="font-sans font-semibold text-lg text-[#111111] mb-3 pr-8 leading-tight">
+                  <h2 className="font-sans font-semibold text-lg text-[#e8eaf0] mb-3 pr-8 leading-tight">
                     {selectedNote.title}
                   </h2>
 
@@ -603,7 +603,7 @@ export default function MyNotes() {
                       {selectedNote.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="px-2 py-0.5 rounded-[4px] text-[11px] bg-[#f5f5f5] text-[#666666] border border-[#EAEAEA]"
+                          className="px-2 py-0.5 rounded-[8px] text-[11px] bg-white/[0.04] text-[#8b8fa3] border border-white/[0.06]"
                         >
                           {tag}
                         </span>
@@ -612,14 +612,14 @@ export default function MyNotes() {
                   )}
 
                   {/* 内容 */}
-                  <div className="rounded-[5px] bg-[#f9f9f9] p-4 mb-5 border border-[#EAEAEA]">
-                    <p className="text-sm text-[#666666] leading-relaxed whitespace-pre-wrap">
+                  <div className="rounded-[10px] bg-[#0e0f1a] p-4 mb-5 border border-white/[0.06]">
+                    <p className="text-sm text-[#8b8fa3] leading-relaxed whitespace-pre-wrap">
                       {selectedNote.content}
                     </p>
                   </div>
 
                   {/* 时间信息 */}
-                  <div className="flex items-center gap-3 text-[11px] text-[#999999] mb-5">
+                  <div className="flex items-center gap-3 text-[11px] text-[#5c5f73] mb-5">
                     <span>创建于 {formatDate(selectedNote.createdAt)}</span>
                     {selectedNote.updatedAt !== selectedNote.createdAt && (
                       <>
@@ -633,7 +633,7 @@ export default function MyNotes() {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setIsEditing(true)}
-                      className="bg-[#111111] text-white hover:bg-[#2a2a2a] flex items-center gap-2 flex-1 justify-center px-4 py-2 rounded-[4px] text-sm font-medium transition-colors"
+                      className="bg-gradient-to-r from-[#6C7CFF] to-[#7C5CFF] text-white hover:from-[#5a6aff] hover:to-[#6a5aff] flex items-center gap-2 flex-1 justify-center px-4 py-2 rounded-[8px] text-sm font-medium transition-colors"
                     >
                       <Edit3 size={15} />
                       编辑
@@ -642,14 +642,14 @@ export default function MyNotes() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleDelete(selectedNote.id)}
-                          className="px-4 py-2 rounded-[5px] text-sm font-medium text-white bg-[#ef4444] hover:bg-red-600 transition-colors flex items-center gap-2"
+                          className="px-4 py-2 rounded-[10px] text-sm font-medium text-white bg-[#f87171] hover:bg-red-600 transition-colors flex items-center gap-2"
                         >
                           <Trash2 size={15} />
                           确认删除
                         </button>
                         <button
                           onClick={() => setConfirmDeleteId(null)}
-                          className="text-[#666666] hover:text-[#111111] px-4 py-2 rounded-[4px] text-sm transition-colors"
+                          className="text-[#8b8fa3] hover:text-[#e8eaf0] px-4 py-2 rounded-[8px] text-sm transition-colors"
                         >
                           取消
                         </button>
@@ -657,7 +657,7 @@ export default function MyNotes() {
                     ) : (
                       <button
                         onClick={() => setConfirmDeleteId(selectedNote.id)}
-                        className="text-[#ef4444] hover:bg-[#FEF2F2] px-4 py-2 rounded-[5px] text-sm border border-[#ef4444]/30 transition-all"
+                        className="text-[#f87171] hover:bg-[#f87171]/10 px-4 py-2 rounded-[10px] text-sm border border-[#f87171]/30 transition-all"
                       >
                         <Trash2 size={15} />
                       </button>
@@ -668,14 +668,14 @@ export default function MyNotes() {
                 <>
                   {/* ── 编辑模式 ── */}
                   <div className="flex items-center justify-between mb-5">
-                    <h3 className="font-sans font-semibold text-sm text-[#111111] flex items-center gap-2">
-                      <Edit3 size={15} className="text-[#2383E2]" />
+                    <h3 className="font-sans font-semibold text-sm text-[#e8eaf0] flex items-center gap-2">
+                      <Edit3 size={15} className="text-[#6C7CFF]" />
                       编辑笔记
                     </h3>
-                    <div className="flex items-center gap-1.5 text-[11px] text-[#2383E2]">
+                    <div className="flex items-center gap-1.5 text-[11px] text-[#6C7CFF]">
                       <span className="relative flex h-1.5 w-1.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2383E2] opacity-75" />
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#2383E2]" />
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#6C7CFF] opacity-75" />
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#6C7CFF]" />
                       </span>
                       编辑中...
                     </div>
@@ -684,7 +684,7 @@ export default function MyNotes() {
                   <div className="space-y-3">
                     {/* 标题 */}
                     <div>
-                      <label className="block text-[11px] text-[#999999] mb-1 font-medium tracking-wide uppercase">标题</label>
+                      <label className="block text-[11px] text-[#5c5f73] mb-1 font-medium tracking-wide uppercase">标题</label>
                       <input
                         type="text"
                         value={editTitle}
@@ -695,14 +695,14 @@ export default function MyNotes() {
 
                     {/* 科目 */}
                     <div>
-                      <label className="block text-[11px] text-[#999999] mb-1 font-medium tracking-wide uppercase">科目</label>
+                      <label className="block text-[11px] text-[#5c5f73] mb-1 font-medium tracking-wide uppercase">科目</label>
                       <select
                         value={editSubjectId}
                         onChange={(e) => setEditSubjectId(e.target.value)}
                         className={inputBase}
                       >
                         {subjects.map((s) => (
-                          <option key={s.id} value={s.id} className="bg-white text-[#111111]">
+                          <option key={s.id} value={s.id} className="bg-[#12131f] text-[#e8eaf0]">
                             {s.name}
                           </option>
                         ))}
@@ -711,7 +711,7 @@ export default function MyNotes() {
 
                     {/* 标签 */}
                     <div>
-                      <label className="block text-[11px] text-[#999999] mb-1 font-medium tracking-wide uppercase">标签</label>
+                      <label className="block text-[11px] text-[#5c5f73] mb-1 font-medium tracking-wide uppercase">标签</label>
                       <input
                         type="text"
                         value={editTagsInput}
@@ -724,7 +724,7 @@ export default function MyNotes() {
                           {parseTags(editTagsInput).map((tag, i) => (
                             <span
                               key={i}
-                              className="px-2 py-0.5 rounded-[4px] text-[11px] bg-[#f5f5f5] text-[#666666] border border-[#EAEAEA]"
+                              className="px-2 py-0.5 rounded-[8px] text-[11px] bg-white/[0.04] text-[#8b8fa3] border border-white/[0.06]"
                             >
                               {tag}
                             </span>
@@ -735,14 +735,14 @@ export default function MyNotes() {
 
                     {/* 内容 */}
                     <div>
-                      <label className="block text-[11px] text-[#999999] mb-1 font-medium tracking-wide uppercase">内容</label>
+                      <label className="block text-[11px] text-[#5c5f73] mb-1 font-medium tracking-wide uppercase">内容</label>
                       <textarea
                         value={editContent}
                         onChange={(e) => setEditContent(e.target.value)}
                         rows={8}
                         className={`${inputBase} resize-none`}
                       />
-                      <span className="text-[11px] text-[#999999] mt-1 block text-right tabular-nums">{editContent.length} 字</span>
+                      <span className="text-[11px] text-[#5c5f73] mt-1 block text-right tabular-nums">{editContent.length} 字</span>
                     </div>
                   </div>
 
@@ -751,7 +751,7 @@ export default function MyNotes() {
                     <button
                       onClick={handleSaveEdit}
                       disabled={!editTitle.trim() || !editContent.trim()}
-                      className="bg-[#111111] text-white hover:bg-[#2a2a2a] flex items-center gap-2 flex-1 justify-center px-4 py-2 rounded-[4px] text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="bg-gradient-to-r from-[#6C7CFF] to-[#7C5CFF] text-white hover:from-[#5a6aff] hover:to-[#6a5aff] flex items-center gap-2 flex-1 justify-center px-4 py-2 rounded-[8px] text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       <Check size={15} />
                       保存
@@ -761,7 +761,7 @@ export default function MyNotes() {
                         setIsEditing(false);
                         setConfirmDeleteId(null);
                       }}
-                      className="text-[#666666] hover:text-[#111111] px-4 py-2 rounded-[4px] text-sm transition-colors"
+                      className="text-[#8b8fa3] hover:text-[#e8eaf0] px-4 py-2 rounded-[8px] text-sm transition-colors"
                     >
                       取消
                     </button>

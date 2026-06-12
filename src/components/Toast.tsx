@@ -36,10 +36,10 @@ const iconMap: Record<ToastType, typeof Check> = {
 };
 
 const colorMap: Record<ToastType, { bg: string; border: string; text: string; iconBg: string }> = {
-  success: { bg: '#ecfdf5', border: '#a7f3d0', text: '#059669', iconBg: '#d1fae5' },
-  error: { bg: '#fef2f2', border: '#fecaca', text: '#dc2626', iconBg: '#fee2e2' },
-  warning: { bg: '#fffbeb', border: '#fde68a', text: '#d97706', iconBg: '#fef3c7' },
-  info: { bg: '#eff6ff', border: '#bfdbfe', text: '#2563eb', iconBg: '#dbeafe' },
+  success: { bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.25)', text: '#34d399', iconBg: 'rgba(52,211,153,0.15)' },
+  error: { bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.25)', text: '#f87171', iconBg: 'rgba(248,113,113,0.15)' },
+  warning: { bg: 'rgba(251,191,36,0.1)', border: 'rgba(251,191,36,0.25)', text: '#fbbf24', iconBg: 'rgba(251,191,36,0.15)' },
+  info: { bg: 'rgba(108,124,255,0.1)', border: 'rgba(108,124,255,0.25)', text: '#6C7CFF', iconBg: 'rgba(108,124,255,0.15)' },
 };
 
 export function ToastContainer() {
@@ -58,15 +58,16 @@ export function ToastContainer() {
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 60, scale: 0.95 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl min-w-[260px] max-w-[380px]"
+              className="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-[12px] min-w-[260px] max-w-[380px]"
               style={{
                 background: colors.bg,
                 border: `1px solid ${colors.border}`,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                backdropFilter: 'blur(12px)',
               }}
             >
               <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                className="w-7 h-7 rounded-[8px] flex items-center justify-center flex-shrink-0"
                 style={{ background: colors.iconBg }}
               >
                 <Icon size={14} style={{ color: colors.text }} />
@@ -76,9 +77,9 @@ export function ToastContainer() {
               </p>
               <button
                 onClick={() => removeToast(toast.id)}
-                className="p-1 rounded hover:bg-black/5 transition-colors flex-shrink-0"
+                className="p-1 rounded hover:bg-white/5 transition-colors flex-shrink-0"
               >
-                <X size={12} className="text-gray-400" />
+                <X size={12} className="text-[#5c5f73]" />
               </button>
             </motion.div>
           );
