@@ -46,7 +46,7 @@ export function ToastContainer() {
   const { toasts, removeToast } = useToastStore();
 
   return (
-    <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
+    <div className="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 z-[100] flex flex-col items-center sm:items-end gap-2 pointer-events-none">
       <AnimatePresence>
         {toasts.map((toast) => {
           const colors = colorMap[toast.type];
@@ -58,7 +58,7 @@ export function ToastContainer() {
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 60, scale: 0.95 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-[12px] min-w-[260px] max-w-[380px]"
+              className="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-[12px] min-w-[260px] max-w-[calc(100vw-32px)] sm:max-w-sm"
               style={{
                 background: colors.bg,
                 border: `1px solid ${colors.border}`,

@@ -251,12 +251,12 @@ function AgentWorkflow() {
       className="mt-8"
     >
       <h2 className="text-[16px] font-semibold text-[#e8eaf0] mb-4">Agent 协作工作流</h2>
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+      <div className="flex overflow-x-auto gap-4 pb-2 lg:grid lg:grid-cols-6 lg:overflow-visible">
         {agentWorkflow.map((agent, i) => (
-          <div key={agent.name} className="flex items-center gap-2 flex-shrink-0">
+          <div key={agent.name} className="flex items-center gap-2 flex-shrink-0 lg:flex-shrink">
             <motion.div
               whileHover={{ y: -2, transition: { duration: 0.2 } }}
-              className="bg-[#12131f] border border-white/[0.06] rounded-[20px] p-4 min-w-[150px] transition-all hover:border-[#6C7CFF]/30 hover:shadow-[0_0_20px_rgba(108,124,255,0.08)]"
+              className="bg-[#12131f] border border-white/[0.06] rounded-[20px] p-4 min-w-[150px] lg:min-w-0 transition-all hover:border-[#6C7CFF]/30 hover:shadow-[0_0_20px_rgba(108,124,255,0.08)]"
             >
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: agent.color }} />
@@ -268,7 +268,7 @@ function AgentWorkflow() {
               )}
             </motion.div>
             {i < agentWorkflow.length - 1 && (
-              <ArrowRight size={14} className="text-[#5c5f73] flex-shrink-0" />
+              <ArrowRight size={14} className="text-[#5c5f73] flex-shrink-0 hidden lg:block" />
             )}
           </div>
         ))}
@@ -307,7 +307,7 @@ function KnowledgeNav() {
   const displayChapters = fallbackChapters;
 
   return (
-    <div className="w-full lg:w-[220px] flex-shrink-0 bg-[#12131f] border border-white/[0.06] rounded-[24px] p-5">
+    <div className="w-full lg:w-[220px] flex-shrink-0 min-w-0 bg-[#12131f] border border-white/[0.06] rounded-[24px] p-5">
       <h3 className="text-[13px] font-semibold text-[#e8eaf0] mb-3">知识导航</h3>
 
       {/* Course selector */}
@@ -415,7 +415,7 @@ function KnowledgeGraph() {
   };
 
   return (
-    <div className="flex-1 min-w-0 bg-[#12131f] border border-white/[0.06] rounded-[24px] p-5 relative overflow-hidden">
+    <div className="w-full lg:flex-1 min-w-0 bg-[#12131f] border border-white/[0.06] rounded-[24px] p-5 relative overflow-hidden">
       <h3 className="text-[13px] font-semibold text-[#e8eaf0] mb-3">知识图谱</h3>
       <div className="relative w-full" style={{ paddingBottom: '80%' }}>
         {/* SVG Edges */}
@@ -514,7 +514,7 @@ function SmartPanel() {
   }, [subjects]);
 
   return (
-    <div className="w-full lg:w-[280px] flex-shrink-0 space-y-4">
+    <div className="w-full lg:w-[280px] flex-shrink-0 min-w-0 space-y-4">
       {/* AI 复习建议 */}
       <div className="bg-[#12131f] border border-white/[0.06] rounded-[24px] p-5">
         <div className="flex items-center gap-2 mb-3">
@@ -874,7 +874,7 @@ function ReviewTimeline() {
         </button>
       </div>
 
-      <div className="bg-[#12131f] border border-white/[0.06] rounded-[24px] p-6">
+      <div className="bg-[#12131f] border border-white/[0.06] rounded-[24px] p-6 overflow-x-auto">
         {timelineData.length > 0 ? (
           <div className="relative">
             {timelineData.map((item, idx) => {
@@ -960,7 +960,7 @@ function FloatingAssistant() {
   ];
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-24 lg:bottom-6 right-4 z-50">
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -1011,7 +1011,7 @@ function FloatingAssistant() {
 /* ─── 主组件 ─── */
 export default function Dashboard() {
   return (
-    <div className="space-y-0 pb-8">
+    <div className="space-y-0 pb-8 overflow-x-hidden">
       {/* 1. Stats Overview */}
       <StatsOverview />
 

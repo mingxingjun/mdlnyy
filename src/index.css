@@ -46,6 +46,7 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 /* ─── Global Body ──────────────────────────────────── */
@@ -500,14 +501,12 @@ select option {
     font-size: 10px;
     border-radius: 0;
     background: none !important;
+    border-left: none !important;
+    padding-left: 8px !important;
   }
 
   aside.sidebar nav a span {
     display: block !important;
-  }
-
-  main {
-    padding-bottom: 72px;
   }
 }
 

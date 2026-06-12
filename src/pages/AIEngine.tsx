@@ -580,7 +580,7 @@ export default function AIEngine() {
         const isPending = i > current;
 
         return (
-          <div key={`${step.agentId}-${i}`} className="flex items-center">
+          <div key={`${step.agentId}-${i}`} className="flex items-center flex-shrink-0">
             {/* Step orb */}
             <div className="flex flex-col items-center gap-1.5">
               <div
@@ -735,9 +735,9 @@ export default function AIEngine() {
   /* ================================================================== */
 
   return (
-    <div className="max-w-7xl mx-auto h-[calc(100vh-80px)] flex flex-col">
+    <div className="max-w-7xl mx-auto h-[calc(100vh-80px)] flex flex-col overflow-x-hidden">
       {/* Tab bar */}
-      <div className="flex gap-0 mb-4 flex-shrink-0 border-b border-white/[0.06]">
+      <div className="flex gap-0 mb-4 flex-shrink-0 border-b border-white/[0.06] overflow-x-auto">
         <button
           onClick={() => setActiveTab('agent')}
           className={`flex items-center gap-2 px-5 py-2.5 text-sm font-sans transition-all duration-200 cursor-pointer border-b-2
@@ -826,10 +826,10 @@ export default function AIEngine() {
 
                   {/* Agent info bar */}
                   {selectedAgent && (
-                    <div className="flex items-center gap-3 px-5 pt-3 pb-2 border-b border-white/[0.06] flex-shrink-0">
+                    <div className="flex items-center gap-3 px-5 pt-3 pb-2 border-b border-white/[0.06] flex-shrink-0 min-w-0">
                       <span className="text-lg">{selectedAgent.avatar}</span>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h2 className="font-sans font-semibold text-[#e8eaf0] text-sm">
                             {selectedAgent.name}
                           </h2>
@@ -841,7 +841,7 @@ export default function AIEngine() {
                           {selectedAgent.description}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-shrink-0">
                         {latestSession && latestSession.messages.length > 0 && (
                           <button
                             onClick={handleClearSession}
@@ -858,7 +858,7 @@ export default function AIEngine() {
                   )}
 
                   {/* Chat messages */}
-                  <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 min-h-0">
+                  <div className="flex-1 overflow-y-auto px-3 sm:px-5 py-4 space-y-4 min-h-0">
                     <AnimatePresence initial={false}>
                       {displayMessages.map((msg) => (
                         <motion.div
@@ -938,7 +938,7 @@ export default function AIEngine() {
                   </div>
 
                   {/* Skill quick-select + Input area */}
-                  <div className="px-4 pb-4 pt-2 flex-shrink-0 space-y-2">
+                  <div className="px-3 sm:px-4 pb-4 pt-2 flex-shrink-0 space-y-2">
                     {selectedAgent && selectedAgent.skills.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
                         {selectedAgent.skills.map((skill) => {
@@ -992,7 +992,7 @@ export default function AIEngine() {
                   {/* File Upload Zone */}
                   {!uploadedFile ? (
                     <div
-                      className={`file-drop-zone card flex-shrink-0 flex flex-col items-center justify-center py-12 cursor-pointer transition-all duration-300
+                      className={`file-drop-zone card flex-shrink-0 w-full flex flex-col items-center justify-center py-12 cursor-pointer transition-all duration-300
                         ${isDragOver ? 'border-[var(--accent)] bg-[#6C7CFF]/10' : ''}`}
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
@@ -1020,8 +1020,8 @@ export default function AIEngine() {
                       </p>
                     </div>
                   ) : (
-                    <div className="card flex-shrink-0 px-5 py-4">
-                      <div className="flex items-center gap-4">
+                    <div className="card flex-shrink-0 px-4 sm:px-5 py-4">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                         <div className="w-12 h-12 rounded-[16px] bg-[#6C7CFF]/10 border border-[#6C7CFF]/30 flex items-center justify-center flex-shrink-0">
                           <FileText size={22} className="text-[var(--accent)]" />
                         </div>
@@ -1033,7 +1033,7 @@ export default function AIEngine() {
                             {formatFileSize(uploadedFile.size)} · {uploadedFile.type || '未知类型'}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
                           {!workflowRunning && !workflowComplete && (
                             <button
                               onClick={handleStartWorkflow}
@@ -1077,14 +1077,14 @@ export default function AIEngine() {
                   {/* Workflow Chat Tab */}
                   {(workflowComplete || stepOutputs.length > 0) && (
                     <div className="card flex-1 min-h-[300px] flex flex-col">
-                      <div className="flex items-center gap-3 px-5 pt-4 pb-3 border-b border-white/[0.06] flex-shrink-0">
+                      <div className="flex items-center gap-3 px-4 sm:px-5 pt-4 pb-3 border-b border-white/[0.06] flex-shrink-0 flex-wrap">
                         <Bot size={16} className="text-[var(--accent)]" />
                         <h3 className="font-sans font-semibold text-[#e8eaf0] text-sm">对话</h3>
                         <span className="text-[10px] text-[#5c5f73] font-sans">
                           选择 Agent 继续探讨结果
                         </span>
                         <div className="flex-1" />
-                        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+                        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none max-w-full">
                           {AGENTS.map((agent) => (
                             <button
                               key={agent.id}
@@ -1103,7 +1103,7 @@ export default function AIEngine() {
                       </div>
 
                       {/* Chat messages */}
-                      <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3 min-h-0">
+                      <div className="flex-1 overflow-y-auto px-3 sm:px-5 py-3 space-y-3 min-h-0">
                         {workflowChatMessages.length === 0 && (
                           <div className="flex items-center justify-center h-full">
                             <p className="text-sm text-[#5c5f73] font-sans">
@@ -1174,7 +1174,7 @@ export default function AIEngine() {
                       </div>
 
                       {/* Input */}
-                      <div className="px-4 pb-4 pt-2 flex-shrink-0">
+                      <div className="px-3 sm:px-4 pb-4 pt-2 flex-shrink-0">
                         <div className="flex items-end gap-2 bg-[#1a1b2e] border border-white/[0.06] rounded-[16px] px-4 py-2 focus-within:border-[#6C7CFF] focus-within:ring-2 focus-within:ring-[#6C7CFF]/20 transition-all duration-300">
                           <textarea
                             value={workflowChatInput}

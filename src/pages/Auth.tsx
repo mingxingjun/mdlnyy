@@ -293,7 +293,7 @@ export default function Auth() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
-          className="bg-[#12131f]/80 backdrop-blur-xl border border-white/[0.06] rounded-[24px] p-8 w-full max-w-[420px]"
+          className="bg-[#12131f]/80 backdrop-blur-xl border border-white/[0.06] rounded-[24px] p-6 sm:p-8 w-full max-w-[420px] mx-4 sm:mx-auto"
         >
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center justify-center gap-2.5 mb-8">

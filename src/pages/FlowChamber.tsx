@@ -223,7 +223,7 @@ function PomodoroTimer() {
       className="flex flex-col items-center gap-8"
     >
       {/* 模式切换 */}
-      <div className="flex items-center gap-2 bg-[#1a1b2e] rounded-full p-1">
+      <div className="flex items-center gap-2 bg-[#1a1b2e] rounded-full p-1 w-full sm:w-auto">
         {(['work', 'break'] as const).map((m) => (
           <button
             key={m}
@@ -232,7 +232,7 @@ function PomodoroTimer() {
               setTimeLeft(m === 'work' ? WORK_DURATION : BREAK_DURATION);
               setRunning(false);
             }}
-            className={`px-5 py-1.5 rounded-full text-sm font-medium transition-all duration-300 ${
+            className={`flex-1 sm:flex-none px-5 py-1.5 rounded-full text-sm font-medium transition-all duration-300 ${
               mode === m
                 ? m === 'work'
                   ? 'bg-[#6C7CFF]/10 text-[#6C7CFF] shadow-sm'
@@ -251,7 +251,7 @@ function PomodoroTimer() {
           completedAnimation ? 'animate-completion-pulse' : ''
         }`}
       >
-        <svg width="320" height="320" viewBox="0 0 320 320" className="-rotate-90">
+        <svg viewBox="0 0 320 320" className="w-[200px] h-[200px] sm:w-[280px] sm:h-[280px] lg:w-[320px] lg:h-[320px] -rotate-90">
           {/* 背景圆 */}
           <circle
             cx="160" cy="160" r={radius}
@@ -295,13 +295,13 @@ function PomodoroTimer() {
       <div className="flex items-center gap-3">
         <button
           onClick={handleReset}
-          className="w-10 h-10 rounded-full border border-white/[0.06] flex items-center justify-center text-[#5c5f73] hover:text-[#8b8fa3] hover:border-white/[0.12] transition-all bg-[#12131f]"
+          className="w-10 h-10 min-w-[44px] min-h-[44px] rounded-full border border-white/[0.06] flex items-center justify-center text-[#5c5f73] hover:text-[#8b8fa3] hover:border-white/[0.12] transition-all bg-[#12131f]"
         >
           <RotateCcw size={16} />
         </button>
         <button
           onClick={running ? handlePause : handleStart}
-          className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 ${
+          className={`w-14 h-14 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center transition-all duration-300 ${
             mode === 'work'
               ? 'bg-[#6C7CFF] hover:bg-[#5a6aff]'
               : 'bg-[#34d399] hover:bg-[#2dd4a0]'
@@ -317,7 +317,7 @@ function PomodoroTimer() {
         <select
           value={selectedSubject}
           onChange={(e) => setSelectedSubject(e.target.value)}
-          className="bg-[#12131f] border border-white/[0.06] rounded-[10px] px-4 py-2 text-sm text-[#8b8fa3] focus:outline-none focus:border-[#6C7CFF]/30 transition-colors"
+          className="w-full sm:w-auto bg-[#12131f] border border-white/[0.06] rounded-[10px] px-4 py-2 text-sm text-[#8b8fa3] focus:outline-none focus:border-[#6C7CFF]/30 transition-colors"
         >
           {subjects.map((s) => (
             <option key={s.id} value={s.id}>{s.name}</option>
@@ -417,7 +417,7 @@ function WhiteNoisePanel() {
         白噪音
       </h3>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
         {NOISE_CONFIG.map(({ type, label, icon: Icon }) => {
           const isActive = activeWhiteNoise.includes(type);
           return (
@@ -499,7 +499,7 @@ function StudyRoomsPanel() {
         自习室
       </h3>
 
-      <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[340px] overflow-y-auto pr-1">
         {studyRooms.map((room) => {
           const isJoined = joinedRooms.includes(room.id);
           return (
@@ -573,7 +573,7 @@ function FocusStats() {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.35 }}
-      className="card px-6 py-4 flex items-center gap-8"
+      className="card px-6 py-4 flex flex-col sm:flex-row items-center gap-4 sm:gap-8"
     >
       <div className="flex items-center gap-3">
         <Clock size={16} className="text-[#6C7CFF]" />
@@ -584,7 +584,7 @@ function FocusStats() {
           </p>
         </div>
       </div>
-      <div className="w-px h-8 bg-white/[0.06]" />
+      <div className="w-px h-8 bg-white/[0.06] hidden sm:block" />
       <div className="flex items-center gap-3">
         <Flame size={16} className="text-[#6C7CFF]" />
         <div>
@@ -594,7 +594,7 @@ function FocusStats() {
           </p>
         </div>
       </div>
-      <div className="w-px h-8 bg-white/[0.06]" />
+      <div className="w-px h-8 bg-white/[0.06] hidden sm:block" />
       <div className="flex items-center gap-3">
         <Check size={16} className="text-[#34d399]" />
         <div>

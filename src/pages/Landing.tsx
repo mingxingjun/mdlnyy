@@ -176,7 +176,7 @@ export default function Landing() {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="md:hidden border-t border-white/[0.06] bg-[#0a0b14]/95 backdrop-blur-xl px-6 py-4 space-y-3"
+            className="md:hidden bg-[#0a0b14]/95 backdrop-blur-xl border border-white/[0.06] rounded-[16px] p-4 mt-2 absolute right-4 top-14 z-50"
           >
             {['功能', '关于', '常见问题'].map((link) => (
               <a
@@ -188,7 +188,7 @@ export default function Landing() {
                 {link}
               </a>
             ))}
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-2 border-t border-white/[0.06] mt-2">
               <button className="text-[13px] text-[#8b8fa3] hover:text-white px-4 py-2">登录</button>
               <button
                 onClick={() => navigate('/dashboard')}
@@ -263,7 +263,7 @@ export default function Landing() {
 
           {/* Right: Multi-Agent Orbital Visualization (45%) */}
           <motion.div
-            className="flex-[45] relative w-full max-w-[480px] aspect-square hidden sm:block"
+            className="flex-[45] relative w-full max-w-[480px] aspect-square hidden lg:block"
             initial="hidden"
             animate="visible"
             variants={scaleIn}
@@ -330,7 +330,7 @@ export default function Landing() {
           </motion.div>
 
           {/* Mobile: simplified 6 dots in a row */}
-          <div className="sm:hidden flex items-center justify-center gap-3 w-full mt-4">
+          <div className="lg:hidden flex items-center justify-center gap-3 w-full mt-4">
             {orbitalAgents.map((agent) => (
               <div
                 key={agent.name}
@@ -427,7 +427,7 @@ export default function Landing() {
           </div>
 
           {/* Tablet/Mobile: vertical stack */}
-          <div className="lg:hidden grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="lg:hidden grid grid-cols-1 md:grid-cols-2 gap-3">
             {workflowSteps.map((step, i) => (
               <motion.div key={step.name} variants={fadeUp} custom={i}>
                 <div className="bg-[#12131f] border border-white/[0.06] rounded-[20px] p-5 flex items-start gap-4 hover:border-[rgba(108,124,255,0.3)] transition-all duration-300">

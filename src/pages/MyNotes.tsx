@@ -344,7 +344,7 @@ export default function MyNotes() {
       </AnimatePresence>
 
       {/* ═══════ 筛选栏 ═══════ */}
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-wrap">
         {/* 科目 Tab */}
         <div className="flex items-center gap-1.5 flex-wrap">
           <button
@@ -377,10 +377,10 @@ export default function MyNotes() {
           ))}
         </div>
 
-        <div className="flex-1" />
+        <div className="flex-1 hidden sm:block" />
 
         {/* 搜索框 */}
-        <div className="relative w-52">
+        <div className="relative w-full sm:w-52">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5c5f73]" />
           <input
             type="text"
@@ -461,7 +461,7 @@ export default function MyNotes() {
           <p className="text-[#5c5f73] text-sm">没有匹配的笔记</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 overflow-y-auto flex-1 pb-4 pr-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 overflow-y-auto flex-1 pb-4 pr-1">
           {filteredNotes.map((note, i) => {
             const subject = getSubject(note.subjectId);
             const subjectColor = subject?.color ?? '#6C7CFF';
@@ -563,7 +563,7 @@ export default function MyNotes() {
               animate="visible"
               exit="exit"
               onClick={(e) => e.stopPropagation()}
-              className="bg-[#12131f] border border-white/[0.06] rounded-[16px] w-full max-w-lg p-6 relative max-h-[85vh] overflow-y-auto"
+              className="bg-[#12131f] border border-white/[0.06] rounded-[16px] mx-4 sm:mx-auto w-full sm:max-w-lg p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto"
             >
               {/* 关闭按钮 */}
               <button
