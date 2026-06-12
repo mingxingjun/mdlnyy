@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, User, Github } from 'lucide-react';
+import { useAppStore } from '@/store/useAppStore';
+import { useToastStore } from '@/components/Toast';
 
 /* ─── Types ─── */
 type Mode = 'login' | 'register';
@@ -222,6 +224,8 @@ export default function Auth() {
     const newErrors = validate(mode, formData);
     setErrors(newErrors);
     if (Object.keys(newErrors).length === 0) {
+      useAppStore.getState().setCurrentUser(formData.name || formData.email.split('@')[0]);
+      useToastStore.getState().addToast('success', mode === 'login' ? '登录成功，欢迎回来！' : '注册成功！');
       navigate('/dashboard');
     }
   };

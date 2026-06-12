@@ -84,6 +84,8 @@ export interface AgentSession {
 }
 
 interface AppState {
+  currentUser: string | null;
+  setCurrentUser: (name: string | null) => void;
   subjects: Subject[];
   flashCards: FlashCard[];
   knowledgePoints: KnowledgePoint[];
@@ -100,8 +102,11 @@ interface AppState {
   removeSubject: (id: string) => void;
   updateSubjectProgress: (id: string, progress: number) => void;
 
+  addFlashCards: (cards: FlashCard[]) => void;
   toggleFlashCard: (id: string) => void;
   setFlashCardMastered: (id: string, mastered: boolean) => void;
+
+  addKnowledgePoints: (points: KnowledgePoint[]) => void;
 
   toggleWhiteNoise: (noise: WhiteNoiseType) => void;
 
@@ -134,6 +139,7 @@ export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
       // 用户数据：首次使用为空，引导用户自己添加
+      currentUser: null,
       subjects: [],
       flashCards: [],
       knowledgePoints: [],
@@ -151,18 +157,23 @@ export const useAppStore = create<AppState>()(
 
       agentSessions: [],
 
+      setCurrentUser: (name) => set({ currentUser: name }),
+
       addSubject: (subject) => set((state) => ({ subjects: [...state.subjects, subject] })),
       removeSubject: (id) => set((state) => ({ subjects: state.subjects.filter((s) => s.id !== id) })),
       updateSubjectProgress: (id, progress) => set((state) => ({
         subjects: state.subjects.map((s) => (s.id === id ? { ...s, progress } : s)),
       })),
 
+      addFlashCards: (cards) => set((state) => ({ flashCards: [...state.flashCards, ...cards] })),
       toggleFlashCard: (id) => set((state) => ({
         flashCards: state.flashCards.map((c) => (c.id === id ? { ...c, mastered: !c.mastered } : c)),
       })),
       setFlashCardMastered: (id, mastered) => set((state) => ({
         flashCards: state.flashCards.map((c) => (c.id === id ? { ...c, mastered } : c)),
       })),
+
+      addKnowledgePoints: (points) => set((state) => ({ knowledgePoints: [...state.knowledgePoints, ...points] })),
 
       toggleWhiteNoise: (noise) => set((state) => ({
         activeWhiteNoise: state.activeWhiteNoise.includes(noise)
@@ -216,6 +227,7 @@ export const useAppStore = create<AppState>()(
     {
       name: 'uniflow-storage',
       partialize: (state) => ({
+        currentUser: state.currentUser,
         subjects: state.subjects,
         flashCards: state.flashCards,
         knowledgePoints: state.knowledgePoints,

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle2, Clock, Target, Brain, FileText, ChevronDown, ChevronRight,
@@ -29,23 +30,7 @@ function getCountdown(examDate: string) {
   return { days, passed: false };
 }
 
-/* ─── 模拟数据 ─── */
-const agentWorkflow = [
-  { name: '导入资料', color: '#6C7CFF', status: 'completed' as const, output: '已导入 3 份 PDF' },
-  { name: '提取重点', color: '#7C5CFF', status: 'completed' as const, output: '提取 42 个知识点' },
-  { name: '生成题库', color: '#4FD1C5', status: 'active' as const, output: '已生成 28 道题' },
-  { name: '错题诊断', color: '#fbbf24', status: 'pending' as const, output: '' },
-  { name: '复习计划', color: '#f87171', status: 'pending' as const, output: '' },
-  { name: '强化记忆', color: '#34d399', status: 'pending' as const, output: '' },
-];
-
-const chapters = [
-  { name: '第一章 极限与连续', expanded: true, children: ['数列极限', '函数极限', '连续性'] },
-  { name: '第二章 导数与微分', expanded: false, children: ['导数定义', '求导法则', '微分'] },
-  { name: '第三章 积分', expanded: false, children: ['不定积分', '定积分', '积分应用'] },
-  { name: '第四章 微分方程', expanded: false, children: ['一阶方程', '高阶方程'] },
-];
-
+/* ─── 静态数据（仅保留知识图谱和标签） ─── */
 const tags = ['重点', '易错', '公式', '证明', '计算'];
 
 const knowledgeNodes = [
@@ -65,32 +50,11 @@ const knowledgeEdges = [
   ['n1', 'n5'], ['n1', 'n8'], ['n2', 'n6'], ['n3', 'n7'],
 ];
 
-const quizData = {
-  question: '设 f(x) 在 x=0 处可导，且 f(0)=0，则 lim(x→0) [f(x) - f(-x)] / x 等于：',
-  options: [
-    'A. 0',
-    'B. f\'(0)',
-    'C. 2f\'(0)',
-    'D. 不存在',
-  ],
-  correctIndex: 2,
-  explanation: '由导数定义，f\'(0) = lim(x→0) [f(x) - f(0)] / x = lim(x→0) f(x)/x。同理 lim(x→0) f(-x)/x = -f\'(0)。因此 lim [f(x)-f(-x)]/x = f\'(0) - (-f\'(0)) = 2f\'(0)。',
-};
-
-const timelineData = [
-  { date: '6月10日', task: '高数第三章积分复习', duration: '2h', status: 'completed' as const },
-  { date: '6月11日', task: '线代特征值专题', duration: '1.5h', status: 'completed' as const },
-  { date: '6月12日', task: '高数微分方程 + 错题重做', duration: '2h', status: 'today' as const },
-  { date: '6月13日', task: '线代二次型 + 真题模拟', duration: '2.5h', status: 'future' as const },
-  { date: '6月14日', task: '高数综合模拟卷', duration: '3h', status: 'future' as const },
-  { date: '6月15日', task: '全科查漏补缺', duration: '2h', status: 'future' as const },
-];
-
-const defaultTodos = [
-  { id: '1', text: '复习微分方程基础概念', done: false },
-  { id: '2', text: '完成积分章节练习题', done: true },
-  { id: '3', text: '整理线代公式速查表', done: false },
-  { id: '4', text: '重做错题本标记题目', done: false },
+const fallbackChapters = [
+  { name: '第一章 极限与连续', expanded: true, children: ['数列极限', '函数极限', '连续性'] },
+  { name: '第二章 导数与微分', expanded: false, children: ['导数定义', '求导法则', '微分'] },
+  { name: '第三章 积分', expanded: false, children: ['不定积分', '定积分', '积分应用'] },
+  { name: '第四章 微分方程', expanded: false, children: ['一阶方程', '高阶方程'] },
 ];
 
 /* ─── 1. Stats Overview ─── */
@@ -234,6 +198,39 @@ function StatsOverview() {
 
 /* ─── 2. Agent Workflow ─── */
 function AgentWorkflow() {
+  const agentSessions = useAppStore(s => s.agentSessions);
+
+  const agentWorkflow = useMemo(() => {
+    const agentDefs = [
+      { name: '导入资料', agentId: 'importer', color: '#6C7CFF', output: '' },
+      { name: '提取重点', agentId: 'extractor', color: '#7C5CFF', output: '' },
+      { name: '生成题库', agentId: 'examiner', color: '#4FD1C5', output: '' },
+      { name: '错题诊断', agentId: 'analyst', color: '#fbbf24', output: '' },
+      { name: '复习计划', agentId: 'planner', color: '#f87171', output: '' },
+      { name: '强化记忆', agentId: 'reviewer', color: '#34d399', output: '' },
+    ];
+
+    return agentDefs.map((def) => {
+      const session = agentSessions.find(s => s.agentId === def.agentId);
+      let status: 'completed' | 'active' | 'pending' = 'pending';
+      let output = '';
+
+      if (session) {
+        if (session.messages.length > 0) {
+          status = 'completed';
+          const lastAssistant = [...session.messages].reverse().find(m => m.role === 'assistant');
+          if (lastAssistant) {
+            output = lastAssistant.content.slice(0, 30) + (lastAssistant.content.length > 30 ? '...' : '');
+          }
+        } else {
+          status = 'active';
+        }
+      }
+
+      return { ...def, status, output };
+    });
+  }, [agentSessions]);
+
   const statusBadge = (status: 'completed' | 'active' | 'pending') => {
     switch (status) {
       case 'completed':
@@ -284,9 +281,18 @@ function AgentWorkflow() {
 
 /** Left: Knowledge Navigation */
 function KnowledgeNav() {
+  const subjects = useAppStore(s => s.subjects);
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [expandedChapters, setExpandedChapters] = useState<Set<number>>(new Set([0]));
   const [activeTag, setActiveTag] = useState<string | null>(null);
-  const [activeItem, setActiveItem] = useState<string>('数列极限');
+  const [activeItem, setActiveItem] = useState<string>('');
+
+  // Set initial selected subject
+  useMemo(() => {
+    if (subjects.length > 0 && !selectedSubjectId) {
+      setSelectedSubjectId(subjects[0].id);
+    }
+  }, [subjects, selectedSubjectId]);
 
   const toggleChapter = (idx: number) => {
     setExpandedChapters((prev) => {
@@ -297,63 +303,84 @@ function KnowledgeNav() {
     });
   };
 
+  // Use fallback chapters when a subject is selected but has no chapter data
+  const displayChapters = fallbackChapters;
+
   return (
     <div className="w-full lg:w-[220px] flex-shrink-0 bg-[#12131f] border border-white/[0.06] rounded-[24px] p-5">
       <h3 className="text-[13px] font-semibold text-[#e8eaf0] mb-3">知识导航</h3>
 
       {/* Course selector */}
       <div className="relative mb-4">
-        <select className="w-full appearance-none bg-[#1a1b2e] border border-white/[0.06] rounded-[12px] px-3 py-2 text-[12px] text-[#e8eaf0] outline-none focus:border-[#6C7CFF]/30 transition-colors">
-          <option>高等数学下</option>
-          <option>线性代数</option>
-          <option>概率论</option>
-        </select>
-        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5c5f73] pointer-events-none" />
+        {subjects.length > 0 ? (
+          <>
+            <select
+              value={selectedSubjectId}
+              onChange={(e) => setSelectedSubjectId(e.target.value)}
+              className="w-full appearance-none bg-[#1a1b2e] border border-white/[0.06] rounded-[12px] px-3 py-2 text-[12px] text-[#e8eaf0] outline-none focus:border-[#6C7CFF]/30 transition-colors"
+            >
+              {subjects.map((sub) => (
+                <option key={sub.id} value={sub.id}>{sub.name}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5c5f73] pointer-events-none" />
+          </>
+        ) : (
+          <div className="w-full bg-[#1a1b2e] border border-white/[0.06] rounded-[12px] px-3 py-2 text-[12px] text-[#5c5f73]">
+            添加科目后显示章节目录
+          </div>
+        )}
       </div>
 
       {/* Chapter list */}
-      <div className="space-y-1 mb-4 max-h-[200px] overflow-y-auto scrollbar-hide">
-        {chapters.map((ch, idx) => (
-          <div key={ch.name}>
-            <button
-              onClick={() => toggleChapter(idx)}
-              className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-[8px] text-[12px] text-[#8b8fa3] hover:bg-white/[0.04] transition-colors"
-            >
-              {expandedChapters.has(idx) ? (
-                <ChevronDown size={12} className="text-[#5c5f73] flex-shrink-0" />
-              ) : (
-                <ChevronRight size={12} className="text-[#5c5f73] flex-shrink-0" />
-              )}
-              <span className="truncate">{ch.name}</span>
-            </button>
-            <AnimatePresence>
-              {expandedChapters.has(idx) && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="overflow-hidden"
-                >
-                  {ch.children.map((child) => (
-                    <button
-                      key={child}
-                      onClick={() => setActiveItem(child)}
-                      className={`w-full text-left pl-7 pr-2 py-1.5 text-[11px] rounded-[8px] transition-colors ${
-                        activeItem === child
-                          ? 'border-l-2 border-[#6C7CFF] bg-[#6C7CFF]/5 text-[#e8eaf0]'
-                          : 'text-[#5c5f73] hover:bg-white/[0.04]'
-                      }`}
-                    >
-                      {child}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        ))}
-      </div>
+      {subjects.length > 0 ? (
+        <div className="space-y-1 mb-4 max-h-[200px] overflow-y-auto scrollbar-hide">
+          {displayChapters.map((ch, idx) => (
+            <div key={ch.name}>
+              <button
+                onClick={() => toggleChapter(idx)}
+                className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-[8px] text-[12px] text-[#8b8fa3] hover:bg-white/[0.04] transition-colors"
+              >
+                {expandedChapters.has(idx) ? (
+                  <ChevronDown size={12} className="text-[#5c5f73] flex-shrink-0" />
+                ) : (
+                  <ChevronRight size={12} className="text-[#5c5f73] flex-shrink-0" />
+                )}
+                <span className="truncate">{ch.name}</span>
+              </button>
+              <AnimatePresence>
+                {expandedChapters.has(idx) && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    {ch.children.map((child) => (
+                      <button
+                        key={child}
+                        onClick={() => setActiveItem(child)}
+                        className={`w-full text-left pl-7 pr-2 py-1.5 text-[11px] rounded-[8px] transition-colors ${
+                          activeItem === child
+                            ? 'border-l-2 border-[#6C7CFF] bg-[#6C7CFF]/5 text-[#e8eaf0]'
+                            : 'text-[#5c5f73] hover:bg-white/[0.04]'
+                        }`}
+                      >
+                        {child}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mb-4 py-6 text-center text-[12px] text-[#5c5f73]">
+          添加科目后显示章节目录
+        </div>
+      )}
 
       {/* Tags */}
       <div className="flex flex-wrap gap-1.5">
@@ -441,12 +468,50 @@ function KnowledgeGraph() {
 
 /** Right: Smart Panel */
 function SmartPanel() {
-  const [todos, setTodos] = useState(defaultTodos);
+  const flashCards = useAppStore(s => s.flashCards);
+  const subjects = useAppStore(s => s.subjects);
   const [quickQuestion, setQuickQuestion] = useState('');
 
+  // Generate todos from unmastered flashCards
+  const todos = useMemo(() => {
+    const unmastered = flashCards.filter(c => !c.mastered).slice(0, 4);
+    if (unmastered.length === 0) return [{ id: '1', text: '所有闪卡已掌握！', done: true }];
+    return unmastered.map(c => ({ id: c.id, text: `复习: ${c.front.slice(0, 20)}...`, done: false }));
+  }, [flashCards]);
+
+  const [todoItems, setTodoItems] = useState(todos);
+
+  // Sync with computed todos
+  useMemo(() => {
+    setTodoItems(todos);
+  }, [todos]);
+
   const toggleTodo = (id: string) => {
-    setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+    setTodoItems((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
   };
+
+  // Exam reminders from subjects sorted by examDate
+  const examReminders = useMemo(() => {
+    return [...subjects]
+      .filter(s => s.examDate)
+      .sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime())
+      .map(s => {
+        const cd = getCountdown(s.examDate);
+        const dateStr = new Date(s.examDate + 'T00:00:00');
+        const monthDay = `${dateStr.getMonth() + 1}月${dateStr.getDate()}日`;
+        let urgencyColor = 'text-[#5c5f73]';
+        if (cd.passed) {
+          urgencyColor = 'text-[#5c5f73]';
+        } else if (cd.days <= 3) {
+          urgencyColor = 'text-[#f87171]';
+        } else if (cd.days <= 7) {
+          urgencyColor = 'text-[#fbbf24]';
+        } else {
+          urgencyColor = 'text-[#34d399]';
+        }
+        return { name: s.name, date: monthDay, urgencyColor, days: cd.days };
+      });
+  }, [subjects]);
 
   return (
     <div className="w-full lg:w-[280px] flex-shrink-0 space-y-4">
@@ -472,7 +537,7 @@ function SmartPanel() {
           <h3 className="text-[13px] font-semibold text-[#e8eaf0]">今日待办</h3>
         </div>
         <div className="space-y-2">
-          {todos.map((todo) => (
+          {todoItems.map((todo) => (
             <label
               key={todo.id}
               className="flex items-center gap-2.5 cursor-pointer group"
@@ -505,16 +570,18 @@ function SmartPanel() {
           </div>
           <h3 className="text-[13px] font-semibold text-[#e8eaf0]">考试提醒</h3>
         </div>
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[12px] text-[#8b8fa3]">高等数学下</span>
-            <span className="text-[11px] font-medium text-[#f87171]">6月20日</span>
+        {examReminders.length > 0 ? (
+          <div className="space-y-2">
+            {examReminders.map((r) => (
+              <div key={r.name} className="flex items-center justify-between">
+                <span className="text-[12px] text-[#8b8fa3]">{r.name}</span>
+                <span className={`text-[11px] font-medium ${r.urgencyColor}`}>{r.date}</span>
+              </div>
+            ))}
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-[12px] text-[#8b8fa3]">线性代数</span>
-            <span className="text-[11px] font-medium text-[#fbbf24]">6月22日</span>
-          </div>
-        </div>
+        ) : (
+          <p className="text-[12px] text-[#5c5f73]">暂无考试安排</p>
+        )}
       </div>
 
       {/* 快速提问 */}
@@ -544,13 +611,54 @@ function SmartPanel() {
 
 /* ─── 4. Quiz Practice ─── */
 function QuizPractice() {
+  const flashCards = useAppStore(s => s.flashCards);
+  const subjects = useAppStore(s => s.subjects);
+  const navigate = useNavigate();
+
+  const [quizIndex, setQuizIndex] = useState(0);
+
+  // Generate quiz data from flashCards
+  const quizState = useMemo(() => {
+    if (flashCards.length === 0) return null;
+
+    // Pick a card (cycle through based on quizIndex)
+    const cardIndex = quizIndex % flashCards.length;
+    const card = flashCards[cardIndex];
+
+    // Get other cards' backs for wrong options
+    const otherCards = flashCards.filter((_, i) => i !== cardIndex);
+    const wrongOptions = otherCards.length >= 3
+      ? otherCards.slice(0, 3).map(c => c.back)
+      : [
+          ...otherCards.map(c => c.back),
+          ...Array(3 - otherCards.length).fill('').map((_, i) => `选项 ${String.fromCharCode(68 - i)}`),
+        ];
+
+    // Shuffle options with correct answer
+    const allOptions = [card.back, ...wrongOptions.slice(0, 3)];
+    const shuffled = allOptions.map((opt, i) => ({ opt, sort: Math.random() }));
+    shuffled.sort((a, b) => a.sort - b.sort);
+
+    const correctIndex = shuffled.findIndex(s => s.opt === card.back);
+
+    const subject = subjects.find(s => s.id === card.subjectId);
+
+    return {
+      question: card.front,
+      options: shuffled.map((s, i) => `${String.fromCharCode(65 + i)}. ${s.opt}`),
+      correctIndex,
+      explanation: card.back,
+      subjectName: subject?.name || '未知科目',
+    };
+  }, [flashCards, subjects, quizIndex]);
+
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [isStarred, setIsStarred] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
 
   const isAnswered = selectedOption !== null;
-  const isCorrect = selectedOption === quizData.correctIndex;
+  const isCorrect = quizState ? selectedOption === quizState.correctIndex : false;
 
   const handleSelect = (idx: number) => {
     if (isAnswered) return;
@@ -561,7 +669,34 @@ function QuizPractice() {
   const handleReset = () => {
     setSelectedOption(null);
     setShowExplanation(false);
+    setIsStarred(false);
+    setIsBookmarked(false);
+    setQuizIndex((prev) => prev + 1);
   };
+
+  if (!quizState) {
+    return (
+      <motion.section
+        variants={fadeUp}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: '-40px' }}
+        className="mt-8"
+      >
+        <h2 className="text-[16px] font-semibold text-[#e8eaf0] mb-4">智能出题练习</h2>
+        <div className="bg-[#12131f] border border-white/[0.06] rounded-[24px] p-6 flex flex-col items-center justify-center py-12">
+          <Brain size={40} className="text-[#5c5f73] mb-3" />
+          <p className="text-[14px] text-[#5c5f73] mb-4">添加闪卡后开始练习</p>
+          <button
+            onClick={() => navigate('/ai-engine')}
+            className="text-[13px] px-4 py-2 rounded-[12px] bg-[#6C7CFF]/10 text-[#6C7CFF] border border-[#6C7CFF]/20 hover:bg-[#6C7CFF]/20 transition-colors"
+          >
+            前往 AI 冲刺核
+          </button>
+        </div>
+      </motion.section>
+    );
+  }
 
   return (
     <motion.section
@@ -576,8 +711,7 @@ function QuizPractice() {
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-[#6C7CFF]/10 text-[#6C7CFF]">高等数学</span>
-            <span className="text-[11px] text-[#5c5f73]">微分方程</span>
+            <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-[#6C7CFF]/10 text-[#6C7CFF]">{quizState.subjectName}</span>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -598,20 +732,20 @@ function QuizPractice() {
         {/* Progress */}
         <div className="flex items-center gap-3 mb-4">
           <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
-            <div className="h-full w-[10%] rounded-full bg-gradient-to-r from-[#6C7CFF] to-[#7C5CFF]" />
+            <div className="h-full rounded-full bg-gradient-to-r from-[#6C7CFF] to-[#7C5CFF]" style={{ width: `${((quizIndex % flashCards.length) + 1) / flashCards.length * 100}%` }} />
           </div>
-          <span className="text-[11px] text-[#5c5f73] tabular-nums">2/20</span>
+          <span className="text-[11px] text-[#5c5f73] tabular-nums">{(quizIndex % flashCards.length) + 1}/{flashCards.length}</span>
         </div>
 
         {/* Question */}
-        <p className="text-[14px] text-[#e8eaf0] leading-relaxed mb-5">{quizData.question}</p>
+        <p className="text-[14px] text-[#e8eaf0] leading-relaxed mb-5">{quizState.question}</p>
 
         {/* Options */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-          {quizData.options.map((opt, idx) => {
+          {quizState.options.map((opt, idx) => {
             let optClass = 'border border-white/[0.08] rounded-[12px] p-3 text-[13px] text-[#8b8fa3] cursor-pointer transition-all hover:border-[#6C7CFF]/30 hover:text-[#e8eaf0]';
             if (isAnswered) {
-              if (idx === quizData.correctIndex) {
+              if (idx === quizState.correctIndex) {
                 optClass = 'border border-[#34d399] bg-[#34d399]/10 rounded-[12px] p-3 text-[13px] text-[#34d399] cursor-default';
               } else if (idx === selectedOption && !isCorrect) {
                 optClass = 'border border-[#f87171] bg-[#f87171]/10 rounded-[12px] p-3 text-[13px] text-[#f87171] cursor-default';
@@ -652,7 +786,7 @@ function QuizPractice() {
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#f87171]/10 text-[#f87171]">回答错误</span>
                   )}
                 </div>
-                <p className="text-[12px] text-[#8b8fa3] leading-relaxed">{quizData.explanation}</p>
+                <p className="text-[12px] text-[#8b8fa3] leading-relaxed">{quizState.explanation}</p>
               </div>
             </motion.div>
           )}
@@ -691,6 +825,39 @@ function QuizPractice() {
 
 /* ─── 5. Review Timeline ─── */
 function ReviewTimeline() {
+  const subjects = useAppStore(s => s.subjects);
+
+  const timelineData = useMemo(() => {
+    const subjectsWithExam = subjects.filter(s => s.examDate);
+    if (subjectsWithExam.length === 0) return [];
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return subjectsWithExam
+      .map(s => {
+        const examDate = new Date(s.examDate + 'T00:00:00');
+        examDate.setHours(0, 0, 0, 0);
+        const diffTime = examDate.getTime() - today.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+        let status: 'completed' | 'today' | 'future' = 'future';
+        if (diffDays < 0) status = 'completed';
+        else if (diffDays === 0) status = 'today';
+
+        const monthDay = `${examDate.getMonth() + 1}月${examDate.getDate()}日`;
+
+        return {
+          date: monthDay,
+          task: `${s.name} 复习`,
+          duration: `${Math.max(1, Math.round(s.progress / 30))}h`,
+          status,
+          sortKey: examDate.getTime(),
+        };
+      })
+      .sort((a, b) => a.sortKey - b.sortKey);
+  }, [subjects]);
+
   return (
     <motion.section
       variants={fadeUp}
@@ -708,67 +875,74 @@ function ReviewTimeline() {
       </div>
 
       <div className="bg-[#12131f] border border-white/[0.06] rounded-[24px] p-6">
-        <div className="relative">
-          {timelineData.map((item, idx) => {
-            const isLast = idx === timelineData.length - 1;
-            return (
-              <div key={item.date + item.task} className="flex gap-4">
-                {/* Timeline line + dot */}
-                <div className="flex flex-col items-center">
-                  <div className="relative">
-                    {item.status === 'completed' && (
-                      <div className="w-3 h-3 rounded-full bg-[#34d399] flex items-center justify-center">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#12131f]" />
-                      </div>
-                    )}
-                    {item.status === 'today' && (
-                      <motion.div
-                        className="w-3.5 h-3.5 rounded-full bg-gradient-to-br from-[#6C7CFF] to-[#7C5CFF]"
-                        animate={{ boxShadow: ['0 0 0 0 rgba(108,124,255,0.4)', '0 0 0 6px rgba(108,124,255,0)', '0 0 0 0 rgba(108,124,255,0.4)'] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                      />
-                    )}
-                    {item.status === 'future' && (
-                      <div className="w-3 h-3 rounded-full bg-[#5c5f73]/40" />
+        {timelineData.length > 0 ? (
+          <div className="relative">
+            {timelineData.map((item, idx) => {
+              const isLast = idx === timelineData.length - 1;
+              return (
+                <div key={item.date + item.task} className="flex gap-4">
+                  {/* Timeline line + dot */}
+                  <div className="flex flex-col items-center">
+                    <div className="relative">
+                      {item.status === 'completed' && (
+                        <div className="w-3 h-3 rounded-full bg-[#34d399] flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#12131f]" />
+                        </div>
+                      )}
+                      {item.status === 'today' && (
+                        <motion.div
+                          className="w-3.5 h-3.5 rounded-full bg-gradient-to-br from-[#6C7CFF] to-[#7C5CFF]"
+                          animate={{ boxShadow: ['0 0 0 0 rgba(108,124,255,0.4)', '0 0 0 6px rgba(108,124,255,0)', '0 0 0 0 rgba(108,124,255,0.4)'] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        />
+                      )}
+                      {item.status === 'future' && (
+                        <div className="w-3 h-3 rounded-full bg-[#5c5f73]/40" />
+                      )}
+                    </div>
+                    {!isLast && (
+                      <div className={`w-px flex-1 min-h-[40px] ${
+                        item.status === 'completed' ? 'bg-[#34d399]/30' : 'bg-white/[0.06]'
+                      }`} />
                     )}
                   </div>
-                  {!isLast && (
-                    <div className={`w-px flex-1 min-h-[40px] ${
-                      item.status === 'completed' ? 'bg-[#34d399]/30' : 'bg-white/[0.06]'
-                    }`} />
-                  )}
-                </div>
 
-                {/* Content */}
-                <div className={`pb-6 ${isLast ? 'pb-0' : ''}`}>
-                  <div className="flex items-center gap-3 mb-1">
-                    <span className={`text-[11px] font-medium tabular-nums ${
-                      item.status === 'completed' ? 'text-[#34d399]' :
-                      item.status === 'today' ? 'text-[#6C7CFF]' :
+                  {/* Content */}
+                  <div className={`pb-6 ${isLast ? 'pb-0' : ''}`}>
+                    <div className="flex items-center gap-3 mb-1">
+                      <span className={`text-[11px] font-medium tabular-nums ${
+                        item.status === 'completed' ? 'text-[#34d399]' :
+                        item.status === 'today' ? 'text-[#6C7CFF]' :
+                        'text-[#5c5f73]'
+                      }`}>
+                        {item.date}
+                      </span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                        item.status === 'completed' ? 'bg-[#34d399]/10 text-[#34d399]' :
+                        item.status === 'today' ? 'bg-[#6C7CFF]/10 text-[#6C7CFF]' :
+                        'bg-white/[0.04] text-[#5c5f73]'
+                      }`}>
+                        {item.duration}
+                      </span>
+                    </div>
+                    <p className={`text-[13px] ${
+                      item.status === 'completed' ? 'text-[#8b8fa3]' :
+                      item.status === 'today' ? 'text-[#e8eaf0] font-medium' :
                       'text-[#5c5f73]'
                     }`}>
-                      {item.date}
-                    </span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                      item.status === 'completed' ? 'bg-[#34d399]/10 text-[#34d399]' :
-                      item.status === 'today' ? 'bg-[#6C7CFF]/10 text-[#6C7CFF]' :
-                      'bg-white/[0.04] text-[#5c5f73]'
-                    }`}>
-                      {item.duration}
-                    </span>
+                      {item.task}
+                    </p>
                   </div>
-                  <p className={`text-[13px] ${
-                    item.status === 'completed' ? 'text-[#8b8fa3]' :
-                    item.status === 'today' ? 'text-[#e8eaf0] font-medium' :
-                    'text-[#5c5f73]'
-                  }`}>
-                    {item.task}
-                  </p>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-8">
+            <Clock size={32} className="text-[#5c5f73] mb-3" />
+            <p className="text-[13px] text-[#5c5f73]">添加科目后生成复习计划</p>
+          </div>
+        )}
       </div>
     </motion.section>
   );
@@ -777,11 +951,12 @@ function ReviewTimeline() {
 /* ─── 6. Floating Agent Assistant ─── */
 function FloatingAssistant() {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
 
   const commands = [
-    { icon: FileText, label: '帮我出题', color: '#6C7CFF' },
-    { icon: AlertCircle, label: '分析错题', color: '#f87171' },
-    { icon: BookOpen, label: '整理重点', color: '#4FD1C5' },
+    { icon: FileText, label: '帮我出题', color: '#6C7CFF', action: () => navigate('/ai-engine?agent=examiner') },
+    { icon: AlertCircle, label: '分析错题', color: '#f87171', action: () => navigate('/ai-engine?agent=analyst') },
+    { icon: BookOpen, label: '整理重点', color: '#4FD1C5', action: () => navigate('/ai-engine?agent=extractor') },
   ];
 
   return (
@@ -805,6 +980,7 @@ function FloatingAssistant() {
               {commands.map((cmd) => (
                 <button
                   key={cmd.label}
+                  onClick={() => { cmd.action(); setIsOpen(false); }}
                   className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[12px] text-[12px] text-[#8b8fa3] hover:bg-white/[0.04] hover:text-[#e8eaf0] transition-colors"
                 >
                   <cmd.icon size={14} style={{ color: cmd.color }} />
