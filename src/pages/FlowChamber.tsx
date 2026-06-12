@@ -213,10 +213,7 @@ function PomodoroTimer() {
 
   const currentSubject = subjects.find((s) => s.id === selectedSubject);
 
-  const strokeColor = mode === 'work' ? '#00d4ff' : '#00ff88';
-  const glowColor = mode === 'work'
-    ? 'rgba(0, 212, 255, 0.5)'
-    : 'rgba(0, 255, 136, 0.5)';
+  const strokeColor = mode === 'work' ? '#2563eb' : '#10b981';
 
   return (
     <motion.div
@@ -226,7 +223,7 @@ function PomodoroTimer() {
       className="flex flex-col items-center gap-8"
     >
       {/* 模式切换 */}
-      <div className="flex items-center gap-2 bg-dark-800/60 rounded-full p-1 border border-white/[0.04]">
+      <div className="flex items-center gap-2 bg-gray-100 rounded-full p-1">
         {(['work', 'break'] as const).map((m) => (
           <button
             key={m}
@@ -238,9 +235,9 @@ function PomodoroTimer() {
             className={`px-5 py-1.5 rounded-full text-sm font-medium transition-all duration-300 ${
               mode === m
                 ? m === 'work'
-                  ? 'bg-neon-blue/12 text-neon-blue shadow-neon-blue/30 shadow-sm'
-                  : 'bg-neon-green/12 text-neon-green shadow-neon-green/30 shadow-sm'
-                : 'text-zinc-500 hover:text-zinc-400'
+                  ? 'bg-blue-50 text-blue-600 shadow-sm'
+                  : 'bg-green-50 text-green-600 shadow-sm'
+                : 'text-gray-500 hover:text-gray-400'
             }`}
           >
             {m === 'work' ? '专注' : '休息'}
@@ -255,19 +252,11 @@ function PomodoroTimer() {
         }`}
       >
         <svg width="320" height="320" viewBox="0 0 320 320" className="-rotate-90">
-          {/* 外圈微光 */}
-          <circle
-            cx="160" cy="160" r={radius + 12}
-            fill="none"
-            stroke={strokeColor}
-            strokeWidth="0.5"
-            opacity="0.15"
-          />
           {/* 背景圆 */}
           <circle
             cx="160" cy="160" r={radius}
             fill="none"
-            stroke="rgba(255,255,255,0.04)"
+            stroke="#f1f3f5"
             strokeWidth="6"
           />
           {/* 进度圆 */}
@@ -280,31 +269,15 @@ function PomodoroTimer() {
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             className="transition-all duration-1000 ease-linear"
-            style={{
-              filter: `drop-shadow(0 0 ${completedAnimation ? 28 : 10}px ${glowColor})`,
-            }}
-          />
-          {/* 内圈装饰 */}
-          <circle
-            cx="160" cy="160" r={radius - 20}
-            fill="none"
-            stroke="rgba(255,255,255,0.02)"
-            strokeWidth="0.5"
           />
         </svg>
 
         {/* 中心内容 */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span
-            className="font-display text-6xl font-bold tracking-widest tabular-nums transition-all duration-300"
-            style={{
-              color: strokeColor,
-              textShadow: `0 0 20px ${glowColor}, 0 0 60px ${glowColor.replace('0.5', '0.15')}`,
-            }}
-          >
+          <span className="font-sans text-6xl font-bold tracking-widest tabular-nums text-gray-900 transition-all duration-300">
             {minutes}:{seconds}
           </span>
-          <span className="text-zinc-500 text-xs tracking-widest uppercase mt-2">
+          <span className="text-gray-500 text-xs tracking-widest uppercase mt-2">
             {mode === 'work' ? '专注中' : '休息中'}
           </span>
           {currentSubject && (
@@ -322,7 +295,7 @@ function PomodoroTimer() {
       <div className="flex items-center gap-3">
         <button
           onClick={handleReset}
-          className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-zinc-500 hover:text-zinc-300 hover:border-white/20 transition-all"
+          className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-all bg-white"
         >
           <RotateCcw size={16} />
         </button>
@@ -330,10 +303,8 @@ function PomodoroTimer() {
           onClick={running ? handlePause : handleStart}
           className="w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300"
           style={{
-            background: `linear-gradient(135deg, ${strokeColor}22, ${strokeColor}08)`,
-            border: `1.5px solid ${strokeColor}44`,
-            color: strokeColor,
-            boxShadow: `0 0 20px ${glowColor.replace('0.5', '0.15')}`,
+            background: mode === 'work' ? '#2563eb' : '#10b981',
+            color: '#ffffff',
           }}
         >
           {running ? <Pause size={22} /> : <Play size={22} className="ml-0.5" />}
@@ -346,14 +317,14 @@ function PomodoroTimer() {
         <select
           value={selectedSubject}
           onChange={(e) => setSelectedSubject(e.target.value)}
-          className="bg-dark-800/60 border border-white/[0.06] rounded-lg px-4 py-2 text-sm text-zinc-400 focus:outline-none focus:border-neon-blue/30 transition-colors"
+          className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm text-gray-700 focus:outline-none focus:border-blue-300 transition-colors"
         >
           {subjects.map((s) => (
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
       ) : (
-        <p className="text-xs text-zinc-600">请先在仪表盘添加考试科目</p>
+        <p className="text-xs text-gray-400">请先在仪表盘添加考试科目</p>
       )}
     </motion.div>
   );
@@ -439,10 +410,10 @@ function WhiteNoisePanel() {
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.5, delay: 0.15 }}
-      className="glass-card p-5"
+      className="card p-5"
     >
-      <h3 className="font-display text-sm font-semibold text-zinc-400 mb-4 flex items-center gap-2 tracking-wide">
-        <Headphones size={14} className="text-neon-purple" />
+      <h3 className="font-sans text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2 tracking-wide">
+        <Headphones size={14} className="text-purple-600" />
         白噪音
       </h3>
 
@@ -452,29 +423,28 @@ function WhiteNoisePanel() {
           return (
             <div
               key={type}
-              className="flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-300"
-              style={{
-                background: isActive ? 'rgba(139, 92, 246, 0.06)' : 'rgba(255,255,255,0.01)',
-                borderColor: isActive ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255,255,255,0.04)',
-              }}
+              className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-300 ${
+                isActive
+                  ? 'bg-blue-50 border-blue-200'
+                  : 'bg-white border-gray-100 hover:border-gray-200'
+              }`}
             >
               <button
                 onClick={() => handleToggle(type)}
-                className="w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300"
-                style={{
-                  background: isActive ? 'rgba(139, 92, 246, 0.12)' : 'rgba(255,255,255,0.03)',
-                  color: isActive ? '#8b5cf6' : '#555570',
-                }}
+                className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300 ${
+                  isActive
+                    ? 'bg-blue-100 text-blue-600'
+                    : 'bg-gray-50 text-gray-400'
+                }`}
               >
                 {isActive ? <Volume2 size={18} /> : <VolumeX size={18} />}
               </button>
               <Icon
                 size={16}
-                style={{ color: isActive ? '#8b5cf6' : '#555570' }}
+                className={isActive ? 'text-blue-600' : 'text-gray-400'}
               />
               <span
-                className="text-[11px] font-medium"
-                style={{ color: isActive ? '#8b5cf6' : '#555570' }}
+                className={`text-[11px] font-medium ${isActive ? 'text-blue-600' : 'text-gray-400'}`}
               >
                 {label}
               </span>
@@ -485,9 +455,9 @@ function WhiteNoisePanel() {
                   max={100}
                   value={volumes[type]}
                   onChange={(e) => handleVolumeChange(type, Number(e.target.value))}
-                  className="w-full h-0.5 rounded-full appearance-none cursor-pointer"
+                  className="w-full h-0.5 rounded-full appearance-none cursor-pointer accent-blue-600"
                   style={{
-                    background: `linear-gradient(to right, #8b5cf6 ${volumes[type]}%, rgba(255,255,255,0.06) ${volumes[type]}%)`,
+                    background: `linear-gradient(to right, #2563eb ${volumes[type]}%, #e5e7eb ${volumes[type]}%)`,
                   }}
                 />
               )}
@@ -522,10 +492,10 @@ function StudyRoomsPanel() {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.5, delay: 0.25 }}
-      className="glass-card p-5"
+      className="card p-5"
     >
-      <h3 className="font-display text-sm font-semibold text-zinc-400 mb-4 flex items-center gap-2 tracking-wide">
-        <Users size={14} className="text-neon-green" />
+      <h3 className="font-sans text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2 tracking-wide">
+        <Users size={14} className="text-green-600" />
         自习室
       </h3>
 
@@ -535,31 +505,30 @@ function StudyRoomsPanel() {
           return (
             <div
               key={room.id}
-              className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border transition-all duration-200"
-              style={{
-                background: isJoined ? 'rgba(0, 255, 136, 0.03)' : 'rgba(255,255,255,0.01)',
-                borderColor: isJoined ? 'rgba(0, 255, 136, 0.12)' : 'rgba(255,255,255,0.04)',
-              }}
+              className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border transition-all duration-200 ${
+                isJoined
+                  ? 'bg-green-50 border-green-200'
+                  : 'bg-white border-gray-100 hover:border-gray-200'
+              }`}
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-zinc-300 truncate">{room.name}</span>
+                  <span className="text-sm text-gray-800 truncate">{room.name}</span>
                   {room.isActive && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-neon-green animate-pulse-neon flex-shrink-0" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
                   )}
                 </div>
-                <span className="text-[11px] text-zinc-600">
+                <span className="text-[11px] text-gray-400">
                   {room.members}/{room.maxMembers} 人
                 </span>
               </div>
               <button
                 onClick={() => handleJoinLeave(room.id, room.name)}
-                className="flex items-center gap-1 text-[11px] px-3 py-1 rounded-md font-medium transition-all duration-200 flex-shrink-0"
-                style={{
-                  background: isJoined ? 'rgba(0, 255, 136, 0.08)' : 'rgba(0, 212, 255, 0.08)',
-                  border: `1px solid ${isJoined ? 'rgba(0, 255, 136, 0.2)' : 'rgba(0, 212, 255, 0.2)'}`,
-                  color: isJoined ? '#00ff88' : '#00d4ff',
-                }}
+                className={`flex items-center gap-1 text-[11px] px-3 py-1 rounded-md font-medium transition-all duration-200 flex-shrink-0 ${
+                  isJoined
+                    ? 'bg-green-50 border border-green-200 text-green-600'
+                    : 'accent-btn'
+                }`}
               >
                 {isJoined ? (
                   <>
@@ -604,33 +573,33 @@ function FocusStats() {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.35 }}
-      className="glass-card px-6 py-4 flex items-center gap-8"
+      className="card px-6 py-4 flex items-center gap-8"
     >
       <div className="flex items-center gap-3">
-        <Clock size={16} className="text-neon-cyan" style={{ color: '#00d4ff' }} />
+        <Clock size={16} className="text-blue-600" />
         <div>
-          <p className="text-[10px] text-zinc-600 uppercase tracking-widest">今日专注</p>
-          <p className="font-display text-xl font-bold" style={{ color: '#00d4ff', textShadow: '0 0 12px rgba(0,212,255,0.25)' }}>
+          <p className="text-[10px] text-gray-400 uppercase tracking-widest">今日专注</p>
+          <p className="font-sans text-xl font-bold text-gray-900">
             {hours}h {mins}m
           </p>
         </div>
       </div>
-      <div className="w-px h-8 bg-white/[0.06]" />
+      <div className="w-px h-8 bg-gray-200" />
       <div className="flex items-center gap-3">
-        <Flame size={16} style={{ color: '#8b5cf6' }} />
+        <Flame size={16} className="text-purple-600" />
         <div>
-          <p className="text-[10px] text-zinc-600 uppercase tracking-widest">完成番茄</p>
-          <p className="font-display text-xl font-bold" style={{ color: '#8b5cf6', textShadow: '0 0 12px rgba(139,92,246,0.25)' }}>
+          <p className="text-[10px] text-gray-400 uppercase tracking-widest">完成番茄</p>
+          <p className="font-sans text-xl font-bold text-gray-900">
             {completedToday}
           </p>
         </div>
       </div>
-      <div className="w-px h-8 bg-white/[0.06]" />
+      <div className="w-px h-8 bg-gray-200" />
       <div className="flex items-center gap-3">
-        <Check size={16} style={{ color: '#00ff88' }} />
+        <Check size={16} className="text-green-600" />
         <div>
-          <p className="text-[10px] text-zinc-600 uppercase tracking-widest">连续轮次</p>
-          <p className="font-display text-xl font-bold" style={{ color: '#00ff88', textShadow: '0 0 12px rgba(0,255,136,0.25)' }}>
+          <p className="text-[10px] text-gray-400 uppercase tracking-widest">连续轮次</p>
+          <p className="font-sans text-xl font-bold text-gray-900">
             {completedToday}
           </p>
         </div>
@@ -643,12 +612,6 @@ function FocusStats() {
 export default function FlowChamber() {
   return (
     <div className="max-w-5xl mx-auto space-y-8">
-      {/* 页面标题 */}
-      <div>
-        <h1 className="font-display text-2xl font-bold text-white">沉浸流空间</h1>
-        <p className="text-sm text-zinc-600 mt-1">番茄钟 · 白噪音 · 虚拟自习室</p>
-      </div>
-
       {/* 番茄钟 — 居中英雄 */}
       <PomodoroTimer />
 

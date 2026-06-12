@@ -31,15 +31,15 @@ function getCountdown(examDate: string) {
 }
 
 function masteryColor(mastery: number): string {
-  if (mastery >= 70) return '#00ff88';
-  if (mastery >= 40) return '#ffd600';
-  return '#ff4444';
+  if (mastery >= 70) return '#10b981';
+  if (mastery >= 40) return '#f59e0b';
+  return '#ef4444';
 }
 
 function masteryBg(mastery: number): string {
-  if (mastery >= 70) return 'rgba(0,255,136,0.12)';
-  if (mastery >= 40) return 'rgba(255,214,0,0.12)';
-  return 'rgba(255,68,68,0.12)';
+  if (mastery >= 70) return 'rgba(16,185,129,0.1)';
+  if (mastery >= 40) return 'rgba(245,158,11,0.1)';
+  return 'rgba(239,68,68,0.1)';
 }
 
 /* ─── 添加科目弹窗 ─── */
@@ -47,7 +47,7 @@ function AddSubjectModal({ onClose, onAdd }: { onClose: () => void; onAdd: (s: S
   const [name, setName] = useState('');
   const [examDate, setExamDate] = useState('');
   const [submitted, setSubmitted] = useState(false);
-  const colors = ['#00d4ff', '#00ff88', '#8b5cf6', '#ff0080', '#ffd600', '#ff6b35'];
+  const colors = ['#2563eb', '#10b981', '#8b5cf6', '#ef4444', '#f59e0b', '#f97316'];
 
   const nameError = submitted && !name.trim();
   const dateError = submitted && !examDate;
@@ -72,7 +72,7 @@ function AddSubjectModal({ onClose, onAdd }: { onClose: () => void; onAdd: (s: S
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backdropFilter: 'blur(8px)', background: 'rgba(0,0,0,0.6)' }}
+      style={{ backdropFilter: 'blur(4px)', background: 'rgba(0,0,0,0.3)' }}
       onClick={onClose}
     >
       <motion.div
@@ -80,64 +80,57 @@ function AddSubjectModal({ onClose, onAdd }: { onClose: () => void; onAdd: (s: S
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.92, y: 20 }}
         onClick={(e) => e.stopPropagation()}
-        className="glass-card w-full max-w-md p-6"
+        className="card w-full max-w-md p-6"
       >
         <div className="flex items-center justify-between mb-5">
-          <h3 className="font-display font-bold text-lg text-white">添加考试科目</h3>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/5 transition-colors">
-            <X size={16} className="text-zinc-500" />
+          <h3 className="font-sans font-bold text-lg text-gray-900">添加考试科目</h3>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 transition-colors">
+            <X size={16} className="text-gray-400" />
           </button>
         </div>
         <div className="space-y-4">
           <div>
-            <label className="block text-xs text-zinc-500 mb-1.5">科目名称</label>
+            <label className="block text-xs text-gray-500 mb-1.5">科目名称</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="如：高等数学下"
-              className="w-full px-4 py-2.5 rounded-xl bg-dark-600/60 text-sm text-zinc-200 placeholder-zinc-600 outline-none transition-all"
+              className="w-full px-4 py-2.5 rounded-xl bg-gray-50 text-sm text-gray-800 placeholder-gray-400 outline-none transition-all"
               style={{
-                border: nameError ? '1px solid #ff4444' : '1px solid rgba(255,255,255,0.05)',
-                boxShadow: nameError ? '0 0 12px rgba(255,68,68,0.2)' : undefined,
+                border: nameError ? '1px solid #ef4444' : '1px solid #e9ecef',
               }}
-              onFocus={(e) => { if (!nameError) e.currentTarget.style.borderColor = 'rgba(0,212,255,0.5)'; }}
-              onBlur={(e) => { if (!nameError) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; }}
+              onFocus={(e) => { if (!nameError) e.currentTarget.style.borderColor = '#2563eb'; }}
+              onBlur={(e) => { if (!nameError) e.currentTarget.style.borderColor = '#e9ecef'; }}
             />
-            {nameError && <p className="text-[11px] text-red-400 mt-1">请输入科目名称</p>}
+            {nameError && <p className="text-[11px] text-red-500 mt-1">请输入科目名称</p>}
           </div>
           <div>
-            <label className="block text-xs text-zinc-500 mb-1.5">考试日期</label>
+            <label className="block text-xs text-gray-500 mb-1.5">考试日期</label>
             <input
               type="date"
               value={examDate}
               onChange={(e) => setExamDate(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-dark-600/60 text-sm text-zinc-200 outline-none transition-all"
+              className="w-full px-4 py-2.5 rounded-xl bg-gray-50 text-sm text-gray-800 outline-none transition-all"
               style={{
-                border: dateError ? '1px solid #ff4444' : '1px solid rgba(255,255,255,0.05)',
-                boxShadow: dateError ? '0 0 12px rgba(255,68,68,0.2)' : undefined,
+                border: dateError ? '1px solid #ef4444' : '1px solid #e9ecef',
               }}
-              onFocus={(e) => { if (!dateError) e.currentTarget.style.borderColor = 'rgba(0,212,255,0.5)'; }}
-              onBlur={(e) => { if (!dateError) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; }}
+              onFocus={(e) => { if (!dateError) e.currentTarget.style.borderColor = '#2563eb'; }}
+              onBlur={(e) => { if (!dateError) e.currentTarget.style.borderColor = '#e9ecef'; }}
             />
-            {dateError && <p className="text-[11px] text-red-400 mt-1">请选择考试日期</p>}
+            {dateError && <p className="text-[11px] text-red-500 mt-1">请选择考试日期</p>}
           </div>
         </div>
         <div className="flex items-center gap-3 mt-6">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl text-sm text-zinc-400 transition-colors"
-            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
+            className="ghost-btn flex-1 py-2.5 rounded-xl text-sm text-gray-600 transition-colors"
           >
             取消
           </button>
           <button
             onClick={handleSubmit}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
-            style={{
-              background: 'linear-gradient(135deg, #00d4ff, #00ff88)',
-              boxShadow: '0 0 16px rgba(0,212,255,0.3)',
-            }}
+            className="accent-btn flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
           >
             添加
           </button>
@@ -181,33 +174,31 @@ function ExamCountdown() {
 
   return (
     <>
-      <div className="col-span-2 glass-card p-6 flex flex-col min-h-[320px]">
+      <div className="col-span-2 card p-6 flex flex-col min-h-[320px]">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(0,212,255,0.1)' }}>
-              <Clock size={16} className="text-neon-blue" />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50">
+              <Clock size={16} className="text-blue-600" />
             </div>
-            <h3 className="font-display font-semibold text-white text-base">考试倒计时</h3>
+            <h3 className="font-sans font-semibold text-gray-900 text-base">考试倒计时</h3>
           </div>
           <button
             onClick={() => setShowAdd(true)}
-            className="w-8 h-8 rounded-lg flex items-center justify-center transition-all glass-card-interactive"
-            style={{ background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.15)' }}
+            className="w-8 h-8 rounded-lg flex items-center justify-center transition-all card-interactive"
           >
-            <Plus size={15} className="text-neon-blue" />
+            <Plus size={15} className="text-blue-600" />
           </button>
         </div>
 
         {subjects.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3">
-            <Inbox size={32} className="text-zinc-700" />
-            <p className="text-sm text-zinc-600">暂无考试科目</p>
+            <Inbox size={32} className="text-gray-300" />
+            <p className="text-sm text-gray-500">暂无考试科目</p>
             <button
               onClick={() => setShowAdd(true)}
-              className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-105"
-              style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)' }}
+              className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-105 bg-blue-50 border border-blue-200"
             >
-              <Plus size={16} className="text-neon-blue" />
+              <Plus size={16} className="text-blue-600" />
             </button>
           </div>
         ) : (
@@ -217,59 +208,49 @@ function ExamCountdown() {
               <div
                 className="relative rounded-2xl p-5 overflow-hidden"
                 style={{
-                  background: `linear-gradient(135deg, ${nearest.color}08, ${nearest.color}03)`,
-                  border: `1px solid ${nearest.color}25`,
+                  background: `linear-gradient(135deg, ${nearest.color}06, ${nearest.color}02)`,
+                  border: `1px solid ${nearest.color}20`,
                 }}
               >
-                <div
-                  className="absolute -top-12 -right-12 w-40 h-40 rounded-full opacity-10 blur-3xl"
-                  style={{ background: nearest.color }}
-                />
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm text-zinc-400 font-body">{nearest.name}</p>
+                    <p className="text-sm text-gray-600 font-sans">{nearest.name}</p>
                     <button
                       onClick={() => handleDelete(nearest.id)}
                       className={`p-1 rounded transition-all ${
                         confirmDeleteId === nearest.id
-                          ? 'opacity-100 bg-red-500/20 border border-red-500/40'
-                          : 'opacity-0 hover:opacity-100 hover:bg-white/10'
+                          ? 'opacity-100 bg-red-50 border border-red-200'
+                          : 'opacity-0 hover:opacity-100 hover:bg-gray-100'
                       }`}
                     >
                       {confirmDeleteId === nearest.id ? (
-                        <span className="text-[10px] text-red-400 font-semibold px-1">确认?</span>
+                        <span className="text-[10px] text-red-500 font-semibold px-1">确认?</span>
                       ) : (
-                        <Trash2 size={12} className="text-zinc-500" />
+                        <Trash2 size={12} className="text-gray-400" />
                       )}
                     </button>
                   </div>
-                  <p className="text-[11px] text-zinc-600 mb-4">{nearest.examDate}</p>
+                  <p className="text-[11px] text-gray-400 mb-4">{nearest.examDate}</p>
                   {(() => {
                     const cd = getCountdown(nearest.examDate);
                     return cd.passed ? (
-                      <span className="text-sm text-zinc-500">已结束</span>
+                      <span className="text-sm text-gray-400">已结束</span>
                     ) : (
                       <div className="flex items-baseline gap-1">
                         <span
-                          className="font-display font-bold text-5xl tabular-nums leading-none"
-                          style={{
-                            color: nearest.color,
-                            textShadow: `0 0 20px ${nearest.color}60, 0 0 60px ${nearest.color}20`,
-                          }}
+                          className="font-sans font-bold text-5xl tabular-nums leading-none text-gray-900"
                         >
                           {cd.days}
                         </span>
-                        <span className="text-xs text-zinc-500 mr-3">天</span>
+                        <span className="text-xs text-gray-500 mr-3">天</span>
                         <span
-                          className="font-display font-semibold text-2xl tabular-nums"
-                          style={{ color: nearest.color, textShadow: `0 0 12px ${nearest.color}40` }}
+                          className="font-sans font-semibold text-2xl tabular-nums text-gray-800"
                         >
                           {String(cd.hours).padStart(2, '0')}
                         </span>
-                        <span className="text-xs text-zinc-500 mx-0.5">:</span>
+                        <span className="text-xs text-gray-500 mx-0.5">:</span>
                         <span
-                          className="font-display font-semibold text-2xl tabular-nums"
-                          style={{ color: nearest.color, textShadow: `0 0 12px ${nearest.color}40` }}
+                          className="font-sans font-semibold text-2xl tabular-nums text-gray-800"
                         >
                           {String(cd.minutes).padStart(2, '0')}
                         </span>
@@ -288,21 +269,21 @@ function ExamCountdown() {
                   return (
                     <div
                       key={subject.id}
-                      className="flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors hover:bg-white/[0.02] group"
+                      className="flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors hover:bg-gray-50 group"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <span
                           className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                          style={{ background: subject.color, boxShadow: `0 0 6px ${subject.color}60` }}
+                          style={{ background: subject.color }}
                         />
-                        <span className="text-xs text-zinc-400 truncate">{subject.name}</span>
+                        <span className="text-xs text-gray-600 truncate">{subject.name}</span>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {cd.passed ? (
-                          <span className="text-[11px] text-zinc-600">已结束</span>
+                          <span className="text-[11px] text-gray-400">已结束</span>
                         ) : (
                           <span
-                            className="text-xs font-display font-semibold tabular-nums"
+                            className="text-xs font-sans font-semibold tabular-nums"
                             style={{ color: subject.color }}
                           >
                             {cd.days}天 {String(cd.hours).padStart(2, '0')}:{String(cd.minutes).padStart(2, '0')}
@@ -312,14 +293,14 @@ function ExamCountdown() {
                           onClick={() => handleDelete(subject.id)}
                           className={`p-0.5 rounded transition-all ${
                             confirmDeleteId === subject.id
-                              ? 'opacity-100 bg-red-500/20 border border-red-500/40'
-                              : 'opacity-0 group-hover:opacity-100 hover:bg-white/10'
+                              ? 'opacity-100 bg-red-50 border border-red-200'
+                              : 'opacity-0 group-hover:opacity-100 hover:bg-gray-100'
                           }`}
                         >
                           {confirmDeleteId === subject.id ? (
-                            <span className="text-[9px] text-red-400 font-semibold px-0.5">确认?</span>
+                            <span className="text-[9px] text-red-500 font-semibold px-0.5">确认?</span>
                           ) : (
-                            <Trash2 size={11} className="text-zinc-500" />
+                            <Trash2 size={11} className="text-gray-400" />
                           )}
                         </button>
                       </div>
@@ -364,18 +345,18 @@ function SubjectProgress() {
   };
 
   return (
-    <div className="col-span-1 glass-card p-5 flex flex-col min-h-[260px]">
+    <div className="col-span-1 card p-5 flex flex-col min-h-[260px]">
       <div className="flex items-center gap-2.5 mb-4">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(139,92,246,0.1)' }}>
-          <Target size={16} className="text-neon-purple" />
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-50">
+          <Target size={16} className="text-purple-600" />
         </div>
-        <h3 className="font-display font-semibold text-white text-base">科目进度</h3>
+        <h3 className="font-sans font-semibold text-gray-900 text-base">科目进度</h3>
       </div>
 
       {subjects.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-2">
-          <Inbox size={28} className="text-zinc-700" />
-          <p className="text-sm text-zinc-600">暂无科目数据</p>
+          <Inbox size={28} className="text-gray-300" />
+          <p className="text-sm text-gray-500">暂无科目数据</p>
         </div>
       ) : (
         <div className="flex-1 space-y-4 overflow-auto">
@@ -384,7 +365,7 @@ function SubjectProgress() {
             return (
               <div key={subject.id}>
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs text-zinc-400 truncate max-w-[140px]">{subject.name}</span>
+                  <span className="text-xs text-gray-600 truncate max-w-[140px]">{subject.name}</span>
                   {isEditing ? (
                     <input
                       type="number"
@@ -401,13 +382,12 @@ function SubjectProgress() {
                         if (e.key === 'Escape') setEditingId(null);
                       }}
                       autoFocus
-                      className="w-12 text-xs text-right bg-transparent outline-none tabular-nums font-display font-semibold"
-                      style={{ color: subject.color }}
+                      className="w-12 text-xs text-right bg-transparent outline-none tabular-nums font-sans font-semibold text-gray-800"
                     />
                   ) : (
                     <button
                       onClick={() => handleProgressClick(subject.id, subject.progress)}
-                      className="text-xs font-display font-semibold tabular-nums cursor-pointer hover:underline"
+                      className="text-xs font-sans font-semibold tabular-nums cursor-pointer hover:underline"
                       style={{ color: subject.color }}
                     >
                       {subject.progress}%
@@ -415,8 +395,7 @@ function SubjectProgress() {
                   )}
                 </div>
                 <div
-                  className="h-2 rounded-full overflow-hidden cursor-pointer"
-                  style={{ background: 'rgba(255,255,255,0.04)' }}
+                  className="h-2 rounded-full overflow-hidden cursor-pointer bg-gray-100"
                   onClick={(e) => {
                     const rect = e.currentTarget.getBoundingClientRect();
                     const pct = Math.round(((e.clientX - rect.left) / rect.width) * 100);
@@ -434,8 +413,7 @@ function SubjectProgress() {
                     animate={{ width: `${subject.progress}%` }}
                     transition={{ duration: 0.6, ease: 'easeOut' }}
                     style={{
-                      background: `linear-gradient(90deg, ${subject.color}aa, ${subject.color})`,
-                      boxShadow: `0 0 8px ${subject.color}40`,
+                      background: subject.color,
                     }}
                   />
                 </div>
@@ -464,18 +442,18 @@ function Heatmap() {
   const hasKnowledgePoints = knowledgePoints.length > 0;
 
   return (
-    <div className="col-span-1 glass-card p-5 flex flex-col min-h-[260px]">
+    <div className="col-span-1 card p-5 flex flex-col min-h-[260px]">
       <div className="flex items-center gap-2.5 mb-4">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,0,128,0.1)' }}>
-          <Brain size={16} className="text-neon-pink" />
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-50">
+          <Brain size={16} className="text-red-500" />
         </div>
-        <h3 className="font-display font-semibold text-white text-base">盲区热力图</h3>
+        <h3 className="font-sans font-semibold text-gray-900 text-base">盲区热力图</h3>
       </div>
 
       {!hasKnowledgePoints ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-2">
-          <Inbox size={28} className="text-zinc-700" />
-          <p className="text-sm text-zinc-600">暂无知识点数据</p>
+          <Inbox size={28} className="text-gray-300" />
+          <p className="text-sm text-gray-500">暂无知识点数据</p>
         </div>
       ) : (
         <div className="flex-1 space-y-4 overflow-auto">
@@ -484,10 +462,10 @@ function Heatmap() {
             if (points.length === 0) return null;
             return (
               <div key={subject.id}>
-                <p className="text-[11px] text-zinc-500 mb-2 flex items-center gap-1.5">
+                <p className="text-[11px] text-gray-500 mb-2 flex items-center gap-1.5">
                   <span
                     className="inline-block w-1.5 h-1.5 rounded-full"
-                    style={{ background: subject.color, boxShadow: `0 0 4px ${subject.color}80` }}
+                    style={{ background: subject.color }}
                   />
                   {subject.name}
                 </p>
@@ -503,12 +481,11 @@ function Heatmap() {
                       >
                         <motion.div
                           whileHover={{ scale: 1.12 }}
-                          className="w-9 h-9 rounded-lg cursor-pointer flex items-center justify-center text-[9px] font-display font-semibold transition-colors"
+                          className="w-9 h-9 rounded-lg cursor-pointer flex items-center justify-center text-[9px] font-sans font-semibold transition-colors"
                           style={{
                             background: masteryBg(kp.mastery),
                             border: `1px solid ${masteryColor(kp.mastery)}30`,
                             color: masteryColor(kp.mastery),
-                            boxShadow: isHovered ? `0 0 10px ${masteryColor(kp.mastery)}30` : 'none',
                           }}
                         >
                           {kp.mastery}
@@ -517,16 +494,11 @@ function Heatmap() {
                           <motion.div
                             initial={{ opacity: 0, y: 4 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 rounded-lg whitespace-nowrap pointer-events-none"
-                            style={{
-                              background: 'rgba(12,12,20,0.95)',
-                              border: `1px solid ${masteryColor(kp.mastery)}40`,
-                              boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
-                            }}
+                            className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 rounded-lg whitespace-nowrap pointer-events-none bg-white border border-gray-200 shadow-lg"
                           >
-                            <p className="text-[11px] text-zinc-300">{kp.name}</p>
+                            <p className="text-[11px] text-gray-700">{kp.name}</p>
                             <p
-                              className="text-[9px] font-display font-semibold"
+                              className="text-[9px] font-sans font-semibold"
                               style={{ color: masteryColor(kp.mastery) }}
                             >
                               掌握度 {kp.mastery}%
@@ -544,19 +516,19 @@ function Heatmap() {
       )}
 
       {hasKnowledgePoints && (
-        <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/5">
-          <span className="text-[9px] text-zinc-600">掌握度</span>
+        <div className="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100">
+          <span className="text-[9px] text-gray-400">掌握度</span>
           <div className="flex items-center gap-1">
             <span className="w-2.5 h-2.5 rounded-sm" style={{ background: masteryBg(20), border: `1px solid ${masteryColor(20)}30` }} />
-            <span className="text-[9px] text-zinc-500">&lt;40</span>
+            <span className="text-[9px] text-gray-500">&lt;40</span>
           </div>
           <div className="flex items-center gap-1">
             <span className="w-2.5 h-2.5 rounded-sm" style={{ background: masteryBg(55), border: `1px solid ${masteryColor(55)}30` }} />
-            <span className="text-[9px] text-zinc-500">40-70</span>
+            <span className="text-[9px] text-gray-500">40-70</span>
           </div>
           <div className="flex items-center gap-1">
             <span className="w-2.5 h-2.5 rounded-sm" style={{ background: masteryBg(80), border: `1px solid ${masteryColor(80)}30` }} />
-            <span className="text-[9px] text-zinc-500">&ge;70</span>
+            <span className="text-[9px] text-gray-500">&ge;70</span>
           </div>
         </div>
       )}
@@ -572,30 +544,36 @@ function QuickActions() {
     {
       label: '上传资料复习',
       icon: Zap,
-      color: '#00d4ff',
+      color: '#2563eb',
+      bgColor: 'bg-blue-50',
+      iconColor: 'text-blue-600',
       onClick: () => navigate('/ai-engine?mode=workflow'),
     },
     {
       label: '开始番茄钟',
       icon: Headphones,
-      color: '#00ff88',
+      color: '#10b981',
+      bgColor: 'bg-green-50',
+      iconColor: 'text-green-600',
       onClick: () => navigate('/flow-chamber'),
     },
     {
       label: '查看笔记',
       icon: NotebookPen,
       color: '#8b5cf6',
+      bgColor: 'bg-purple-50',
+      iconColor: 'text-purple-600',
       onClick: () => navigate('/my-notes'),
     },
   ];
 
   return (
-    <div className="col-span-1 glass-card p-5 flex flex-col min-h-[260px]">
+    <div className="col-span-1 card p-5 flex flex-col min-h-[260px]">
       <div className="flex items-center gap-2.5 mb-4">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(0,255,136,0.1)' }}>
-          <Zap size={16} className="text-neon-green" />
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-green-50">
+          <Zap size={16} className="text-green-600" />
         </div>
-        <h3 className="font-display font-semibold text-white text-base">快捷操作</h3>
+        <h3 className="font-sans font-semibold text-gray-900 text-base">快捷操作</h3>
       </div>
 
       <div className="flex-1 flex flex-col gap-2.5">
@@ -605,21 +583,16 @@ function QuickActions() {
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.98 }}
             onClick={action.onClick}
-            className="glass-card-interactive flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all group"
-            style={{
-              background: `linear-gradient(135deg, ${action.color}06, transparent)`,
-              border: `1px solid ${action.color}15`,
-            }}
+            className="card-interactive flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all group"
           >
             <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
-              style={{ background: `${action.color}12` }}
+              className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${action.bgColor}`}
             >
-              <action.icon size={16} style={{ color: action.color }} />
+              <action.icon size={16} className={action.iconColor} />
             </div>
-            <span className="text-sm text-zinc-300 group-hover:text-white transition-colors">{action.label}</span>
+            <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">{action.label}</span>
             <span
-              className="ml-auto text-zinc-600 group-hover:text-zinc-400 transition-colors text-xs"
+              className="ml-auto text-gray-400 group-hover:text-gray-500 transition-colors text-xs"
             >
               →
             </span>
