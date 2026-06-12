@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Brain, NotebookPen, Headphones, Settings, Cpu } from 'lucide-react';
+import { LayoutDashboard, Brain, NotebookPen, Headphones, Cpu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { loadModelSettings } from '@/lib/models/api';
 import { useMemo } from 'react';
@@ -44,30 +44,32 @@ export default function Layout() {
   const current = pageTitles[location.pathname] || pageTitles['/dashboard'];
 
   return (
-    <div className="flex h-screen bg-white font-body overflow-hidden">
+    <div className="flex h-screen bg-[#f8f9fa] font-sans overflow-hidden">
       {/* ── 侧边栏 ── */}
-      <aside className="w-[240px] flex-shrink-0 flex flex-col border-r border-gray-200 bg-white">
+      <aside className="sidebar w-[240px] flex-shrink-0 flex flex-col bg-white border-r border-gray-200">
         {/* Logo */}
-        <div className="px-5 h-14 flex items-center flex-shrink-0">
-          <span className="font-semibold text-lg text-gray-900">UniFlow</span>
+        <div className="sidebar-logo px-5 h-14 flex items-center flex-shrink-0 border-b border-gray-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-md bg-blue-600 flex items-center justify-center">
+              <span className="text-white text-xs font-bold">UF</span>
+            </div>
+            <span className="font-semibold text-[15px] text-gray-900 tracking-tight">UniFlow</span>
+          </div>
         </div>
 
-        {/* 分割线 */}
-        <div className="mx-4 border-t border-gray-100" />
-
         {/* 导航区 */}
-        <div className="px-3 pt-4 pb-2">
-          <p className="px-2 mb-1.5 text-[11px] font-medium text-gray-400 uppercase tracking-wider">导航</p>
+        <div className="sidebar-nav px-3 pt-4 pb-2 flex-1">
+          <p className="sidebar-label px-2 mb-2 text-[11px] font-medium text-gray-400 uppercase tracking-wider">导航</p>
           <nav className="flex flex-col gap-0.5">
             {navItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) =>
-                  `flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-colors duration-150 ${
+                  `flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] font-medium transition-colors duration-150 ${
                     isActive
-                      ? 'bg-blue-50 text-blue-600 border-l-2 border-blue-600 -ml-[2px] pl-[8px]'
-                      : 'text-gray-600 hover:bg-gray-50 border-l-2 border-transparent -ml-[2px] pl-[8px]'
+                      ? 'bg-blue-50 text-blue-600'
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
                   }`
                 }
               >
@@ -78,11 +80,8 @@ export default function Layout() {
           </nav>
         </div>
 
-        {/* 分割线 */}
-        <div className="mx-4 mt-2 border-t border-gray-100" />
-
         {/* 底部：模型指示器 */}
-        <div className="mt-auto px-3 pb-4">
+        <div className="sidebar-footer px-3 pb-3 pt-2 border-t border-gray-100">
           <button
             onClick={() => navigate('/ai-engine?tab=settings')}
             className="flex items-center gap-2 w-full px-2.5 py-2 rounded-md text-xs text-gray-500 hover:bg-gray-50 transition-colors duration-150"
@@ -95,15 +94,15 @@ export default function Layout() {
       </aside>
 
       {/* ── 主内容区 ── */}
-      <main className="flex-1 flex flex-col min-w-0 bg-white">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* 页面标题 */}
-        <div className="px-8 pt-8 pb-2 flex-shrink-0">
-          <h1 className="text-2xl font-semibold text-gray-900">{current.title}</h1>
-          <p className="text-sm text-gray-400 mt-0.5">{current.subtitle}</p>
+        <div className="px-8 pt-8 pb-2 flex-shrink-0 bg-white border-b border-gray-100">
+          <h1 className="text-xl font-semibold text-gray-900">{current.title}</h1>
+          <p className="text-[13px] text-gray-400 mt-0.5">{current.subtitle}</p>
         </div>
 
         {/* 页面内容 */}
-        <div className="flex-1 overflow-auto px-8 pb-8">
+        <div className="flex-1 overflow-auto px-8 py-6 bg-[#f8f9fa]">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
@@ -111,7 +110,6 @@ export default function Layout() {
               initial="initial"
               animate="animate"
               exit="exit"
-              className="h-full"
             >
               <Outlet />
             </motion.div>

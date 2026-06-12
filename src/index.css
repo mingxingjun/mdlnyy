@@ -448,7 +448,7 @@ select option {
 /* ─── Mobile Bottom Nav ────────────────────────────── */
 
 @media (max-width: 1023px) {
-  aside {
+  aside.sidebar {
     position: fixed;
     bottom: 0;
     left: 0;
@@ -464,12 +464,18 @@ select option {
     -webkit-backdrop-filter: blur(8px);
   }
 
-  aside > div:first-child,
-  aside > div:last-child {
+  aside.sidebar .sidebar-logo,
+  aside.sidebar .sidebar-footer,
+  aside.sidebar .sidebar-label {
     display: none;
   }
 
-  aside nav {
+  aside.sidebar .sidebar-nav {
+    flex: 1;
+    padding: 0;
+  }
+
+  aside.sidebar nav {
     flex: 1;
     display: flex;
     flex-direction: row;
@@ -478,15 +484,16 @@ select option {
     padding: 0;
   }
 
-  aside nav a {
+  aside.sidebar nav a {
     flex-direction: column;
     gap: 2px;
     padding: 8px;
     font-size: 10px;
-    transition: color 0.15s ease;
+    border-radius: 0;
+    background: none !important;
   }
 
-  aside nav a span {
+  aside.sidebar nav a span {
     display: block !important;
   }
 
