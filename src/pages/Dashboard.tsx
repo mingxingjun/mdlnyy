@@ -30,90 +30,66 @@ function getCountdown(examDate: string) {
   return { days, passed: false };
 }
 
-/* ─── 静态数据（仅保留知识图谱和标签） ─── */
+/* ─── 静态标签 ─── */
 const tags = ['重点', '易错', '公式', '证明', '计算'];
-
-const knowledgeNodes = [
-  { id: 'center', label: '微积分', x: 50, y: 50, size: 'lg', color: '#635BFF' },
-  { id: 'n1', label: '极限', x: 22, y: 25, size: 'md', color: '#7C5CFF' },
-  { id: 'n2', label: '导数', x: 78, y: 25, size: 'md', color: '#4FD1C5' },
-  { id: 'n3', label: '积分', x: 22, y: 75, size: 'md', color: '#FFB800' },
-  { id: 'n4', label: '微分方程', x: 78, y: 75, size: 'md', color: '#FF3D00' },
-  { id: 'n5', label: '连续性', x: 10, y: 50, size: 'sm', color: '#8b5cf6' },
-  { id: 'n6', label: '求导法则', x: 90, y: 50, size: 'sm', color: '#00D924' },
-  { id: 'n7', label: '定积分', x: 38, y: 88, size: 'sm', color: '#fb923c' },
-  { id: 'n8', label: '数列极限', x: 8, y: 15, size: 'sm', color: '#a78bfa' },
-];
-
-const knowledgeEdges = [
-  ['center', 'n1'], ['center', 'n2'], ['center', 'n3'], ['center', 'n4'],
-  ['n1', 'n5'], ['n1', 'n8'], ['n2', 'n6'], ['n3', 'n7'],
-];
-
-const fallbackChapters = [
-  { name: '第一章 极限与连续', expanded: true, children: ['数列极限', '函数极限', '连续性'] },
-  { name: '第二章 导数与微分', expanded: false, children: ['导数定义', '求导法则', '微分'] },
-  { name: '第三章 积分', expanded: false, children: ['不定积分', '定积分', '积分应用'] },
-  { name: '第四章 微分方程', expanded: false, children: ['一阶方程', '高阶方程'] },
-];
 
 /* ─── 1. Stats Overview ─── */
 function StatsOverview() {
   const { subjects, flashCards } = useAppStore();
 
   const todayRate = useMemo(() => {
-    if (subjects.length === 0) return 68;
+    if (subjects.length === 0) return 0;
     const total = subjects.reduce((s, sub) => s + sub.progress, 0);
     return Math.round(total / subjects.length);
   }, [subjects]);
 
   const nearestDays = useMemo(() => {
-    if (subjects.length === 0) return 12;
+    if (subjects.length === 0) return null;
     const sorted = [...subjects].sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime());
     const cd = getCountdown(sorted[0].examDate);
     return cd.passed ? 0 : cd.days;
   }, [subjects]);
 
   const avgMastery = useMemo(() => {
-    if (subjects.length === 0) return 54;
+    if (subjects.length === 0) return 0;
     const total = subjects.reduce((s, sub) => s + sub.progress, 0);
     return Math.round(total / subjects.length);
   }, [subjects]);
 
-  const totalQuizzes = flashCards.length > 0 ? flashCards.length : 28;
+  const totalQuizzes = flashCards.length;
 
   const stats = [
     {
       label: '今日完成率',
-      value: `${todayRate}%`,
+      value: subjects.length > 0 ? `${todayRate}%` : '--',
       icon: CheckCircle2,
       iconBg: 'bg-[#00D924]/10',
       iconColor: 'text-[#00D924]',
-      trend: '+12%',
-      trendUp: true,
-      ring: true,
+      trend: subjects.length > 0 ? `${todayRate}%` : '添加科目',
+      trendUp: todayRate > 0,
+      ring: subjects.length > 0,
       ringValue: todayRate,
     },
     {
       label: '距期末',
-      value: `${nearestDays}`,
-      valueSuffix: '天',
+      value: nearestDays !== null ? `${nearestDays}` : '--',
+      valueSuffix: nearestDays !== null ? '天' : '',
       icon: Clock,
       iconBg: 'bg-[#635BFF]/10',
       iconColor: 'text-[#635BFF]',
-      trend: '高数最近',
+      trend: subjects.length > 0 ? '最近考试' : '添加科目',
       trendUp: false,
       ring: false,
     },
     {
       label: '掌握度',
-      value: `${avgMastery}%`,
+      value: subjects.length > 0 ? `${avgMastery}%` : '--',
       icon: Target,
       iconBg: 'bg-[#FFB800]/10',
       iconColor: 'text-[#FFB800]',
-      trend: '+5%',
-      trendUp: true,
-      bar: true,
+      trend: subjects.length > 0 ? `${avgMastery}%` : '添加科目',
+      trendUp: avgMastery > 0,
+      bar: subjects.length > 0,
       barValue: avgMastery,
     },
     {
@@ -123,8 +99,8 @@ function StatsOverview() {
       icon: FileText,
       iconBg: 'bg-[#7C5CFF]/10',
       iconColor: 'text-[#7C5CFF]',
-      trend: '今日 +6',
-      trendUp: true,
+      trend: totalQuizzes > 0 ? `共 ${totalQuizzes} 题` : '添加闪卡',
+      trendUp: totalQuizzes > 0,
     },
   ];
 
@@ -303,8 +279,8 @@ function KnowledgeNav() {
     });
   };
 
-  // Use fallback chapters when a subject is selected but has no chapter data
-  const displayChapters = fallbackChapters;
+  // Get selected subject data
+  const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
 
   return (
     <div className="w-full lg:w-[220px] flex-shrink-0 min-w-0 bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-5">
@@ -332,49 +308,12 @@ function KnowledgeNav() {
         )}
       </div>
 
-      {/* Chapter list */}
-      {subjects.length > 0 ? (
+      {/* Chapter list - show knowledge points for selected subject */}
+      {subjects.length > 0 && selectedSubject ? (
         <div className="space-y-1 mb-4 max-h-[200px] overflow-y-auto scrollbar-hide">
-          {displayChapters.map((ch, idx) => (
-            <div key={ch.name}>
-              <button
-                onClick={() => toggleChapter(idx)}
-                className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-[8px] text-[12px] text-[#a3b5cc] hover:bg-white/[0.04] transition-colors"
-              >
-                {expandedChapters.has(idx) ? (
-                  <ChevronDown size={12} className="text-[#6b7c93] flex-shrink-0" />
-                ) : (
-                  <ChevronRight size={12} className="text-[#6b7c93] flex-shrink-0" />
-                )}
-                <span className="truncate">{ch.name}</span>
-              </button>
-              <AnimatePresence>
-                {expandedChapters.has(idx) && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    {ch.children.map((child) => (
-                      <button
-                        key={child}
-                        onClick={() => setActiveItem(child)}
-                        className={`w-full text-left pl-7 pr-2 py-1.5 text-[11px] rounded-[8px] transition-colors ${
-                          activeItem === child
-                            ? 'border-l-2 border-[#635BFF] bg-[#635BFF]/5 text-[#ffffff]'
-                            : 'text-[#6b7c93] hover:bg-white/[0.04]'
-                        }`}
-                      >
-                        {child}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ))}
+          <div className="text-[11px] text-[#6b7c93] px-2 py-1">
+            通过 AI 冲刺核添加知识点
+          </div>
         </div>
       ) : (
         <div className="mb-4 py-6 text-center text-[12px] text-[#6b7c93]">
@@ -404,7 +343,87 @@ function KnowledgeNav() {
 
 /** Center: Knowledge Graph */
 function KnowledgeGraph() {
-  const [selectedNode, setSelectedNode] = useState<string>('center');
+  const knowledgePoints = useAppStore(s => s.knowledgePoints);
+  const subjects = useAppStore(s => s.subjects);
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+
+  // Build graph from knowledgePoints
+  const graphData = useMemo(() => {
+    if (knowledgePoints.length === 0) return null;
+
+    // Group by subject
+    const bySubject = new Map<string, typeof knowledgePoints>();
+    knowledgePoints.forEach(kp => {
+      if (!bySubject.has(kp.subjectId)) bySubject.set(kp.subjectId, []);
+      bySubject.get(kp.subjectId)!.push(kp);
+    });
+
+    // Create nodes with positions (simple radial layout)
+    const nodes: Array<{
+      id: string;
+      label: string;
+      x: number;
+      y: number;
+      size: 'lg' | 'md' | 'sm';
+      color: string;
+      mastery: number;
+    }> = [];
+
+    const colors = ['#635BFF', '#7C5CFF', '#4FD1C5', '#FFB800', '#FF3D00', '#00D924'];
+    let subjectIdx = 0;
+
+    bySubject.forEach((points, subjectId) => {
+      const subject = subjects.find(s => s.id === subjectId);
+      const color = colors[subjectIdx % colors.length];
+      subjectIdx++;
+
+      // Center node for subject
+      const centerX = 20 + (subjectIdx * 60) % 60;
+      const centerY = 50;
+      nodes.push({
+        id: `subject-${subjectId}`,
+        label: subject?.name || '科目',
+        x: centerX,
+        y: centerY,
+        size: 'lg',
+        color,
+        mastery: Math.round(points.reduce((sum, p) => sum + p.mastery, 0) / points.length),
+      });
+
+      // Child nodes in circle around center
+      const radius = 25;
+      points.slice(0, 6).forEach((kp, i) => {
+        const angle = (i / Math.min(points.length, 6)) * 2 * Math.PI - Math.PI / 2;
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        nodes.push({
+          id: kp.id,
+          label: kp.name.length > 4 ? kp.name.slice(0, 4) : kp.name,
+          x: Math.max(5, Math.min(95, x)),
+          y: Math.max(5, Math.min(95, y)),
+          size: kp.mastery >= 80 ? 'md' : 'sm',
+          color,
+          mastery: kp.mastery,
+        });
+      });
+    });
+
+    return { nodes, bySubject };
+  }, [knowledgePoints, subjects]);
+
+  if (!graphData || graphData.nodes.length === 0) {
+    return (
+      <div className="w-full lg:flex-1 min-w-0 bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-5 flex flex-col items-center justify-center">
+        <h3 className="text-[13px] font-semibold text-[#ffffff] mb-3">知识图谱</h3>
+        <div className="flex flex-col items-center justify-center py-8">
+          <Brain size={32} className="text-[#6b7c93] mb-3" />
+          <p className="text-[13px] text-[#6b7c93] text-center">
+            通过 AI 冲刺核添加知识点后<br />知识图谱将自动生成
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const nodeSize = (size: string) => {
     switch (size) {
@@ -418,29 +437,11 @@ function KnowledgeGraph() {
     <div className="w-full lg:flex-1 min-w-0 bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-5 relative overflow-hidden">
       <h3 className="text-[13px] font-semibold text-[#ffffff] mb-3">知识图谱</h3>
       <div className="relative w-full" style={{ paddingBottom: '80%' }}>
-        {/* SVG Edges */}
-        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-          {knowledgeEdges.map(([from, to]) => {
-            const f = knowledgeNodes.find((n) => n.id === from)!;
-            const t = knowledgeNodes.find((n) => n.id === to)!;
-            const isActive = selectedNode === from || selectedNode === to;
-            return (
-              <line
-                key={`${from}-${to}`}
-                x1={f.x} y1={f.y} x2={t.x} y2={t.y}
-                stroke={isActive ? 'rgba(99,91,255,0.4)' : 'rgba(255,255,255,0.06)'}
-                strokeWidth={isActive ? 0.5 : 0.3}
-                className="transition-all duration-300"
-              />
-            );
-          })}
-        </svg>
-
         {/* Nodes */}
-        {knowledgeNodes.map((node) => (
+        {graphData.nodes.map((node) => (
           <motion.button
             key={node.id}
-            onClick={() => setSelectedNode(node.id)}
+            onClick={() => setSelectedNode(selectedNode === node.id ? null : node.id)}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             className={`absolute rounded-full flex items-center justify-center font-medium transition-all duration-300 cursor-pointer ${nodeSize(node.size)} ${
@@ -455,8 +456,9 @@ function KnowledgeGraph() {
               background: selectedNode === node.id ? `${node.color}20` : `${node.color}10`,
               border: `1px solid ${selectedNode === node.id ? node.color : `${node.color}30`}`,
               color: node.color,
-              ...(selectedNode === node.id ? { ringColor: node.color, boxShadow: `0 0 20px ${node.color}20` } : {}),
+              ...(selectedNode === node.id ? { boxShadow: `0 0 20px ${node.color}20` } : {}),
             }}
+            title={`${node.label} - 掌握度 ${node.mastery}%`}
           >
             {node.label}
           </motion.button>
@@ -475,7 +477,7 @@ function SmartPanel() {
   // Generate todos from unmastered flashCards
   const todos = useMemo(() => {
     const unmastered = flashCards.filter(c => !c.mastered).slice(0, 4);
-    if (unmastered.length === 0) return [{ id: '1', text: '所有闪卡已掌握！', done: true }];
+    if (unmastered.length === 0) return [];
     return unmastered.map(c => ({ id: c.id, text: `复习: ${c.front.slice(0, 20)}...`, done: false }));
   }, [flashCards]);
 
@@ -489,6 +491,18 @@ function SmartPanel() {
   const toggleTodo = (id: string) => {
     setTodoItems((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
   };
+
+  // AI suggestion based on real data
+  const aiSuggestion = useMemo(() => {
+    if (flashCards.length === 0) return null;
+    const unmastered = flashCards.filter(c => !c.mastered);
+    if (unmastered.length === 0) return { text: '所有闪卡已掌握！继续保持复习节奏。', highlight: null };
+    const subject = subjects.find(s => s.id === unmastered[0].subjectId);
+    return {
+      text: `建议优先复习「${subject?.name || '未分类'}」，有 ${unmastered.length} 张闪卡未掌握。`,
+      highlight: subject?.name || null,
+    };
+  }, [flashCards, subjects]);
 
   // Exam reminders from subjects sorted by examDate
   const examReminders = useMemo(() => {
@@ -523,9 +537,19 @@ function SmartPanel() {
           </div>
           <h3 className="text-[13px] font-semibold text-[#ffffff]">AI 复习建议</h3>
         </div>
-        <p className="text-[12px] text-[#a3b5cc] leading-relaxed">
-          根据你的错题分布，建议今天优先复习<strong className="text-[#FFB800]">微分方程</strong>章节，该章节掌握度仅 42%，且与上次错题高度相关。
-        </p>
+        {aiSuggestion ? (
+          <p className="text-[12px] text-[#a3b5cc] leading-relaxed">
+            {aiSuggestion.highlight ? (
+              <>建议优先复习<strong className="text-[#FFB800]">{aiSuggestion.highlight}</strong>，{aiSuggestion.text.split('，')[1]}</>
+            ) : (
+              aiSuggestion.text
+            )}
+          </p>
+        ) : (
+          <p className="text-[12px] text-[#6b7c93] leading-relaxed">
+            添加闪卡后生成个性化复习建议
+          </p>
+        )}
       </div>
 
       {/* 今日待办 */}
@@ -536,30 +560,34 @@ function SmartPanel() {
           </div>
           <h3 className="text-[13px] font-semibold text-[#ffffff]">今日待办</h3>
         </div>
-        <div className="space-y-2">
-          {todoItems.map((todo) => (
-            <label
-              key={todo.id}
-              className="flex items-center gap-2.5 cursor-pointer group"
-            >
-              <button
-                onClick={() => toggleTodo(todo.id)}
-                className={`w-4 h-4 rounded-[4px] flex items-center justify-center flex-shrink-0 transition-all ${
-                  todo.done
-                    ? 'bg-[#00D924] border-[#00D924]'
-                    : 'border border-white/[0.12] group-hover:border-[#635BFF]/40'
-                }`}
+        {todoItems.length > 0 ? (
+          <div className="space-y-2">
+            {todoItems.map((todo) => (
+              <label
+                key={todo.id}
+                className="flex items-center gap-2.5 cursor-pointer group"
               >
-                {todo.done && <CheckCircle2 size={10} className="text-white" />}
-              </button>
-              <span className={`text-[12px] transition-colors ${
-                todo.done ? 'text-[#6b7c93] line-through' : 'text-[#a3b5cc] group-hover:text-[#ffffff]'
-              }`}>
-                {todo.text}
-              </span>
-            </label>
-          ))}
-        </div>
+                <button
+                  onClick={() => toggleTodo(todo.id)}
+                  className={`w-4 h-4 rounded-[4px] flex items-center justify-center flex-shrink-0 transition-all ${
+                    todo.done
+                      ? 'bg-[#00D924] border-[#00D924]'
+                      : 'border border-white/[0.12] group-hover:border-[#635BFF]/40'
+                  }`}
+                >
+                  {todo.done && <CheckCircle2 size={10} className="text-white" />}
+                </button>
+                <span className={`text-[12px] transition-colors ${
+                  todo.done ? 'text-[#6b7c93] line-through' : 'text-[#a3b5cc] group-hover:text-[#ffffff]'
+                }`}>
+                  {todo.text}
+                </span>
+              </label>
+            ))}
+          </div>
+        ) : (
+          <p className="text-[12px] text-[#6b7c93]">暂无待办事项</p>
+        )}
       </div>
 
       {/* 考试提醒 */}
