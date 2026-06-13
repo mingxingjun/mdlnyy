@@ -235,6 +235,10 @@ export const useAppStore = create<AppState>()(
         notes: state.notes,
         joinedRooms: state.joinedRooms,
         todayFlowMinutes: state.todayFlowMinutes,
+        agentSessions: state.agentSessions,
+        materials: state.materials,
+        activeWhiteNoise: state.activeWhiteNoise,
+        weeklyFlowData: state.weeklyFlowData,
       }),
     }
   )

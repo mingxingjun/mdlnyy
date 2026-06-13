@@ -207,10 +207,14 @@ export default function AIEngine() {
       setUploadedFile({ name: file.name, size: file.size, content: text, type: file.type });
       addToast('success', '文件上传成功');
     };
+    reader.onerror = () => {
+      addToast('error', '文件读取失败，请重试');
+    };
     if (file.type === 'text/plain' || file.name.endsWith('.md')) {
       reader.readAsText(file);
     } else if (file.name.endsWith('.pdf')) {
-      reader.readAsText(file);
+      addToast('error', 'PDF 文件支持即将推出，请使用 .txt 或 .md 格式');
+      return;
     } else {
       reader.readAsText(file);
     }
@@ -876,11 +880,7 @@ export default function AIEngine() {
                             <>
                               <div
                                 className="w-8 h-8 rounded-[10px] flex items-center justify-center flex-shrink-0"
-                                style={
-                                  msg.role === 'assistant' && selectedAgent
-                                    ? { backgroundColor: 'rgba(99,91,255,0.1)' }
-                                    : { backgroundColor: 'rgba(99,91,255,0.1)' }
-                                }
+                                style={{ backgroundColor: 'rgba(99,91,255,0.1)' }}
                               >
                                 {msg.role === 'assistant' ? (
                                   <span>{selectedAgent?.avatar || '🤖'}</span>
@@ -1119,11 +1119,7 @@ export default function AIEngine() {
                             >
                               <div
                                 className="w-7 h-7 rounded-[10px] flex items-center justify-center flex-shrink-0"
-                                style={
-                                  msg.role === 'assistant'
-                                    ? { backgroundColor: 'rgba(99,91,255,0.1)' }
-                                    : { backgroundColor: 'rgba(99,91,255,0.1)' }
-                                }
+                                style={{ backgroundColor: 'rgba(99,91,255,0.1)' }}
                               >
                                 {msg.role === 'assistant' ? (
                                   <span className="text-sm">{getAgent(msg.agentId)?.avatar || '🤖'}</span>
@@ -1452,8 +1448,13 @@ export default function AIEngine() {
 function renderMarkdown(text: string): string {
   let html = text;
 
-  // Escape HTML entities
-  html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // Escape HTML entities (complete escaping for XSS prevention)
+  html = html
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
   // Code backticks
   html = html.replace(

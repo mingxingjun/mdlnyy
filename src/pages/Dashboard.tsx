@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  CheckCircle2, Clock, Target, Brain, FileText, ChevronDown, ChevronRight,
+  CheckCircle2, Clock, Target, Brain, FileText, ChevronDown,
   ArrowRight, Sparkles, Star, Bookmark,
   Send, X, BookOpen, Lightbulb, RotateCcw,
   AlertCircle, ListChecks, Bell, HelpCircle,
@@ -259,25 +259,14 @@ function AgentWorkflow() {
 function KnowledgeNav() {
   const subjects = useAppStore(s => s.subjects);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
-  const [expandedChapters, setExpandedChapters] = useState<Set<number>>(new Set([0]));
   const [activeTag, setActiveTag] = useState<string | null>(null);
-  const [activeItem, setActiveItem] = useState<string>('');
 
   // Set initial selected subject
-  useMemo(() => {
+  useEffect(() => {
     if (subjects.length > 0 && !selectedSubjectId) {
       setSelectedSubjectId(subjects[0].id);
     }
   }, [subjects, selectedSubjectId]);
-
-  const toggleChapter = (idx: number) => {
-    setExpandedChapters((prev) => {
-      const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
-      return next;
-    });
-  };
 
   // Get selected subject data
   const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
@@ -473,6 +462,7 @@ function SmartPanel() {
   const flashCards = useAppStore(s => s.flashCards);
   const subjects = useAppStore(s => s.subjects);
   const [quickQuestion, setQuickQuestion] = useState('');
+  const navigate = useNavigate();
 
   // Generate todos from unmastered flashCards
   const todos = useMemo(() => {
@@ -484,12 +474,19 @@ function SmartPanel() {
   const [todoItems, setTodoItems] = useState(todos);
 
   // Sync with computed todos
-  useMemo(() => {
+  useEffect(() => {
     setTodoItems(todos);
   }, [todos]);
 
   const toggleTodo = (id: string) => {
     setTodoItems((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+  };
+
+  const handleQuickQuestion = () => {
+    if (!quickQuestion.trim()) return;
+    // 跳转到AI引擎页面并传递问题
+    navigate(`/ai-engine?question=${encodeURIComponent(quickQuestion)}`);
+    setQuickQuestion('');
   };
 
   // AI suggestion based on real data
@@ -628,7 +625,10 @@ function SmartPanel() {
             placeholder="输入你的问题..."
             className="flex-1 bg-[#1a3a5c] border border-white/[0.06] rounded-[12px] px-3 py-2 text-[12px] text-[#ffffff] placeholder-[#6b7c93] outline-none focus:border-[#635BFF]/30 transition-colors"
           />
-          <button className="w-8 h-8 rounded-[10px] bg-[#635BFF]/10 flex items-center justify-center hover:bg-[#635BFF]/20 transition-colors">
+          <button
+            onClick={handleQuickQuestion}
+            className="w-8 h-8 rounded-[10px] bg-[#635BFF]/10 flex items-center justify-center hover:bg-[#635BFF]/20 transition-colors"
+          >
             <Send size={14} className="text-[#635BFF]" />
           </button>
         </div>
