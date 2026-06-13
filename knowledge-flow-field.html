@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识流场 - UniFlow</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --anthropic-dark: #141413;
+            --anthropic-light: #faf9f5;
+            --anthropic-mid-gray: #b0aea5;
+            --anthropic-light-gray: #e8e6dc;
+            --anthropic-orange: #d97757;
+            --anthropic-blue: #6a9bcc;
+            --anthropic-green: #788c5d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--anthropic-light) 0%, #f5f3ee 100%);
+            min-height: 100vh;
+            color: var(--anthropic-dark);
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .sidebar {
+            width: 320px;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(20, 20, 19, 0.1);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .sidebar h1 {
+            font-family: 'Lora', serif;
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--anthropic-dark);
+            margin-bottom: 8px;
+        }
+
+        .sidebar .subtitle {
+            color: var(--anthropic-mid-gray);
+            font-size: 14px;
+            margin-bottom: 32px;
+            line-height: 1.4;
+        }
+
+        .control-section {
+            margin-bottom: 32px;
+        }
+
+        .control-section h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--anthropic-dark);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-section h3::before {
+            content: '•';
+            color: var(--anthropic-orange);
+            font-weight: bold;
+        }
+
+        .seed-input {
+            width: 100%;
+            background: var(--anthropic-light);
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin-bottom: 12px;
+            border: 1px solid var(--anthropic-light-gray);
+            text-align: center;
+        }
+
+        .seed-input:focus {
+            outline: none;
+            border-color: var(--anthropic-orange);
+            box-shadow: 0 0 0 2px rgba(217, 119, 87, 0.1);
+            background: white;
+        }
+
+        .seed-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .regen-button {
+            margin-bottom: 0;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--anthropic-dark);
+            margin-bottom: 8px;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .slider-container input[type="range"] {
+            flex: 1;
+            height: 4px;
+            background: var(--anthropic-light-gray);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--anthropic-orange);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .slider-container input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            background: #c86641;
+        }
+
+        .slider-container input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: var(--anthropic-orange);
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .value-display {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: var(--anthropic-mid-gray);
+            min-width: 60px;
+            text-align: right;
+        }
+
+        .button {
+            background: var(--anthropic-orange);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .button:hover {
+            background: #c86641;
+            transform: translateY(-1px);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button.secondary {
+            background: var(--anthropic-blue);
+        }
+
+        .button.secondary:hover {
+            background: #5a8bb8;
+        }
+
+        .button.tertiary {
+            background: var(--anthropic-green);
+        }
+
+        .button.tertiary:hover {
+            background: #6b7b52;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .button-row .button {
+            flex: 1;
+        }
+
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+        }
+
+        #canvas-container {
+            width: 100%;
+            max-width: 1000px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(20, 20, 19, 0.1);
+            background: white;
+        }
+
+        #canvas-container canvas {
+            display: block;
+            width: 100% !important;
+            height: auto !important;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--anthropic-mid-gray);
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+            }
+
+            .canvas-area {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>知识流场</h1>
+            <div class="subtitle">学习过程的可视化涌现 · 知识网络的有机生长</div>
+
+            <div class="control-section">
+                <h3>种子</h3>
+                <input type="number" id="seed-input" class="seed-input" value="12345" onchange="updateSeed()">
+                <div class="seed-controls">
+                    <button class="button secondary" onclick="previousSeed()">← 上一个</button>
+                    <button class="button secondary" onclick="nextSeed()">下一个 →</button>
+                </div>
+                <button class="button tertiary regen-button" onclick="randomSeedAndUpdate()">↻ 随机</button>
+            </div>
+
+            <div class="control-section">
+                <h3>参数</h3>
+                
+                <div class="control-group">
+                    <label>知识密度</label>
+                    <div class="slider-container">
+                        <input type="range" id="particleCount" min="500" max="3000" step="100" value="1500" oninput="updateParam('particleCount', this.value)">
+                        <span class="value-display" id="particleCount-value">1500</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>引力强度</label>
+                    <div class="slider-container">
+                        <input type="range" id="gravityStrength" min="0.01" max="0.2" step="0.01" value="0.08" oninput="updateParam('gravityStrength', this.value)">
+                        <span class="value-display" id="gravityStrength-value">0.08</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>噪声层次</label>
+                    <div class="slider-container">
+                        <input type="range" id="noiseScale" min="0.002" max="0.02" step="0.001" value="0.008" oninput="updateParam('noiseScale', this.value)">
+                        <span class="value-display" id="noiseScale-value">0.008</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>连接距离</label>
+                    <div class="slider-container">
+                        <input type="range" id="connectionDistance" min="30" max="120" step="5" value="70" oninput="updateParam('connectionDistance', this.value)">
+                        <span class="value-display" id="connectionDistance-value">70</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>时间衰减</label>
+                    <div class="slider-container">
+                        <input type="range" id="timeDecay" min="0.99" max="0.999" step="0.001" value="0.995" oninput="updateParam('timeDecay', this.value)">
+                        <span class="value-display" id="timeDecay-value">0.995</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3>操作</h3>
+                <div class="button-row">
+                    <button class="button" onclick="resetParameters()">重置</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-area">
+            <div id="canvas-container">
+                <div class="loading">初始化知识流场...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let params = {
+            seed: 12345,
+            particleCount: 1500,
+            gravityStrength: 0.08,
+            noiseScale: 0.008,
+            connectionDistance: 70,
+            timeDecay: 0.995
+        };
+
+        let defaultParams = {...params};
+
+        let particles = [];
+        let knowledgeNodes = [];
+        let time = 0;
+
+        function setup() {
+            let canvas = createCanvas(1000, 1000);
+            canvas.parent('canvas-container');
+            
+            initializeSystem();
+            
+            document.querySelector('.loading').style.display = 'none';
+        }
+
+        function initializeSystem() {
+            randomSeed(params.seed);
+            noiseSeed(params.seed);
+
+            particles = [];
+            knowledgeNodes = [];
+            
+            // 创建知识节点（核心概念）
+            let nodeCount = floor(params.particleCount / 30);
+            for (let i = 0; i < nodeCount; i++) {
+                knowledgeNodes.push({
+                    pos: createVector(random(width), random(height)),
+                    mastery: random(0.3, 1.0),
+                    connections: []
+                });
+            }
+            
+            // 创建粒子
+            for (let i = 0; i < params.particleCount; i++) {
+                particles.push(new KnowledgeParticle());
+            }
+
+            background(250, 249, 245);
+        }
+
+        function draw() {
+            // 时间衰减效果
+            fill(250, 249, 245, 255 * (1 - params.timeDecay));
+            noStroke();
+            rect(0, 0, width, height);
+            
+            time += 0.01;
+            
+            // 绘制知识节点之间的连接
+            for (let i = 0; i < knowledgeNodes.length; i++) {
+                for (let j = i + 1; j < knowledgeNodes.length; j++) {
+                    let d = dist(
+                        knowledgeNodes[i].pos.x, knowledgeNodes[i].pos.y,
+                        knowledgeNodes[j].pos.x, knowledgeNodes[j].pos.y
+                    );
+                    
+                    if (d < params.connectionDistance * 2) {
+                        let alpha = map(d, 0, params.connectionDistance * 2, 100, 0);
+                        let weight = map(d, 0, params.connectionDistance * 2, 2, 0.5);
+                        
+                        let mastery = (knowledgeNodes[i].mastery + knowledgeNodes[j].mastery) / 2;
+                        let col = getColorFromMastery(mastery);
+                        
+                        stroke(red(col), green(col), blue(col), alpha);
+                        strokeWeight(weight);
+                        line(
+                            knowledgeNodes[i].pos.x, knowledgeNodes[i].pos.y,
+                            knowledgeNodes[j].pos.x, knowledgeNodes[j].pos.y
+                        );
+                    }
+                }
+            }
+            
+            // 绘制知识节点
+            for (let node of knowledgeNodes) {
+                let col = getColorFromMastery(node.mastery);
+                let size = map(node.mastery, 0, 1, 4, 12);
+                
+                noStroke();
+                fill(red(col), green(col), blue(col), 150);
+                ellipse(node.pos.x, node.pos.y, size * 2);
+                
+                fill(red(col), green(col), blue(col));
+                ellipse(node.pos.x, node.pos.y, size);
+            }
+            
+            // 更新和绘制粒子
+            for (let p of particles) {
+                p.update();
+                p.display();
+            }
+        }
+
+        function getColorFromMastery(mastery) {
+            // 从冷色（初学）到暖色（精通）
+            if (mastery < 0.5) {
+                return lerpColor(color(106, 155, 204), color(120, 140, 93), mastery * 2);
+            } else {
+                return lerpColor(color(120, 140, 93), color(217, 119, 87), (mastery - 0.5) * 2);
+            }
+        }
+
+        class KnowledgeParticle {
+            constructor() {
+                this.pos = createVector(random(width), random(height));
+                this.vel = p5.Vector.random2D();
+                this.acc = createVector(0, 0);
+                this.maxSpeed = random(1, 3);
+                this.mastery = random(0, 1);
+                this.history = [];
+                this.historyLength = floor(random(5, 15));
+            }
+
+            update() {
+                // 保存历史位置
+                this.history.push(this.pos.copy());
+                if (this.history.length > this.historyLength) {
+                    this.history.splice(0, 1);
+                }
+                
+                // 三层噪声影响
+                let noise1 = noise(this.pos.x * params.noiseScale, this.pos.y * params.noiseScale, time);
+                let noise2 = noise(this.pos.x * params.noiseScale * 2, this.pos.y * params.noiseScale * 2, time * 1.5);
+                let noise3 = noise(this.pos.x * params.noiseScale * 0.5, this.pos.y * params.noiseScale * 0.5, time * 0.5);
+                
+                let angle1 = noise1 * TWO_PI * 4;
+                let angle2 = noise2 * TWO_PI * 2;
+                let angle3 = noise3 * TWO_PI;
+                
+                let flow1 = p5.Vector.fromAngle(angle1);
+                let flow2 = p5.Vector.fromAngle(angle2);
+                let flow3 = p5.Vector.fromAngle(angle3);
+                
+                flow1.mult(0.5);
+                flow2.mult(0.3);
+                flow3.mult(0.2);
+                
+                this.acc.add(flow1);
+                this.acc.add(flow2);
+                this.acc.add(flow3);
+                
+                // 知识节点引力
+                let closestNode = null;
+                let closestDist = Infinity;
+                
+                for (let node of knowledgeNodes) {
+                    let d = dist(this.pos.x, this.pos.y, node.pos.x, node.pos.y);
+                    if (d < closestDist && d < params.connectionDistance) {
+                        closestDist = d;
+                        closestNode = node;
+                    }
+                }
+                
+                if (closestNode) {
+                    let gravity = p5.Vector.sub(closestNode.pos, this.pos);
+                    let d = gravity.mag();
+                    gravity.normalize();
+                    gravity.mult(params.gravityStrength * (1 - d / params.connectionDistance));
+                    this.acc.add(gravity);
+                    
+                    // 更新掌握度
+                    this.mastery = lerp(this.mastery, closestNode.mastery, 0.01);
+                }
+                
+                this.vel.add(this.acc);
+                this.vel.limit(this.maxSpeed);
+                this.pos.add(this.vel);
+                this.acc.mult(0);
+                
+                // 边界环绕
+                if (this.pos.x < 0) this.pos.x = width;
+                if (this.pos.x > width) this.pos.x = 0;
+                if (this.pos.y < 0) this.pos.y = height;
+                if (this.pos.y > height) this.pos.y = 0;
+            }
+
+            display() {
+                // 绘制轨迹
+                for (let i = 0; i < this.history.length - 1; i++) {
+                    let pt = this.history[i];
+                    let nextPt = this.history[i + 1];
+                    let alpha = map(i, 0, this.history.length - 1, 0, 80);
+                    let weight = map(i, 0, this.history.length - 1, 0.5, 2);
+                    
+                    let col = getColorFromMastery(this.mastery);
+                    stroke(red(col), green(col), blue(col), alpha);
+                    strokeWeight(weight);
+                    line(pt.x, pt.y, nextPt.x, nextPt.y);
+                }
+                
+                // 绘制粒子
+                let col = getColorFromMastery(this.mastery);
+                noStroke();
+                fill(red(col), green(col), blue(col), 150);
+                ellipse(this.pos.x, this.pos.y, 3);
+            }
+        }
+
+        function updateParam(paramName, value) {
+            params[paramName] = parseFloat(value);
+            document.getElementById(paramName + '-value').textContent = value;
+            
+            if (paramName === 'particleCount') {
+                initializeSystem();
+            }
+        }
+
+        function updateSeedDisplay() {
+            document.getElementById('seed-input').value = params.seed;
+        }
+
+        function updateSeed() {
+            let input = document.getElementById('seed-input');
+            let newSeed = parseInt(input.value);
+            if (newSeed && newSeed > 0) {
+                params.seed = newSeed;
+                initializeSystem();
+            } else {
+                updateSeedDisplay();
+            }
+        }
+
+        function previousSeed() {
+            params.seed = Math.max(1, params.seed - 1);
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        function nextSeed() {
+            params.seed = params.seed + 1;
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        function randomSeedAndUpdate() {
+            params.seed = Math.floor(Math.random() * 999999) + 1;
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        function resetParameters() {
+            params = {...defaultParams};
+            
+            document.getElementById('particleCount').value = params.particleCount;
+            document.getElementById('particleCount-value').textContent = params.particleCount;
+            document.getElementById('gravityStrength').value = params.gravityStrength;
+            document.getElementById('gravityStrength-value').textContent = params.gravityStrength;
+            document.getElementById('noiseScale').value = params.noiseScale;
+            document.getElementById('noiseScale-value').textContent = params.noiseScale;
+            document.getElementById('connectionDistance').value = params.connectionDistance;
+            document.getElementById('connectionDistance-value').textContent = params.connectionDistance;
+            document.getElementById('timeDecay').value = params.timeDecay;
+            document.getElementById('timeDecay-value').textContent = params.timeDecay;
+            
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        window.addEventListener('load', function() {
+            updateSeedDisplay();
+        });
+    </script>
+</body>
+</html>
