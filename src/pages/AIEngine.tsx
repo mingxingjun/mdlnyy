@@ -200,23 +200,50 @@ export default function AIEngine() {
   /*  File Upload                                                        */
   /* ================================================================== */
 
-  const handleFileUpload = useCallback((file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
+  const handleFileUpload = useCallback(async (file: File) => {
+    try {
+      let text = '';
+      
+      // 根据文件类型选择解析方法
+      if (file.name.endsWith('.pdf')) {
+        // 动态导入PDF解析库
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+        
+        // 解析PDF文件
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        
+        // 提取所有页面的文本
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items
+            .map((item: { str: string }) => item.str)
+            .join(' ');
+          text += pageText + '\n\n';
+        }
+      } else if (file.name.endsWith('.docx')) {
+        // 动态导入Word解析库
+        const mammoth = await import('mammoth');
+        
+        // 解析Word文件
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.default.extractRawText({ arrayBuffer });
+        text = result.value;
+      } else if (file.type === 'text/plain' || file.name.endsWith('.md')) {
+        // 解析文本文件
+        text = await file.text();
+      } else {
+        addToast('error', '不支持的文件格式，请使用 PDF、Word (.docx) 或文本文件');
+        return;
+      }
+      
       setUploadedFile({ name: file.name, size: file.size, content: text, type: file.type });
-      addToast('success', '文件上传成功');
-    };
-    reader.onerror = () => {
-      addToast('error', '文件读取失败，请重试');
-    };
-    if (file.type === 'text/plain' || file.name.endsWith('.md')) {
-      reader.readAsText(file);
-    } else if (file.name.endsWith('.pdf')) {
-      addToast('error', 'PDF 文件支持即将推出，请使用 .txt 或 .md 格式');
-      return;
-    } else {
-      reader.readAsText(file);
+      addToast('success', `文件上传成功：${file.name}`);
+    } catch (error) {
+      console.error('文件解析失败:', error);
+      addToast('error', '文件解析失败，请检查文件格式或重试');
     }
   }, [addToast]);
 
