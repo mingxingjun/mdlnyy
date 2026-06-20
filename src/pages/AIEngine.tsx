@@ -20,7 +20,8 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { useToastStore } from '@/components/Toast';
-import { AGENTS, getAgent, compressPrompt, getAgentSkillPrompt } from '@/lib/agents/definitions';
+import { SUB_AGENTS, getAgent, compressPrompt, getAgentSkillPrompt } from '@/lib/agents/definitions';
+import type { CollaborationPattern } from '@/lib/agents/types';
 import { loadModelSettings, saveModelSettings, callModelWithCache, clearCache as clearModelCache } from '@/lib/models/api';
 import type { AgentIdentity } from '@/lib/agents/types';
 import type { ModelProvider, ModelConfig, ModelSettings } from '@/lib/models/types';
@@ -31,7 +32,7 @@ import { DEFAULT_PROVIDERS } from '@/lib/models/types';
 /* ================================================================== */
 
 type TabId = 'agent' | 'model';
-type WorkflowId = 'free-chat' | 'full-review' | 'exam-sprint' | 'feynman-understand';
+type WorkflowId = 'free-chat' | 'full-review' | 'exam-sprint' | 'tutor-loop';
 
 interface AgentMessage {
   id: string;
@@ -59,6 +60,10 @@ interface Workflow {
   id: WorkflowId;
   name: string;
   icon: string;
+  /** 协同模式：Pipeline / FeedbackLoop / HumanInTheLoop */
+  pattern: CollaborationPattern;
+  /** 模式中文标签 */
+  patternLabel: string;
   steps: WorkflowStep[];
 }
 
@@ -70,7 +75,7 @@ interface StepOutput {
 }
 
 /* ================================================================== */
-/*  Workflow Definitions                                               */
+/*  Workflow Definitions - 三种协同模式                                 */
 /* ================================================================== */
 
 const WORKFLOWS: Workflow[] = [
@@ -78,35 +83,45 @@ const WORKFLOWS: Workflow[] = [
     id: 'free-chat',
     name: '自由对话',
     icon: '💬',
+    pattern: 'pipeline',
+    patternLabel: '单 Agent',
     steps: [],
   },
   {
     id: 'full-review',
     name: '完整复习流程',
     icon: '📚',
+    pattern: 'pipeline',
+    patternLabel: 'Pipeline 模式',
     steps: [
-      { agentId: 'knowledge-extractor', label: '知识提取', prompt: '请从以下材料中提取核心考点和知识框架：' },
-      { agentId: 'flashcard-master', label: '生成闪卡', prompt: '请基于以下知识点生成记忆闪卡：' },
-      { agentId: 'review-planner', label: '复习规划', prompt: '请根据以下内容制定科学的复习计划：' },
+      { agentId: 'content-agent', label: '知识提取', prompt: '请从以下材料中提取知识点与关系，输出知识图谱 JSON：' },
+      { agentId: 'question-agent', label: '生成题目', prompt: '请基于以下知识图谱生成 5 道选择题：' },
+      { agentId: 'diagnoser-agent', label: '诊断薄弱', prompt: '请基于以下答题情况诊断薄弱点，输出薄弱点报告 JSON：' },
+      { agentId: 'planner-agent', label: '生成计划', prompt: '请基于以下薄弱点报告生成日级复习计划 JSON：' },
     ],
   },
   {
     id: 'exam-sprint',
     name: '考前冲刺',
     icon: '🚀',
+    pattern: 'pipeline',
+    patternLabel: 'Pipeline 模式',
     steps: [
-      { agentId: 'knowledge-extractor', label: '知识提取', prompt: '请从以下材料中提取核心考点和知识框架：' },
-      { agentId: 'exam-coach', label: '模拟考试', prompt: '请基于以下知识点生成模拟试卷：' },
-      { agentId: 'review-planner', label: '复习规划', prompt: '请根据以下考试情况制定考前冲刺复习计划：' },
+      { agentId: 'content-agent', label: '高频考点', prompt: '请从以下材料中提取高频考点（priority ≥ 4）：' },
+      { agentId: 'question-agent', label: '押题出卷', prompt: '请基于以下高频考点生成考前押题（难度 4-5）：' },
+      { agentId: 'diagnoser-agent', label: '快速诊断', prompt: '请快速诊断以下答题情况，定位最薄弱的 3 个知识点：' },
+      { agentId: 'planner-agent', label: '冲刺计划', prompt: '请基于以下诊断生成考前 7 天冲刺计划 JSON：' },
     ],
   },
   {
-    id: 'feynman-understand',
-    name: '费曼理解',
+    id: 'tutor-loop',
+    name: '答疑强化',
     icon: '💡',
+    pattern: 'human_in_the_loop',
+    patternLabel: 'Human-in-the-loop',
     steps: [
-      { agentId: 'study-mentor', label: '费曼解释', prompt: '请用最简单的话解释以下内容中的核心概念：' },
-      { agentId: 'knowledge-extractor', label: '知识提取', prompt: '请从以下解释中提取结构化的知识框架：' },
+      { agentId: 'tutor-agent', label: '思路引导', prompt: '请对以下题目给出解题思路线索（不给完整答案）：' },
+      { agentId: 'question-agent', label: '同类题验证', prompt: '学生表示未理解以下解释，请出 3 道同类题验证：' },
     ],
   },
 ];
@@ -132,7 +147,7 @@ export default function AIEngine() {
   const activeWorkflow = WORKFLOWS.find((w) => w.id === activeWorkflowId)!;
 
   /* ─── Agent State (Free Chat) ─── */
-  const [selectedAgentId, setSelectedAgentId] = useState<string>('knowledge-extractor');
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('content-agent');
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -147,7 +162,7 @@ export default function AIEngine() {
   const [stepOutputs, setStepOutputs] = useState<StepOutput[]>([]);
   const [workflowComplete, setWorkflowComplete] = useState(false);
   const [workflowChatInput, setWorkflowChatInput] = useState('');
-  const [workflowChatAgent, setWorkflowChatAgent] = useState<string>('knowledge-extractor');
+  const [workflowChatAgent, setWorkflowChatAgent] = useState<string>('content-agent');
   const [workflowChatMessages, setWorkflowChatMessages] = useState<AgentMessage[]>([]);
   const [workflowChatTyping, setWorkflowChatTyping] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -790,6 +805,9 @@ export default function AIEngine() {
                     >
                       <span>{wf.icon}</span>
                       {wf.name}
+                      {wf.steps.length > 0 && (
+                        <span className="text-[9px] opacity-70 ml-1">[{wf.patternLabel}]</span>
+                      )}
                     </motion.button>
                   );
                 })}
@@ -798,6 +816,14 @@ export default function AIEngine() {
               {/* Pipeline visualization for non-free-chat workflows */}
               {activeWorkflowId !== 'free-chat' && activeWorkflow.steps.length > 0 && (
                 <div className="card px-4 py-2 mt-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-[#6b7c93] font-sans">
+                      协同模式：<span className="text-[var(--accent)]">{activeWorkflow.patternLabel}</span>
+                    </span>
+                    <span className="text-[10px] text-[#6b7c93] font-sans">
+                      {activeWorkflow.steps.length} 个 Agent 节点
+                    </span>
+                  </div>
                   {renderPipeline(activeWorkflow.steps, currentStep, stepOutputs)}
                 </div>
               )}
@@ -811,7 +837,7 @@ export default function AIEngine() {
                   {/* Agent selector: horizontal scrollable orbs */}
                   <div className="flex-shrink-0 px-4 pt-4 pb-3 border-b border-white/[0.06]">
                     <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
-                      {AGENTS.map((agent) =>
+                      {SUB_AGENTS.map((agent) =>
                         renderAgentOrb(
                           agent,
                           selectedAgentId === agent.id,
@@ -1083,7 +1109,7 @@ export default function AIEngine() {
                         </span>
                         <div className="flex-1" />
                         <div className="flex items-center gap-2 overflow-x-auto scrollbar-none max-w-full">
-                          {AGENTS.map((agent) => (
+                          {SUB_AGENTS.map((agent) => (
                             <button
                               key={agent.id}
                               onClick={() => setWorkflowChatAgent(agent.id)}

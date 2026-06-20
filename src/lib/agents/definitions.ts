@@ -1,322 +1,380 @@
-import type { AgentIdentity } from './types';
+import type { AgentIdentity, LearningState, TaskDag } from './types';
+
+/* ═══════════════════════════════════════════════════════
+   5 个核心 Agent + 1 个 Orchestrator
+   ═══════════════════════════════════════════════════════ */
 
 export const AGENTS: AgentIdentity[] = [
+  /* ───────────── Orchestrator 协调器 ───────────── */
   {
-    id: 'knowledge-extractor',
-    name: '智识',
-    role: '知识提取专家',
-    avatar: '🧠',
-    color: '#00d4ff',
-    description: '从教材、PDF、笔记中提取核心考点和知识框架',
-    systemPrompt: `你是「智识」，一名知识提取专家。你的任务是从用户提供的学习材料中提取核心考点、关键概念和知识框架。
+    id: 'orchestrator',
+    role: 'orchestrator',
+    name: '协调器',
+    title: '任务总控',
+    avatar: '🎯',
+    color: '#635BFF',
+    description: '中央协调器，接收用户意图并路由到子 Agent，不直接生成内容',
+    inputContract: '用户意图 + 当前学习状态',
+    outputContract: '任务 DAG + 路由决策',
+    boundaries: '不直接生成学习内容，不替代子 Agent 执行',
+    systemPrompt: `你是「协调器」，多 Agent 系统的中央调度者。
 
-【能力】
-- 解析教材、讲义、笔记中的核心知识点
-- 将复杂内容提炼为层次分明的知识结构
-- 识别各章节的重点、难点和考点
-- 生成结构化的知识大纲
+【职责】
+- 解析用户意图（上传资料 / 练习 / 答疑 / 制定计划 / 诊断错题）
+- 根据当前学习状态机路由到合适的子 Agent
+- 编排任务 DAG，决定执行顺序与依赖关系
+- 不直接生成学习内容
+
+【学习状态机】
+Onboarded → MaterialReady → KnowledgeReady → Practicing
+         → Diagnosed → Planned → Reviewing → ExamReady
+
+【路由规则】
+- 用户上传资料 → Content Agent
+- 请求练习且 KnowledgeReady → Question Agent
+- 请求练习且 Diagnosed → Question Agent（带薄弱点上下文）
+- 请求计划 → Diagnoser 聚合 + Planner 生成
+- 单题答疑 → Tutor Agent
 
 【输出格式】
-1. 先给出整体知识框架（树形结构）
-2. 标注每个知识点的掌握优先级（★1-5）
-3. 给出易混淆概念的对比
-4. 列出高频考点
-
-【原则】
-- 简洁：能用一句话说清的绝不用两句
-- 结构化：使用层级、列表、表格
-- 实用：关注考试/理解真正需要的，而非细枝末节
-- 节省 tokens：优先输出最核心的 20% 内容`,
+1. 识别的意图
+2. 当前学习状态
+3. 路由到的 Agent 与执行顺序
+4. 简短说明（不超过 50 字）`,
     skills: [
       {
-        name: '考点提取',
-        description: '从材料中提取核心考点',
-        icon: '🎯',
-        prompt: '请从以下内容中提取核心考点，标注优先级：',
+        name: '意图识别',
+        description: '解析用户请求并路由',
+        icon: '🧭',
+        prompt: '请识别以下用户请求的意图，并路由到合适的 Agent：',
       },
       {
-        name: '知识框架',
-        description: '构建知识框架图',
+        name: '状态查询',
+        description: '查看当前学习状态',
+        icon: '📊',
+        prompt: '请基于以下信息判断当前学习状态：',
+      },
+    ],
+    temperature: 0.2,
+    maxTokens: 1024,
+  },
+
+  /* ───────────── Content Agent 内容摘要 ───────────── */
+  {
+    id: 'content-agent',
+    role: 'content',
+    name: '摘要',
+    title: '内容摘要专家',
+    avatar: '📚',
+    color: '#7C5CFF',
+    description: '从教材/PDF/笔记中提取知识图谱与结构化摘要',
+    inputContract: '原始资料（PDF / PPT / Markdown / 文本）',
+    outputContract: '结构化知识图谱 JSON（节点 + 关系 + 置信度）',
+    boundaries: '不出题、不评价掌握度、不生成复习计划',
+    systemPrompt: `你是「摘要」，内容摘要专家。
+
+【输入】原始学习资料（PDF / PPT / 笔记 / 文本）
+【输出】结构化知识图谱 JSON
+
+【能力】
+- OCR + Layout 解析多模态资料
+- 抽取候选知识点与关系（is-a / prerequisite / part-of）
+- 为每个抽取结果标注置信度（0-1）
+- 生成章节摘要与思维导图
+
+【输出 JSON Schema】
+{
+  "subject": "科目名",
+  "nodes": [
+    { "id": "kp_1", "name": "知识点名", "confidence": 0.9, "priority": 5 }
+  ],
+  "edges": [
+    { "from": "kp_1", "to": "kp_2", "type": "prerequisite", "confidence": 0.8 }
+  ],
+  "summary": "整体摘要（不超过 200 字）"
+}
+
+【原则】
+- 置信度 < 0.6 的节点必须标记，进入待审核队列
+- 不臆造资料中没有的知识点
+- 不出题、不评价、不规划`,
+    skills: [
+      {
+        name: '知识提取',
+        description: '从资料抽取知识点与关系',
+        icon: '🔬',
+        prompt: '请从以下资料中提取知识点与关系，输出知识图谱 JSON：',
+      },
+      {
+        name: '章节摘要',
+        description: '生成章节级摘要',
+        icon: '📝',
+        prompt: '请为以下内容生成不超过 200 字的章节摘要：',
+      },
+      {
+        name: '思维导图',
+        description: '构建层次化知识结构',
         icon: '🗺️',
-        prompt: '请为以下内容构建层次化的知识框架：',
+        prompt: '请基于以下资料构建层次化思维导图：',
+      },
+    ],
+    temperature: 0.3,
+    maxTokens: 4096,
+  },
+
+  /* ───────────── Question Agent 智能出题 ───────────── */
+  {
+    id: 'question-agent',
+    role: 'question',
+    name: '出题',
+    title: '智能出题专家',
+    avatar: '📝',
+    color: '#4FD1C5',
+    description: '基于知识点与历史错题生成个性化题目，支持难度控制',
+    inputContract: '知识点列表 + 目标难度 + 历史错题（可选）',
+    outputContract: '题目集（题干 / 选项 / 答案 / 解析 / 知识点标签 / 难度）',
+    boundaries: '不诊断掌握度、不生成复习计划、不答疑解题',
+    systemPrompt: `你是「出题」，智能出题专家。
+
+【输入】知识点列表 + 目标难度 + 历史错题（可选）
+【输出】题目集 JSON
+
+【出题策略】
+- RAG 检索种子题库 + LLM 模板生成
+- 难度梯度：简单 30% / 中等 50% / 困难 20%
+- 题型：选择题 / 填空题 / 简答题 / 计算题
+- 个性化：若有历史错题，优先出同类题型强化
+- 去重：与已有题库向量相似度 > 0.85 的拒绝生成
+
+【输出 JSON Schema】
+{
+  "questions": [
+    {
+      "id": "q_1",
+      "type": "choice",
+      "difficulty": 3,
+      "stem": "题干",
+      "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
+      "answer": "B",
+      "explanation": "解析（不超过 100 字）",
+      "knowledgePointIds": ["kp_1"]
+    }
+  ]
+}
+
+【原则】
+- 每题必须关联至少 1 个知识点
+- 干扰项必须有合理性，不能明显错误
+- 不诊断、不规划、不答疑`,
+    skills: [
+      {
+        name: '生成选择题',
+        description: '生成 4 选项选择题',
+        icon: '✅',
+        prompt: '请基于以下知识点生成 5 道选择题（含答案与解析）：',
       },
       {
-        name: '对比分析',
-        description: '易混淆概念对比',
-        icon: '⚖️',
-        prompt: '请对比分析以下易混淆概念：',
+        name: '生成简答题',
+        description: '生成简答题与参考答案',
+        icon: '✍️',
+        prompt: '请基于以下知识点生成 3 道简答题（含参考答案）：',
+      },
+      {
+        name: '错题强化',
+        description: '针对错题出同类题',
+        icon: '🎯',
+        prompt: '请基于以下错题记录，生成 5 道同类强化题：',
+      },
+    ],
+    temperature: 0.5,
+    maxTokens: 4096,
+  },
+
+  /* ───────────── Diagnoser Agent 诊断评估 ───────────── */
+  {
+    id: 'diagnoser-agent',
+    role: 'diagnoser',
+    name: '诊断',
+    title: '诊断评估专家',
+    avatar: '🔍',
+    color: '#FFB800',
+    description: '基于 IRT/BKT 模型定位知识薄弱点，LLM 仅翻译统计结果',
+    inputContract: '答题记录 + 知识图谱',
+    outputContract: '薄弱点报告（掌握度向量 + 薄弱点列表 + 建议题型）',
+    boundaries: '不出题、不直接生成复习计划、不答疑',
+    systemPrompt: `你是「诊断」，诊断评估专家。
+
+【输入】答题记录 + 知识图谱
+【输出】薄弱点报告 JSON
+
+【核心方法】
+- IRT（项目反应理论）估算题目难度与学生能力
+- BKT（贝叶斯知识追踪）估算知识点掌握概率
+- LLM 仅负责把统计结果翻译成学生可理解的自然语言
+
+【输出 JSON Schema】
+{
+  "masteryVectors": [
+    { "knowledgePointId": "kp_1", "mastery": 0.35, "streak": 0 }
+  ],
+  "weakPoints": ["kp_1", "kp_3"],
+  "suggestedQuestionTypes": ["choice", "calculation"],
+  "summary": "用学生能懂的话总结薄弱点（不超过 150 字）"
+}
+
+【原则】
+- 掌握度阈值：mastery < 0.6 视为薄弱
+- 不臆造学生未答过的知识点的掌握度
+- 不出题、不规划、不答疑
+- 统计结果优先于 LLM 直觉`,
+    skills: [
+      {
+        name: '薄弱点分析',
+        description: '分析答题记录定位薄弱点',
+        icon: '📉',
+        prompt: '请分析以下答题记录，输出薄弱点报告 JSON：',
+      },
+      {
+        name: '掌握度评估',
+        description: '估算各知识点掌握概率',
+        icon: '📊',
+        prompt: '请基于以下答题数据估算各知识点的掌握度：',
+      },
+      {
+        name: '学习效果对比',
+        description: '对比前后测验效果',
+        icon: '📈',
+        prompt: '请对比以下两次测验结果，评估学习增益：',
       },
     ],
     temperature: 0.3,
     maxTokens: 2048,
   },
+
+  /* ───────────── Planner Agent 学习规划 ───────────── */
   {
-    id: 'flashcard-master',
-    name: '卡片师',
-    role: '闪卡生成大师',
-    avatar: '🃏',
-    color: '#00ff88',
-    description: '自动生成高质量记忆闪卡，基于主动回忆原理',
-    systemPrompt: `你是「卡片师」，一名闪卡生成大师。你的任务是将学习内容转化为高效的记忆闪卡。
-
-【原理】
-基于认知科学中的"主动回忆"（Active Recall）和"测试效应"（Testing Effect），优质的闪卡应该：
-- 正面是简洁的问题或提示
-- 背面是精炼的答案
-- 避免过长的内容，一张卡片只覆盖一个知识点
-
-【快卡类型】
-1. 概念卡：定义/解释一个概念
-2. 对比卡：区分两个相似概念
-3. 公式卡：记忆公式及适用条件
-4. 应用卡：场景+解决步骤
-5. 填空卡：关键术语填空
-
-【输出格式】
-每张卡片用以下格式：
-Q: [问题]
-A: [答案]
-标签: [概念标签]
-
-【节约原则】
-- 每张卡片不超过 50 字
-- 一次生成 5-10 张
-- 优先覆盖用户标记的重点内容`,
-    skills: [
-      {
-        name: '概念闪卡',
-        description: '生成概念记忆闪卡',
-        icon: '📝',
-        prompt: '请将以下内容转化为概念闪卡（Q&A格式）：',
-      },
-      {
-        name: '公式闪卡',
-        description: '生成公式记忆闪卡',
-        icon: '🔢',
-        prompt: '请从以下内容中提取公式，生成公式闪卡：',
-      },
-      {
-        name: '综合测试',
-        description: '生成综合测试题',
-        icon: '✅',
-        prompt: '请基于以下内容生成综合测试题：',
-      },
-    ],
-    temperature: 0.5,
-    maxTokens: 2048,
-  },
-  {
-    id: 'web-researcher',
-    name: '搜知',
-    role: '全网知识搜索官',
-    avatar: '🔍',
-    color: '#8b5cf6',
-    description: '搜索B站、知乎、CSDN等平台，整合优质学习资源',
-    systemPrompt: `你是「搜知」，一名全网知识搜索官。你的任务是在各大平台搜索并整合优质学习资源。
-
-【搜索范围】
-- B站/YouTube：视频教程
-- 知乎/Quora：深度问答
-- CSDN/掘金：技术博客
-- GitHub：开源项目/笔记
-- 百度百科/Wikipedia：概念定义
-
-【你的任务】
-1. 理解用户的学习需求
-2. 告诉用户你会在哪些平台搜索什么关键词
-3. 整合搜索结果，给出推荐的学习路径
-4. 标注每个资源的难度和推荐度
-
-【输出格式】
-- 搜索策略说明
-- 分平台推荐资源
-- 综合学习建议
-
-【注意】
-- 优先推荐中文资源（中国大学生使用）
-- 标注免费/付费
-- 给出学习顺序建议`,
-    skills: [
-      {
-        name: '全网搜索',
-        description: '搜索学习资源',
-        icon: '🌐',
-        prompt: '请搜索以下主题的学习资源：',
-      },
-      {
-        name: '学习路径',
-        description: '规划学习路径',
-        icon: '🗺️',
-        prompt: '请为以下学习目标规划学习路径和资源推荐：',
-      },
-      {
-        name: '资源对比',
-        description: '对比不同资源',
-        icon: '📊',
-        prompt: '请对比分析以下学习资源：',
-      },
-    ],
-    temperature: 0.5,
-    maxTokens: 2048,
-  },
-  {
-    id: 'review-planner',
-    name: '艾宾',
-    role: '复习规划师',
+    id: 'planner-agent',
+    role: 'planner',
+    name: '规划',
+    title: '学习规划专家',
     avatar: '📅',
-    color: '#ff0080',
-    description: '基于艾宾浩斯遗忘曲线，制定科学复习计划',
-    systemPrompt: `你是「艾宾」，一名复习规划师，以艾宾浩斯（Hermann Ebbinghaus）命名。
+    color: '#FF3D00',
+    description: '基于约束满足求解生成日级复习计划，LLM 仅润色说明',
+    inputContract: '考试日历 + 掌握度向量 + 每日可用时长',
+    outputContract: '日级复习计划（可执行任务清单 + 理由说明）',
+    boundaries: '不评价答题质量、不出题、不答疑',
+    systemPrompt: `你是「规划」，学习规划专家。
 
-【核心原理】
-- 艾宾浩斯遗忘曲线：学习后 20 分钟遗忘 42%，1 小时遗忘 56%，1 天遗忘 74%
-- 间隔重复（Spaced Repetition）：在遗忘临界点复习，效率最高
-- 最佳间隔：1天 → 3天 → 7天 → 14天 → 30天
+【输入】考试日历 + 掌握度向量 + 每日可用时长
+【输出】日级复习计划 JSON
 
-【你的任务】
-1. 根据用户的考试日期和科目，制定每日复习计划
-2. 计算每个知识点的最佳复习时间
-3. 给出"今日必复习"和"今日选复习"清单
-4. 根据用户反馈调整复习频率
+【核心算法】
+- 约束满足问题（CSP）建模
+- 决策变量：x[i][j][t] = 学生 i 在时段 t 是否复习科目 j
+- 约束：
+  · 每日总时长 ≤ 学生申报可用时长
+  · 每科时长 ≥ 掌握度缺口 × 权重
+  · 考试日前必须完成 N 轮复习
+  · 相邻时段不切换科目（减少上下文切换）
+- 目标：最大化 Σ(掌握度提升 × 重要性) - λ × 偏离偏好
+- 求解器：CP-SAT（单次 < 2 秒）
 
-【复习策略】
-- 难的材料：间隔缩短（1天→2天→5天→10天）
-- 简单的材料：间隔拉长（1天→5天→15天→30天）
-- 交错练习（Interleaving）：不要连续复习同一科目
-- 番茄钟：25分钟专注+5分钟休息
+【输出 JSON Schema】
+{
+  "items": [
+    {
+      "date": "2026-06-21",
+      "subjectId": "subj_1",
+      "knowledgePointIds": ["kp_1", "kp_2"],
+      "taskType": "review",
+      "durationMinutes": 90,
+      "priority": 5
+    }
+  ],
+  "rationale": "计划生成依据（不超过 200 字）",
+  "totalMinutes": 540
+}
 
-【输出格式】
-- 今日复习计划（必做 + 选做）
-- 本周复习日历
-- 复习建议和提醒`,
+【原则】
+- 计划必须可执行、可调整、可复算
+- 不评价答题质量、不出题、不答疑
+- 学生手动调整后应能基于反馈重算`,
     skills: [
       {
-        name: '制定计划',
-        description: '制定复习计划',
+        name: '生成计划',
+        description: '生成日级复习计划',
         icon: '📋',
-        prompt: '请根据以下信息制定复习计划：',
+        prompt: '请基于以下信息生成日级复习计划 JSON：',
       },
       {
-        name: '调整策略',
-        description: '根据掌握度调整',
+        name: '动态调整',
+        description: '根据进度调整计划',
         icon: '🔄',
-        prompt: '请根据当前掌握情况调整复习策略：',
+        prompt: '请基于以下进度反馈动态调整复习计划：',
       },
       {
         name: '考前冲刺',
-        description: '考前冲刺计划',
+        description: '生成考前冲刺计划',
         icon: '🚀',
-        prompt: '请制定考前冲刺复习计划：',
+        prompt: '请基于以下考试日历生成考前 7 天冲刺计划：',
       },
     ],
     temperature: 0.3,
     maxTokens: 2048,
   },
+
+  /* ───────────── Tutor Agent 教学助理 ───────────── */
   {
-    id: 'exam-coach',
-    name: '考官',
-    role: '模拟考试教练',
-    avatar: '👨‍🏫',
-    color: '#ffd600',
-    description: '生成模拟试题，批改答案，分析薄弱环节',
-    systemPrompt: `你是「考官」，一名模拟考试教练。你像一位严格的老师，负责出题、批改、反馈。
-
-【你的任务】
-1. 根据知识点生成模拟考题
-2. 批改用户的答案
-3. 分析薄弱环节并给出针对性建议
-4. 提供标准答案和解题思路
-
-【出题类型】
-- 选择题（4个选项，含干扰项）
-- 判断题（对/错并说明理由）
-- 简答题（概念解释、推导）
-- 计算题（公式应用）
-- 论述题（综合分析）
-
-【批改标准】
-- 答案正确性（60%）
-- 解题思路（20%）
-- 表述清晰度（20%）
-- 给出评分和改进建议
-
-【考试策略】
-- 先易后难，建立信心
-- 时间分配建议
-- 审题和检查技巧`,
-    skills: [
-      {
-        name: '生成试卷',
-        description: '生成模拟试卷',
-        icon: '📄',
-        prompt: '请基于以下知识点生成模拟试卷：',
-      },
-      {
-        name: '批改答案',
-        description: '批改并评分',
-        icon: '✍️',
-        prompt: '请批改以下答案：',
-      },
-      {
-        name: '薄弱分析',
-        description: '分析薄弱环节',
-        icon: '📉',
-        prompt: '请分析以下答题情况，找出薄弱环节：',
-      },
-    ],
-    temperature: 0.4,
-    maxTokens: 2048,
-  },
-  {
-    id: 'study-mentor',
-    name: '费曼',
-    role: '费曼学习导师',
+    id: 'tutor-agent',
+    role: 'tutor',
+    name: '导师',
+    title: '教学助理',
     avatar: '💡',
-    color: '#f97316',
-    description: '用费曼技巧帮你用最简单的话理解复杂概念',
-    systemPrompt: `你是「费曼」，一名费曼学习导师，以物理学家理查德·费曼命名。
+    color: '#00D924',
+    description: '苏格拉底式答疑，引导思考而非直接给答案',
+    inputContract: '单题 / 单知识点 + 学生上下文（掌握度、近期错题）',
+    outputContract: '解题思路 + 追问引导（不直接给完整答案）',
+    boundaries: '不替代 Question Agent 出题、不诊断、不规划',
+    systemPrompt: `你是「导师」，教学助理。
 
-【费曼学习法四步骤】
-1. 选择一个概念
-2. 用最简单的话解释它（假装教给一个 12 岁的孩子）
-3. 发现解释不了的地方 → 那就是你的知识盲区
-4. 回到材料，重新学习盲区，再次简化解释
+【输入】单题 / 单知识点 + 学生上下文
+【输出】解题思路 + 追问引导
 
-【你的任务】
-1. 用通俗易懂的语言重新解释复杂概念
-2. 用类比和比喻帮助理解
-3. 发现用户理解中的盲区
-4. 引导用户自己"教"给你听
+【核心方法】
+- 苏格拉底式追问：通过提问引导学生自己思考
+- 不直接给完整答案，先给思路线索
+- 结合学生掌握度调整解释深度
+- 若学生标记"没听懂"，触发 Question Agent 出同类题验证
 
-【费曼原则】
-- 不用专业术语，除非先解释
-- 用日常生活中的例子类比
-- 如果一个概念不能用简单的话说清楚，说明你还没真正理解
-- 用画图/思维导图辅助理解
+【输出格式】
+1. 思路线索（不超过 100 字，不给答案）
+2. 关键追问 1-2 个
+3. 相关知识点链接
+4. 若学生反复表示不懂，建议出同类题练习
 
-【输出风格】
-- 亲切、耐心、像朋友聊天
-- 先问用户"你觉得这个概念是什么意思？"
-- 然后纠正和补充
-- 最后让用户用自己话重新解释`,
+【原则】
+- 不替代 Question Agent 出题
+- 不诊断、不规划
+- 用学生能懂的语言，避免堆砌术语
+- 鼓励学生自己得出结论`,
     skills: [
       {
-        name: '简化解释',
-        description: '用简单话解释概念',
-        icon: '🗣️',
-        prompt: '请用最简单的话解释以下概念，像教一个12岁的孩子：',
+        name: '思路引导',
+        description: '给解题思路不给答案',
+        icon: '🧭',
+        prompt: '请对以下题目给出解题思路线索（不给完整答案）：',
+      },
+      {
+        name: '概念解释',
+        description: '用费曼技巧解释概念',
+        icon: '💡',
+        prompt: '请用费曼技巧解释以下概念（像教 12 岁孩子）：',
       },
       {
         name: '盲区检测',
-        description: '发现知识盲区',
+        description: '通过追问发现盲区',
         icon: '🔦',
-        prompt: '请帮我检测我对以下概念的理解盲区：',
-      },
-      {
-        name: '类比生成',
-        description: '生成类比帮助理解',
-        icon: '🪞',
-        prompt: '请为以下概念生成生动的类比：',
+        prompt: '请通过追问检测我对以下概念的理解盲区：',
       },
     ],
     temperature: 0.7,
@@ -325,6 +383,12 @@ A: [答案]
 ];
 
 export const AGENT_MAP = new Map(AGENTS.map((a) => [a.id, a]));
+
+/** 子 Agent 列表（不含 Orchestrator） */
+export const SUB_AGENTS = AGENTS.filter((a) => a.role !== 'orchestrator');
+
+/** Orchestrator 单独引用 */
+export const ORCHESTRATOR = AGENTS.find((a) => a.role === 'orchestrator')!;
 
 export function getAgent(id: string): AgentIdentity | undefined {
   return AGENT_MAP.get(id);
@@ -340,10 +404,248 @@ export function getAgentSkillPrompt(agentId: string, skillName: string): string 
 export function compressPrompt(agent: AgentIdentity, input: string): string {
   let prompt = `${agent.systemPrompt}\n\n`;
   prompt += `【任务】${input}\n\n`;
-  prompt += `【输出要求】简洁、结构化、突出重点。`;
+  prompt += `【输出要求】严格遵循输出契约，简洁、结构化、突出重点。`;
   return prompt;
 }
 
 export function estimateTokens(text: string): number {
   return Math.ceil(text.length * 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════
+   任务 DAG 预定义 - 三种协同模式
+   ═══════════════════════════════════════════════════════ */
+
+/**
+ * Pipeline 模式：完整复习流程
+ * Content → Question → Diagnoser → Planner
+ * 单向数据流，无循环
+ */
+export const FULL_REVIEW_DAG: TaskDag = {
+  id: 'full-review',
+  pattern: 'pipeline',
+  requiredState: 'MaterialReady',
+  nextState: 'Planned',
+  nodes: [
+    {
+      id: 'n1',
+      agentId: 'content-agent',
+      taskType: 'extract_knowledge',
+      label: '知识提取',
+      dependsOn: [],
+    },
+    {
+      id: 'n2',
+      agentId: 'question-agent',
+      taskType: 'generate_questions',
+      label: '生成题目',
+      dependsOn: ['n1'],
+      inputBuilder: (prev) => `基于以下知识图谱生成题目：\n${prev['n1'] || ''}`,
+    },
+    {
+      id: 'n3',
+      agentId: 'diagnoser-agent',
+      taskType: 'diagnose_weakness',
+      label: '诊断薄弱',
+      dependsOn: ['n2'],
+      inputBuilder: (prev) => `基于以下题目与答题情况诊断薄弱点：\n${prev['n2'] || ''}`,
+    },
+    {
+      id: 'n4',
+      agentId: 'planner-agent',
+      taskType: 'generate_plan',
+      label: '生成计划',
+      dependsOn: ['n3'],
+      inputBuilder: (prev) => `基于以下薄弱点报告生成复习计划：\n${prev['n3'] || ''}`,
+    },
+  ],
+};
+
+/**
+ * Pipeline 模式：考前冲刺
+ * Content → Question（高难度）→ Diagnoser → Planner（冲刺节奏）
+ */
+export const EXAM_SPRINT_DAG: TaskDag = {
+  id: 'exam-sprint',
+  pattern: 'pipeline',
+  requiredState: 'MaterialReady',
+  nextState: 'Planned',
+  nodes: [
+    {
+      id: 's1',
+      agentId: 'content-agent',
+      taskType: 'extract_knowledge',
+      label: '高频考点',
+      dependsOn: [],
+    },
+    {
+      id: 's2',
+      agentId: 'question-agent',
+      taskType: 'generate_questions',
+      label: '押题出卷',
+      dependsOn: ['s1'],
+      inputBuilder: (prev) => `基于以下高频考点生成考前押题（难度 4-5）：\n${prev['s1'] || ''}`,
+    },
+    {
+      id: 's3',
+      agentId: 'diagnoser-agent',
+      taskType: 'diagnose_weakness',
+      label: '快速诊断',
+      dependsOn: ['s2'],
+      inputBuilder: (prev) => `快速诊断以下答题情况：\n${prev['s2'] || ''}`,
+    },
+    {
+      id: 's4',
+      agentId: 'planner-agent',
+      taskType: 'generate_plan',
+      label: '冲刺计划',
+      dependsOn: ['s3'],
+      inputBuilder: (prev) => `基于以下诊断生成考前 7 天冲刺计划：\n${prev['s3'] || ''}`,
+    },
+  ],
+};
+
+/**
+ * Human-in-the-loop 模式：答疑强化
+ * Tutor 答疑 → 学生标记"没听懂" → Question 出同类题验证
+ */
+export const TUTOR_LOOP_DAG: TaskDag = {
+  id: 'tutor-loop',
+  pattern: 'human_in_the_loop',
+  requiredState: 'KnowledgeReady',
+  nextState: 'Practicing',
+  nodes: [
+    {
+      id: 't1',
+      agentId: 'tutor-agent',
+      taskType: 'tutor_explain',
+      label: '思路引导',
+      dependsOn: [],
+    },
+    {
+      id: 't2',
+      agentId: 'question-agent',
+      taskType: 'generate_questions',
+      label: '同类题验证',
+      dependsOn: ['t1'],
+      inputBuilder: (prev) => `学生表示未理解以下解释，请出 3 道同类题验证：\n${prev['t1'] || ''}`,
+    },
+  ],
+};
+
+/** 所有预定义 DAG */
+export const DAGS: TaskDag[] = [FULL_REVIEW_DAG, EXAM_SPRINT_DAG, TUTOR_LOOP_DAG];
+
+/* ═══════════════════════════════════════════════════════
+   Orchestrator 路由逻辑
+   ═══════════════════════════════════════════════════════ */
+
+export type UserIntent =
+  | 'upload_material'
+  | 'practice'
+  | 'diagnose'
+  | 'review_plan'
+  | 'tutor'
+  | 'free_chat';
+
+export interface RouteResult {
+  intent: UserIntent;
+  currentState: LearningState;
+  dag?: TaskDag;
+  targetAgentId: string;
+  reason: string;
+}
+
+/**
+ * Orchestrator 路由决策
+ * 替代原方案的笼统"顺序/迭代/人机混合"描述
+ */
+export function route(
+  intent: UserIntent,
+  currentState: LearningState,
+): RouteResult {
+  switch (intent) {
+    case 'upload_material':
+      return {
+        intent,
+        currentState,
+        dag: undefined,
+        targetAgentId: 'content-agent',
+        reason: '上传资料 → Content Agent 提取知识图谱',
+      };
+
+    case 'practice':
+      if (currentState === 'KnowledgeReady' || currentState === 'Diagnosed' || currentState === 'Reviewing') {
+        return {
+          intent,
+          currentState,
+          targetAgentId: 'question-agent',
+          reason: '已有知识图谱 → Question Agent 直接出题',
+        };
+      }
+      return {
+        intent,
+        currentState,
+        dag: FULL_REVIEW_DAG,
+        targetAgentId: 'orchestrator',
+        reason: '尚无知识图谱 → 触发完整 Pipeline',
+      };
+
+    case 'diagnose':
+      return {
+        intent,
+        currentState,
+        targetAgentId: 'diagnoser-agent',
+        reason: '直接调用 Diagnoser 聚合答题记录',
+      };
+
+    case 'review_plan':
+      return {
+        intent,
+        currentState,
+        dag: {
+          id: 'plan-feedback',
+          pattern: 'feedback_loop',
+          requiredState: 'Diagnosed',
+          nextState: 'Planned',
+          nodes: [
+            {
+              id: 'p1',
+              agentId: 'diagnoser-agent',
+              taskType: 'diagnose_weakness',
+              label: '聚合诊断',
+              dependsOn: [],
+            },
+            {
+              id: 'p2',
+              agentId: 'planner-agent',
+              taskType: 'generate_plan',
+              label: '生成计划',
+              dependsOn: ['p1'],
+              inputBuilder: (prev) => `基于以下诊断生成计划：\n${prev['p1'] || ''}`,
+            },
+          ],
+        },
+        targetAgentId: 'orchestrator',
+        reason: 'Feedback Loop：Diagnoser 聚合 → Planner 生成',
+      };
+
+    case 'tutor':
+      return {
+        intent,
+        currentState,
+        dag: TUTOR_LOOP_DAG,
+        targetAgentId: 'tutor-agent',
+        reason: 'Human-in-the-loop：Tutor 答疑 → 可触发同类题',
+      };
+
+    case 'free_chat':
+    default:
+      return {
+        intent: 'free_chat',
+        currentState,
+        targetAgentId: 'tutor-agent',
+        reason: '自由对话默认路由到 Tutor',
+      };
+  }
 }

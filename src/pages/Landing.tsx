@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import {
   ArrowRight,
-  Brain,
   FileText,
   PenTool,
   CalendarCheck,
@@ -86,22 +85,22 @@ function AnimatedNumber({ value, suffix = '' }: { value: number; suffix?: string
 
 /* ─── Agent Data ───────────────────────────────────── */
 
+// 5 个子 Agent 围绕中央 Orchestrator 协调器
 const orbitalAgents = [
-  { emoji: '📚', name: '资料整理 Agent', color: '#635BFF', icon: FileText },
-  { emoji: '📝', name: '题目生成 Agent', color: '#7C5CFF', icon: PenTool },
-  { emoji: '🔍', name: '错题分析 Agent', color: '#4FD1C5', icon: AlertCircle },
-  { emoji: '📅', name: '计划管理 Agent', color: '#FFB800', icon: CalendarCheck },
-  { emoji: '🧠', name: '记忆强化 Agent', color: '#00D924', icon: Brain },
-  { emoji: '💬', name: '答疑 Agent', color: '#FF3D00', icon: MessageSquare },
+  { emoji: '📚', name: '内容摘要 Agent', color: '#7C5CFF', icon: FileText },
+  { emoji: '📝', name: '智能出题 Agent', color: '#4FD1C5', icon: PenTool },
+  { emoji: '🔍', name: '诊断评估 Agent', color: '#FFB800', icon: AlertCircle },
+  { emoji: '📅', name: '学习规划 Agent', color: '#FF3D00', icon: CalendarCheck },
+  { emoji: '💡', name: '教学助理 Agent', color: '#00D924', icon: MessageSquare },
 ];
 
+// 五步闭环：Content → Question → Diagnoser → Planner → Tutor（人机混合）
 const workflowSteps = [
-  { emoji: '📥', name: '导入资料', desc: '上传课件、笔记、PDF', status: '已完成' as const },
-  { emoji: '🔍', name: '提取重点', desc: 'AI 自动提炼核心知识', status: '已完成' as const },
-  { emoji: '📝', name: '生成题库', desc: '根据重点智能出题', status: '进行中' as const },
-  { emoji: '🔍', name: '错题诊断', desc: '分析错误模式与薄弱点', status: '进行中' as const },
-  { emoji: '📅', name: '复习计划', desc: '智能安排复习节奏', status: '待执行' as const },
-  { emoji: '🧠', name: '强化记忆', desc: '间隔重复巩固记忆', status: '待执行' as const },
+  { emoji: '📚', name: '内容摘要', desc: '上传资料，提取知识图谱', status: '已完成' as const },
+  { emoji: '📝', name: '智能出题', desc: '基于知识点个性化出题', status: '已完成' as const },
+  { emoji: '🔍', name: '诊断评估', desc: 'IRT/BKT 定位薄弱点', status: '进行中' as const },
+  { emoji: '📅', name: '学习规划', desc: 'CP-SAT 求解生成日级计划', status: '进行中' as const },
+  { emoji: '💡', name: '教学助理', desc: '苏格拉底式答疑闭环', status: '待执行' as const },
 ];
 
 const statusConfig = {
@@ -224,7 +223,7 @@ export default function Landing() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#635BFF] opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#635BFF]" />
               </span>
-              <span className="text-[12px] text-[#a3b5cc] font-medium">多 Agent 智能协作</span>
+              <span className="text-[12px] text-[#a3b5cc] font-medium">5 Agent + 1 协调器 · 状态机驱动</span>
             </motion.div>
 
             <motion.h1
@@ -240,7 +239,7 @@ export default function Landing() {
               custom={2}
               className="text-[17px] text-[#a3b5cc] leading-[1.7] mb-8 max-w-[520px]"
             >
-              6 个 AI Agent 帮你拆解资料、提炼重点、出题练习、诊断错题、管理计划、强化记忆——一套闭环，全程协作。
+              5 个 AI Agent 在协调器调度下各司其职：内容摘要、智能出题、诊断评估、学习规划、教学助理——职责有边界，协同有契约。
             </motion.p>
 
             <motion.div variants={fadeUp} custom={3} className="flex items-center gap-4 flex-wrap">
@@ -277,19 +276,19 @@ export default function Landing() {
               <div className="w-[240px] h-[240px] rounded-full border border-white/[0.03] border-dashed animate-[spin_45s_linear_infinite_reverse]" />
             </div>
 
-            {/* Central pulsing circle */}
+            {/* Central pulsing circle - Orchestrator 协调器 */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
               <div className="w-[88px] h-[88px] rounded-full bg-[#0d2d4a] border border-[rgba(99,91,255,0.3)] flex flex-col items-center justify-center shadow-[0_0_40px_rgba(99,91,255,0.15)] animate-[pulse-glow_3s_ease-in-out_infinite]">
                 <Zap size={18} className="text-[#635BFF] mb-0.5" />
-                <span className="text-[10px] font-medium text-[#a3b5cc]">任务核心</span>
+                <span className="text-[10px] font-medium text-[#a3b5cc]">协调器</span>
               </div>
               {/* Pulsing glow */}
               <div className="absolute inset-0 rounded-full bg-[#635BFF]/10 animate-ping opacity-20" style={{ animationDuration: '3s' }} />
             </div>
 
-            {/* Agent nodes */}
+            {/* Agent nodes - 5 个子 Agent 围绕中央协调器 */}
             {orbitalAgents.map((agent, i) => {
-              const angle = (i * 60 - 90) * (Math.PI / 180);
+              const angle = (i * 72 - 90) * (Math.PI / 180);
               const radius = 170;
               const x = Math.cos(angle) * radius;
               const y = Math.sin(angle) * radius;
@@ -311,7 +310,7 @@ export default function Landing() {
                     className="absolute top-1/2 left-1/2 h-[1px] origin-left"
                     style={{
                       width: `${radius - 44}px`,
-                      transform: `translate(-50%, -50%) rotate(${i * 60 + 90}deg)`,
+                      transform: `translate(-50%, -50%) rotate(${i * 72 + 90}deg)`,
                       background: `linear-gradient(90deg, transparent, ${agent.color}20)`,
                     }}
                   />
@@ -358,7 +357,7 @@ export default function Landing() {
               { icon: Target, label: '今日平均完成率', value: 92, suffix: '%', trend: '↑8%', trendUp: true, color: '#635BFF' },
               { icon: TrendingUp, label: '平均提升掌握度', value: 40, suffix: '%', trend: '↑12%', trendUp: true, color: '#7C5CFF' },
               { icon: BarChart3, label: '已生成练习题', value: 120, suffix: '万+', trend: '↑23%', trendUp: true, color: '#4FD1C5' },
-              { icon: Zap, label: '活跃 Agent 数量', value: 6, suffix: '', trend: '全部在线', trendUp: true, color: '#00D924' },
+              { icon: Zap, label: '协同 Agent 数', value: 6, suffix: '', trend: '5+1 在线', trendUp: true, color: '#00D924' },
             ].map((stat, i) => (
               <motion.div
                 key={stat.label}
@@ -392,8 +391,8 @@ export default function Landing() {
       <Section className="py-20 px-6" id="关于">
         <div className="max-w-7xl mx-auto">
           <motion.div variants={fadeUp} className="text-center mb-12">
-            <h2 className="text-[32px] font-bold tracking-tight text-[#ffffff] mb-3">六步协作，闭环复习</h2>
-            <p className="text-[15px] text-[#a3b5cc]">从资料导入到记忆强化，六个 Agent 各司其职，无缝衔接</p>
+            <h2 className="text-[32px] font-bold tracking-tight text-[#ffffff] mb-3">五步闭环，契约协同</h2>
+            <p className="text-[15px] text-[#a3b5cc]">每个 Agent 有明确输入/输出契约，协调器按学习状态机调度 DAG</p>
           </motion.div>
 
           {/* Desktop: horizontal flow */}

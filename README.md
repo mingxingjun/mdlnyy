@@ -1,6 +1,6 @@
 # UniFlow（优流备考）
 
-> 大学生 AI 多智能体期末备考平台 —— 6 大独立 AI Agent 助你高效复习
+> 大学生 AI 多智能体期末备考平台 —— 5 Agent + 1 协调器，状态机驱动 DAG 调度
 
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)](https://www.typescriptlang.org/)
@@ -13,18 +13,46 @@
 
 ## 核心特性
 
-### 6 大 AI Agent
+### 设计原则
 
-每个 Agent 拥有独立身份、系统提示词和专属技能，可接入 DeepSeek / Ollama / OpenAI 等多种模型：
+- **Agent 即能力边界**：每个 Agent 拥有严格的输入/输出契约，不可越界
+- **协同即状态机**：多 Agent 协作由学习状态机驱动 DAG 调度
+- **MVP 即最小闭环**：单学科单用户闭环优先
 
-| Agent | 身份 | 核心能力 |
-|-------|------|---------|
-| 🧠 **智识** | 知识提取专家 | 从教材/PDF 中提取核心考点和知识框架 |
-| 🃏 **卡片师** | 闪卡生成大师 | 基于主动回忆原理自动生成 Q&A 记忆闪卡 |
-| 🔍 **搜知** | 全网搜索官 | 搜索 B站/知乎/CSDN 等平台整合学习资源 |
-| 📅 **艾宾** | 复习规划师 | 基于艾宾浩斯遗忘曲线制定科学复习计划 |
-| 👨‍🏫 **考官** | 模拟考试教练 | 生成模拟试卷、批改答案、分析薄弱环节 |
-| 💡 **费曼** | 费曼学习导师 | 用最简单的话解释复杂概念，发现知识盲区 |
+### 5 Agent + 1 协调器
+
+| Agent | 角色 | 输入契约 | 输出契约 |
+|-------|------|---------|---------|
+| 🎯 **协调器 Orchestrator** | 任务路由与状态机驱动 | 用户意图 + 学习状态 | DAG 任务图 + 下一步指令 |
+| 📄 **内容摘要 Content** | 教材/PDF 摘要与考点提取 | 原始材料（PDF/Markdown/文本） | 结构化考点大纲 + 知识图谱 |
+| ❓ **智能出题 Question** | 题目生成与变体扩展 | 考点大纲 + 难度 + 题型 | 题目集合（含答案与解析） |
+| 📊 **诊断评估 Diagnoser** | IRT/BKT 能力诊断 | 作答记录 + 题目元数据 | 掌握度向量 + 薄弱点报告 |
+| 📅 **学习规划 Planner** | CP-SAT 约束求解排程 | 薄弱点 + 截止日期 + 可用时间 | 复习计划（按日任务） |
+| 💡 **教学助理 Tutor** | 苏格拉底式启发教学 | 学生提问 + 当前掌握度 | 引导式问答 + 概念澄清 |
+
+### 三大协同模式
+
+| 模式 | 说明 | 典型场景 |
+|------|------|---------|
+| **Pipeline 流水线** | 单向数据流，前序 Agent 输出作为后序输入 | 完整复习闭环（摘要→出题→诊断→规划） |
+| **FeedbackLoop 反馈环** | 诊断结果回流，驱动下一轮出题/教学 | 弱点专项突破 |
+| **HumanInTheLoop 人在环** | 关键节点需用户确认后继续 | 计划确认、目标设定 |
+
+### 学习状态机
+
+```
+Onboarded → MaterialReady → KnowledgeReady → Practicing
+                                              ↓
+ExamReady ← Reviewing ← Planned ← Diagnosed
+```
+
+协调器根据当前学习状态与用户意图，路由到合适的 DAG 任务图。
+
+### 三大 DAG 任务图
+
+- **FULL_REVIEW_DAG**：完整复习闭环（5 Agent 流水线）
+- **EXAM_SPRINT_DAG**：考前冲刺（出题→诊断→规划）
+- **TUTOR_LOOP_DAG**：导师循环（Tutor + Diagnoser 反馈环）
 
 ### AI 模型配置
 
@@ -38,8 +66,8 @@
 
 | 模块 | 功能 |
 |------|------|
-| **高光仪表盘** | 考试倒计时、科目进度追踪、盲区热力图 |
-| **AI 冲刺核** | 6 Agent 控制台 + 模型配置 + 对话管理 |
+| **高光仪表盘** | 考试倒计时、科目进度追踪、Agent 协同可视化 |
+| **AI 冲刺核** | 5+1 Agent 控制台 + DAG 工作流 + 模型配置 |
 | **我的笔记** | 笔记上传/编辑/标签管理，Markdown 内容支持 |
 | **沉浸流空间** | 番茄钟计时器、6 种白噪音、虚拟自习室 |
 
@@ -54,12 +82,14 @@
 
 - **SM-2 间隔重复算法**：基于艾宾浩斯曲线自动计算复习间隔
 - **主动回忆**：5 种实践方法（闭卷回忆/自问自答/教学讲解/思维导图/空白测试）
-- **费曼学习法**：自动生成费曼式解释 Prompt
-- **模拟考题生成**：选择题+简答题自动出卷
+- **IRT 项目反应理论**：题目难度与能力估计
+- **BKT 贝叶斯知识追踪**：知识点掌握度动态更新
+- **CP-SAT 约束求解**：复习计划排程优化
 
 ### 数据持久化
 
 - Zustand + LocalStorage 持久化，刷新不丢数据
+- 学习状态机持久化，跨会话保持进度
 - 全局 Toast 通知反馈
 - 空状态引导设计
 
@@ -109,9 +139,9 @@ npm run build
 ```
 src/
 ├── lib/
-│   ├── agents/              # 多智能体系统
-│   │   ├── types.ts         # Agent 类型定义
-│   │   └── definitions.ts   # 6 Agent 身份 + 系统提示词 + 技能
+│   ├── agents/
+│   │   ├── types.ts         # Agent 契约 + 学习状态机 + DAG 类型
+│   │   └── definitions.ts   # 5+1 Agent 身份 + 3 DAG + 路由函数
 │   ├── models/
 │   │   ├── types.ts         # 模型配置类型
 │   │   └── api.ts           # API 调用 + 缓存 + Token 管理
@@ -122,12 +152,12 @@ src/
 │   ├── ThreeBackground.tsx  # 3D 赛博朋克粒子背景
 │   └── Toast.tsx            # 全局通知组件
 ├── pages/
-│   ├── AIEngine.tsx         # Agent 控制台 + 模型配置
-│   ├── Dashboard.tsx        # 考试仪表盘
+│   ├── AIEngine.tsx         # Agent 控制台 + DAG 工作流 + 模型配置
+│   ├── Dashboard.tsx        # 考试仪表盘 + Agent 协同可视化
 │   ├── MyNotes.tsx          # 笔记管理
 │   └── FlowChamber.tsx      # 番茄钟 + 白噪音 + 自习室
 └── store/
-    └── useAppStore.ts       # Zustand 全局状态
+    └── useAppStore.ts       # Zustand 全局状态 + 学习状态机
 ```
 
 ---

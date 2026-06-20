@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { LearningState } from '@/lib/agents/types';
 
 export interface Subject {
   id: string;
@@ -86,6 +87,9 @@ export interface AgentSession {
 interface AppState {
   currentUser: string | null;
   setCurrentUser: (name: string | null) => void;
+  /** 学习状态机：Orchestrator 路由决策依据 */
+  learningState: LearningState;
+  setLearningState: (state: LearningState) => void;
   subjects: Subject[];
   flashCards: FlashCard[];
   knowledgePoints: KnowledgePoint[];
@@ -140,6 +144,7 @@ export const useAppStore = create<AppState>()(
     (set) => ({
       // 用户数据：首次使用为空，引导用户自己添加
       currentUser: null,
+      learningState: 'Onboarded',
       subjects: [],
       flashCards: [],
       knowledgePoints: [],
@@ -158,6 +163,8 @@ export const useAppStore = create<AppState>()(
       agentSessions: [],
 
       setCurrentUser: (name) => set({ currentUser: name }),
+
+      setLearningState: (learningState) => set({ learningState }),
 
       addSubject: (subject) => set((state) => ({ subjects: [...state.subjects, subject] })),
       removeSubject: (id) => set((state) => ({ subjects: state.subjects.filter((s) => s.id !== id) })),
@@ -228,6 +235,7 @@ export const useAppStore = create<AppState>()(
       name: 'uniflow-storage',
       partialize: (state) => ({
         currentUser: state.currentUser,
+        learningState: state.learningState,
         subjects: state.subjects,
         flashCards: state.flashCards,
         knowledgePoints: state.knowledgePoints,

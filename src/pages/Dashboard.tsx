@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  CheckCircle2, Clock, Target, Brain, FileText, ChevronDown, ChevronRight,
+  CheckCircle2, Clock, Target, Brain, FileText, ChevronDown,
   ArrowRight, Sparkles, Star, Bookmark,
   Send, X, BookOpen, Lightbulb, RotateCcw,
   AlertCircle, ListChecks, Bell, HelpCircle,
@@ -177,13 +177,14 @@ function AgentWorkflow() {
   const agentSessions = useAppStore(s => s.agentSessions);
 
   const agentWorkflow = useMemo(() => {
+    // 5 个核心 Agent + 1 个 Orchestrator 协调器
     const agentDefs = [
-      { name: '导入资料', agentId: 'importer', color: '#635BFF', output: '' },
-      { name: '提取重点', agentId: 'extractor', color: '#7C5CFF', output: '' },
-      { name: '生成题库', agentId: 'examiner', color: '#4FD1C5', output: '' },
-      { name: '错题诊断', agentId: 'analyst', color: '#FFB800', output: '' },
-      { name: '复习计划', agentId: 'planner', color: '#FF3D00', output: '' },
-      { name: '强化记忆', agentId: 'reviewer', color: '#00D924', output: '' },
+      { name: '协调器', agentId: 'orchestrator', color: '#635BFF', output: '', isOrchestrator: true },
+      { name: '内容摘要', agentId: 'content-agent', color: '#7C5CFF', output: '' },
+      { name: '智能出题', agentId: 'question-agent', color: '#4FD1C5', output: '' },
+      { name: '诊断评估', agentId: 'diagnoser-agent', color: '#FFB800', output: '' },
+      { name: '学习规划', agentId: 'planner-agent', color: '#FF3D00', output: '' },
+      { name: '教学助理', agentId: 'tutor-agent', color: '#00D924', output: '' },
     ];
 
     return agentDefs.map((def) => {
@@ -201,6 +202,11 @@ function AgentWorkflow() {
         } else {
           status = 'active';
         }
+      }
+
+      // Orchestrator 始终视为活跃（任务总控）
+      if (def.isOrchestrator && status === 'pending') {
+        status = 'active';
       }
 
       return { ...def, status, output };
@@ -226,17 +232,27 @@ function AgentWorkflow() {
       viewport={{ once: true, margin: '-40px' }}
       className="mt-8"
     >
-      <h2 className="text-[16px] font-semibold text-[#ffffff] mb-4">Agent 协作工作流</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-[16px] font-semibold text-[#ffffff]">Agent 协作工作流</h2>
+        <span className="text-[11px] text-[#6b7c93]">5 Agent + 1 协调器 · 状态机驱动 DAG 调度</span>
+      </div>
       <div className="flex overflow-x-auto gap-4 pb-2 lg:grid lg:grid-cols-6 lg:overflow-visible">
         {agentWorkflow.map((agent, i) => (
           <div key={agent.name} className="flex items-center gap-2 flex-shrink-0 lg:flex-shrink">
             <motion.div
               whileHover={{ y: -2, transition: { duration: 0.2 } }}
-              className="bg-[#0d2d4a] border border-white/[0.06] rounded-[20px] p-4 min-w-[150px] lg:min-w-0 transition-all hover:border-[#635BFF]/30 hover:shadow-[0_0_20px_rgba(99,91,255,0.08)]"
+              className={`bg-[#0d2d4a] border rounded-[20px] p-4 min-w-[150px] lg:min-w-0 transition-all hover:shadow-[0_0_20px_rgba(99,91,255,0.08)] ${
+                agent.isOrchestrator
+                  ? 'border-[#635BFF]/40 shadow-[0_0_16px_rgba(99,91,255,0.08)]'
+                  : 'border-white/[0.06] hover:border-[#635BFF]/30'
+              }`}
             >
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: agent.color }} />
                 <span className="text-[13px] font-medium text-[#ffffff]">{agent.name}</span>
+                {agent.isOrchestrator && (
+                  <span className="text-[8px] px-1 py-0.5 rounded bg-[#635BFF]/15 text-[#635BFF]">CORE</span>
+                )}
               </div>
               <div className="mb-2">{statusBadge(agent.status)}</div>
               {agent.output && (
@@ -259,9 +275,7 @@ function AgentWorkflow() {
 function KnowledgeNav() {
   const subjects = useAppStore(s => s.subjects);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
-  const [expandedChapters, setExpandedChapters] = useState<Set<number>>(new Set([0]));
   const [activeTag, setActiveTag] = useState<string | null>(null);
-  const [activeItem, setActiveItem] = useState<string>('');
 
   // Set initial selected subject
   useMemo(() => {
@@ -269,15 +283,6 @@ function KnowledgeNav() {
       setSelectedSubjectId(subjects[0].id);
     }
   }, [subjects, selectedSubjectId]);
-
-  const toggleChapter = (idx: number) => {
-    setExpandedChapters((prev) => {
-      const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
-      return next;
-    });
-  };
 
   // Get selected subject data
   const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
@@ -982,9 +987,9 @@ function FloatingAssistant() {
   const navigate = useNavigate();
 
   const commands = [
-    { icon: FileText, label: '帮我出题', color: '#635BFF', action: () => navigate('/ai-engine?agent=examiner') },
-    { icon: AlertCircle, label: '分析错题', color: '#FF3D00', action: () => navigate('/ai-engine?agent=analyst') },
-    { icon: BookOpen, label: '整理重点', color: '#4FD1C5', action: () => navigate('/ai-engine?agent=extractor') },
+    { icon: FileText, label: '帮我出题', color: '#4FD1C5', action: () => navigate('/ai-engine?agent=question-agent') },
+    { icon: AlertCircle, label: '分析错题', color: '#FFB800', action: () => navigate('/ai-engine?agent=diagnoser-agent') },
+    { icon: BookOpen, label: '整理重点', color: '#7C5CFF', action: () => navigate('/ai-engine?agent=content-agent') },
   ];
 
   return (
