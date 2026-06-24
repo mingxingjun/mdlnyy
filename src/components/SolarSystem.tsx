@@ -10,7 +10,6 @@ import Nebula from './Nebula';
 import WarpSpeed from './WarpSpeed';
 import CameraController from './CameraController';
 import { useNavigationStore } from '../store/useNavigationStore';
-import { isWebGLAvailable } from '../lib/webglSupport';
 import {
   generateEnergyTexture,
   generateTechTexture,
@@ -129,12 +128,6 @@ function Scene() {
 }
 
 export default function SolarSystem() {
-  const webglSupported = useMemo(() => isWebGLAvailable(), []);
-
-  if (!webglSupported) {
-    return null;
-  }
-
   return (
     <div className="fixed inset-0 z-0 pointer-events-auto">
       <Canvas
@@ -143,6 +136,8 @@ export default function SolarSystem() {
           antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.2,
+          powerPreference: 'high-performance',
+          failIfMajorPerformanceCaveat: false,
         }}
         dpr={[1, 1.5]}
         shadows

@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import SolarSystem from './SolarSystem';
 import CursorGlow from './CursorGlow';
 import ErrorBoundary from './ErrorBoundary';
@@ -7,7 +7,6 @@ import HUDOverlay from './HUDOverlay';
 import FallbackView from './FallbackView';
 import LoadingScreen from './LoadingScreen';
 import { useNavigationStore, PLANET_PATHS } from '@/store/useNavigationStore';
-import { isWebGLAvailable } from '@/lib/webglSupport';
 
 export default function Layout() {
   const location = useLocation();
@@ -18,7 +17,6 @@ export default function Layout() {
   const setInitialLoadComplete = useNavigationStore((s) => s.setInitialLoadComplete);
 
   const [isLoading, setIsLoading] = useState(true);
-  const webglSupported = useMemo(() => isWebGLAvailable(), []);
 
   const isNavigatingRef = useRef(false);
   const initializedRef = useRef(false);
@@ -33,7 +31,6 @@ export default function Layout() {
 
   useEffect(() => {
     const currentPath = location.pathname;
-    const currentState = useNavigationStore.getState();
 
     if (!initializedRef.current) {
       initializedRef.current = true;
@@ -48,6 +45,7 @@ export default function Layout() {
       return;
     }
 
+    const currentState = useNavigationStore.getState();
     const isPlanetPath = PLANET_PATHS.includes(currentPath);
     const isCurrentlyPlanet = currentState.view === 'planet';
 
@@ -75,33 +73,22 @@ export default function Layout() {
     prevViewRef.current = view;
   }, [view, targetPlanet, navigate, location.pathname, location.search]);
 
-  if (!webglSupported) {
-    return (
-      <>
-        <LoadingScreen isLoading={isLoading} />
-        {!isLoading && (
-          <FallbackView>
-            <Outlet />
-          </FallbackView>
-        )}
-      </>
-    );
-  }
-
   return (
     <div className="fixed inset-0 overflow-hidden" style={{ background: '#010308' }}>
       <LoadingScreen isLoading={isLoading} />
 
       {!isLoading && (
-        <>
-          <ErrorBoundary fallback={<FallbackView />}>
-            <SolarSystem />
-          </ErrorBoundary>
+        <ErrorBoundary fallback={
+          <FallbackView>
+            <Outlet />
+          </FallbackView>
+        }>
+          <SolarSystem />
           <CursorGlow />
           <HUDOverlay>
             <Outlet />
           </HUDOverlay>
-        </>
+        </ErrorBoundary>
       )}
     </div>
   );
