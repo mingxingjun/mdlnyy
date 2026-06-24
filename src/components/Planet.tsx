@@ -50,6 +50,15 @@ const atmosphereFragmentShader = `
   }
 `;
 
+function hexToRgba(hex: string, alpha: number): string {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return `rgba(255,255,255,${alpha})`;
+  const r = parseInt(result[1], 16);
+  const g = parseInt(result[2], 16);
+  const b = parseInt(result[3], 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 function generateLightningTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
@@ -64,7 +73,7 @@ function generateLightningTexture(): THREE.CanvasTexture {
     width: number, brightness: number, branches: number = 0
   ) => {
     const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
-    const alpha = Math.floor(brightness * 255).toString(16).padStart(2, '0');
+    const alpha = brightness;
     gradient.addColorStop(0, `rgba(200,220,255,0)`);
     gradient.addColorStop(0.3, `rgba(180,200,255,${alpha})`);
     gradient.addColorStop(0.7, `rgba(220,240,255,${alpha})`);
@@ -205,15 +214,15 @@ export default function Planet({
     const gradient = ctx.createLinearGradient(0, 0, 512, 0);
     if (inner) {
       gradient.addColorStop(0, 'rgba(0,0,0,0)');
-      gradient.addColorStop(0.3, ringColor + '60');
-      gradient.addColorStop(0.5, ringColor + 'dd');
-      gradient.addColorStop(0.7, ringColor + 'aa');
-      gradient.addColorStop(1, ringColor + '40');
+      gradient.addColorStop(0.3, hexToRgba(ringColor || '#ffffff', 0.38));
+      gradient.addColorStop(0.5, hexToRgba(ringColor || '#ffffff', 0.87));
+      gradient.addColorStop(0.7, hexToRgba(ringColor || '#ffffff', 0.67));
+      gradient.addColorStop(1, hexToRgba(ringColor || '#ffffff', 0.25));
     } else {
-      gradient.addColorStop(0, ringColor + '30');
-      gradient.addColorStop(0.3, ringColor + '50');
-      gradient.addColorStop(0.5, ringColor + '70');
-      gradient.addColorStop(0.8, ringColor + '30');
+      gradient.addColorStop(0, hexToRgba(ringColor || '#ffffff', 0.19));
+      gradient.addColorStop(0.3, hexToRgba(ringColor || '#ffffff', 0.31));
+      gradient.addColorStop(0.5, hexToRgba(ringColor || '#ffffff', 0.44));
+      gradient.addColorStop(0.8, hexToRgba(ringColor || '#ffffff', 0.19));
       gradient.addColorStop(1, 'rgba(0,0,0,0)');
     }
 
