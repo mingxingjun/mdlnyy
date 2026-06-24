@@ -3,13 +3,15 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useNavigationStore } from '../store/useNavigationStore';
 
-const PARTICLE_COUNT = 250;
-const STREAK_LENGTH = 80;
-const BASE_SPEED = 250;
+const PARTICLE_COUNT = 800;
+const STREAK_LENGTH = 120;
+const BASE_SPEED = 400;
 
 export default function WarpSpeed() {
   const lineRef = useRef<THREE.LineSegments>(null);
-  const glowRef = useRef<THREE.Mesh>(null);
+  const coreGlowRef = useRef<THREE.Mesh>(null);
+  const outerGlowRef = useRef<THREE.Mesh>(null);
+  const tunnelRingRef = useRef<THREE.Mesh>(null);
   const { camera } = useThree();
   const warpProgress = useNavigationStore((s) => s.warpProgress);
   const view = useNavigationStore((s) => s.view);
@@ -20,48 +22,51 @@ export default function WarpSpeed() {
     const lengths = new Float32Array(PARTICLE_COUNT);
     const baseSpeeds = new Float32Array(PARTICLE_COUNT);
 
-    const forwardDir = new THREE.Vector3(0, 0, -1);
-
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       const theta = Math.random() * Math.PI * 2;
-      const spread = 0.15 + Math.random() * 0.85;
-      const phi = spread * Math.PI * 0.45;
+      const spread = Math.pow(Math.random(), 0.7);
+      const phi = spread * Math.PI * 0.48;
 
       const cosP = Math.cos(phi);
       const sinP = Math.sin(phi);
-      const x = sinP * Math.cos(theta);
-      const y = sinP * Math.sin(theta);
-      const z = -cosP;
+      directions[i * 3] = sinP * Math.cos(theta);
+      directions[i * 3 + 1] = sinP * Math.sin(theta);
+      directions[i * 3 + 2] = -cosP;
 
-      directions[i * 3] = x;
-      directions[i * 3 + 1] = y;
-      directions[i * 3 + 2] = z;
-
-      lengths[i] = 2 + Math.random() * 6;
-      baseSpeeds[i] = 0.5 + Math.random() * 1.0;
-
-      for (let j = 0; j < 3; j++) {
-        positions[i * 6 + j] = 0;
-        positions[i * 6 + 3 + j] = 0;
-      }
+      lengths[i] = 3 + Math.random() * 12;
+      baseSpeeds[i] = 0.4 + Math.random() * 1.2;
     }
-
-    void forwardDir;
     return { positions, directions, lengths, baseSpeeds };
+  }, []);
+
+  const tunnelMaterial = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d')!;
+    const grad = ctx.createRadialGradient(128, 32, 0, 128, 32, 128);
+    grad.addColorStop(0, 'rgba(150,200,255,0.9)');
+    grad.addColorStop(0.3, 'rgba(100,150,255,0.5)');
+    grad.addColorStop(0.6, 'rgba(80,100,200,0.2)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 256, 64);
+    const tex = new THREE.CanvasTexture(canvas);
+    return new THREE.MeshBasicMaterial({
+      map: tex,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
   }, []);
 
   const intensityCurve = useMemo(() => {
     return (t: number) => {
-      if (t < 0.15) {
-        return t / 0.15 * 0.2;
-      } else if (t < 0.6) {
-        const mid = (t - 0.15) / 0.45;
-        return 0.2 + mid * 0.8;
-      } else if (t < 0.85) {
-        return 1.0;
-      } else {
-        return 1 - ((t - 0.85) / 0.15) * 0.9;
-      }
+      if (t < 0.1) return Math.pow(t / 0.1, 3) * 0.3;
+      if (t < 0.5) return 0.3 + ((t - 0.1) / 0.4) * 0.7;
+      if (t < 0.8) return 1.0;
+      return Math.pow(1 - (t - 0.8) / 0.2, 2.5);
     };
   }, []);
 
@@ -73,11 +78,13 @@ export default function WarpSpeed() {
   const tempWorldDir = useRef(new THREE.Vector3());
 
   useFrame((state, delta) => {
-    if (!lineRef.current || !glowRef.current) return;
+    if (!lineRef.current || !coreGlowRef.current || !outerGlowRef.current || !tunnelRingRef.current) return;
 
     const isWarping = view === 'warping';
     const lineMat = lineRef.current.material as THREE.LineBasicMaterial;
-    const glowMat = glowRef.current.material as THREE.MeshBasicMaterial;
+    const coreMat = coreGlowRef.current.material as THREE.MeshBasicMaterial;
+    const outerMat = outerGlowRef.current.material as THREE.MeshBasicMaterial;
+    const tunnelMat = tunnelRingRef.current.material as THREE.MeshBasicMaterial;
 
     if (!initializedRef.current) {
       for (let i = 0; i < PARTICLE_COUNT; i++) {
@@ -88,7 +95,9 @@ export default function WarpSpeed() {
 
     if (!isWarping) {
       lineMat.opacity = 0;
-      glowMat.opacity = 0;
+      coreMat.opacity = 0;
+      outerMat.opacity = 0;
+      tunnelMat.opacity = 0;
       return;
     }
 
@@ -102,16 +111,20 @@ export default function WarpSpeed() {
     camMat.extractBasis(tempRight.current, tempUp.current, tempForward.current);
 
     lineRef.current.position.copy(camPos);
-    glowRef.current.position.copy(camPos);
-    glowRef.current.position.addScaledVector(tempForward.current, 5);
+    coreGlowRef.current.position.copy(camPos);
+    outerGlowRef.current.position.copy(camPos);
+    tunnelRingRef.current.position.copy(camPos);
+    coreGlowRef.current.position.addScaledVector(tempForward.current, 8);
+    outerGlowRef.current.position.addScaledVector(tempForward.current, 15);
+    tunnelRingRef.current.position.addScaledVector(tempForward.current, 20);
+    tunnelRingRef.current.lookAt(camPos);
 
-    const streakLenMul = 0.5 + intensity * 2.5;
+    const streakLenMul = 0.3 + intensity * 4.0;
+    const colorShift = Math.min(1, intensity * 1.5);
 
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       distsRef.current[i] += delta * speed * baseSpeeds[i];
-      if (distsRef.current[i] > STREAK_LENGTH) {
-        distsRef.current[i] = 0;
-      }
+      if (distsRef.current[i] > STREAK_LENGTH) distsRef.current[i] = 0;
 
       const dist = distsRef.current[i];
       const dx = directions[i * 3];
@@ -124,60 +137,64 @@ export default function WarpSpeed() {
       tempWorldDir.current.addScaledVector(tempForward.current, dz);
 
       const streakLen = lengths[i] * streakLenMul;
-      const startDist = Math.max(0.5, dist);
+      const startDist = Math.max(1, dist);
       const endDist = startDist + streakLen;
 
       posArray[i * 6] = tempWorldDir.current.x * startDist;
       posArray[i * 6 + 1] = tempWorldDir.current.y * startDist;
       posArray[i * 6 + 2] = tempWorldDir.current.z * startDist;
-
       posArray[i * 6 + 3] = tempWorldDir.current.x * endDist;
       posArray[i * 6 + 4] = tempWorldDir.current.y * endDist;
       posArray[i * 6 + 5] = tempWorldDir.current.z * endDist;
     }
-
     posAttr.needsUpdate = true;
 
-    lineMat.opacity = Math.min(1, intensity * 1.1);
-    lineMat.transparent = true;
+    lineMat.opacity = Math.min(1, intensity * 1.2);
+    lineMat.color.setRGB(
+      0.85 + colorShift * 0.15,
+      0.9 + colorShift * 0.1,
+      1.0
+    );
 
-    const glowIntensity = Math.pow(intensity, 1.5);
-    glowMat.opacity = Math.min(0.9, glowIntensity * 0.5);
-    const glowScale = 1 + intensity * 6;
-    glowRef.current.scale.set(glowScale, glowScale, glowScale);
+    const coreIntensity = Math.pow(intensity, 1.2);
+    coreMat.opacity = coreIntensity * 0.9;
+    const coreScale = 1 + intensity * 8;
+    coreGlowRef.current.scale.set(coreScale, coreScale, coreScale);
+    coreMat.color.setRGB(1, 0.95, 0.9);
+
+    const outerIntensity = Math.pow(intensity, 1.6);
+    outerMat.opacity = outerIntensity * 0.4;
+    const outerScale = 1 + intensity * 18;
+    outerGlowRef.current.scale.set(outerScale, outerScale, outerScale);
+    outerMat.color.setRGB(0.7, 0.85, 1);
+
+    tunnelMat.opacity = intensity * 0.6;
+    const tunnelScale = 2 + intensity * 25;
+    tunnelRingRef.current.scale.set(tunnelScale, tunnelScale, 1);
+    tunnelRingRef.current.rotation.z += delta * 3 * intensity;
   });
 
   return (
     <group>
       <lineSegments ref={lineRef} frustumCulled={false}>
         <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            count={PARTICLE_COUNT * 2}
-            array={positions}
-            itemSize={3}
-          />
+          <bufferAttribute attach="attributes-position" count={PARTICLE_COUNT * 2} array={positions} itemSize={3} />
         </bufferGeometry>
-        <lineBasicMaterial
-          color="#e0f0ff"
-          transparent
-          opacity={0}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          toneMapped={false}
-        />
+        <lineBasicMaterial color="#e8f2ff" transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
       </lineSegments>
 
-      <mesh ref={glowRef} frustumCulled={false}>
-        <sphereGeometry args={[1, 16, 16]} />
-        <meshBasicMaterial
-          color="#ffffff"
-          transparent
-          opacity={0}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          toneMapped={false}
-        />
+      <mesh ref={coreGlowRef} frustumCulled={false}>
+        <sphereGeometry args={[1, 24, 24]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
+      </mesh>
+
+      <mesh ref={outerGlowRef} frustumCulled={false}>
+        <sphereGeometry args={[1, 24, 24]} />
+        <meshBasicMaterial color="#88bbff" transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
+      </mesh>
+
+      <mesh ref={tunnelRingRef} frustumCulled={false} material={tunnelMaterial}>
+        <ringGeometry args={[0.3, 1, 48]} />
       </mesh>
     </group>
   );
