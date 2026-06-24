@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import Sun from './Sun';
 import Planet from './Planet';
@@ -35,7 +34,7 @@ function Scene() {
     <>
       <fogExp2 attach="fog" args={['#000010', 0.003]} />
 
-      <ambientLight intensity={0.15} color="#404080" />
+      <ambientLight intensity={0.2} color="#6060a0" />
 
       <OrbitControls
         makeDefault
@@ -113,16 +112,6 @@ function Scene() {
         cloudTexture={cloudTexture}
         onSelect={() => handleWarpTo('/my-notes')}
       />
-
-      <EffectComposer>
-        <Bloom
-          luminanceThreshold={0.4}
-          luminanceSmoothing={0.9}
-          intensity={1.1}
-          mipmapBlur
-        />
-        <Vignette offset={0.5} darkness={0.5} />
-      </EffectComposer>
     </>
   );
 }
@@ -135,12 +124,11 @@ export default function SolarSystem() {
         gl={{
           antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.2,
+          toneMappingExposure: 1.3,
           powerPreference: 'high-performance',
           failIfMajorPerformanceCaveat: false,
         }}
         dpr={[1, 1.5]}
-        shadows
         style={{ background: '#000005' }}
       >
         <Scene />
