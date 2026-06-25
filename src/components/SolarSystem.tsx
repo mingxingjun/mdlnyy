@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import Sun from './Sun';
 import Planet from './Planet';
@@ -103,11 +102,11 @@ function Scene() {
       <color attach="background" args={['#000108']} />
       <fogExp2 attach="fog" args={['#000108', 0.0025]} />
 
-      <ambientLight intensity={0.06} color="#202050" />
+      <ambientLight intensity={0.12} color="#303060" />
 
       <pointLight
         position={[0, 0, 0]}
-        intensity={4}
+        intensity={3.5}
         distance={400}
         decay={1.5}
         color="#fff0d0"
@@ -136,7 +135,7 @@ function Scene() {
           key={`orbit-${i}`}
           radius={p.radius}
           color={p.color}
-          opacity={0.06}
+          opacity={0.08}
         />
       ))}
 
@@ -167,16 +166,6 @@ function Scene() {
           onSelect={() => handleWarpTo(p.path)}
         />
       ))}
-
-      <EffectComposer multisampling={0}>
-        <Bloom
-          intensity={1.4}
-          luminanceThreshold={0.2}
-          luminanceSmoothing={0.6}
-          mipmapBlur
-          radius={0.75}
-        />
-      </EffectComposer>
     </>
   );
 }
@@ -185,11 +174,11 @@ export default function SolarSystem() {
   return (
     <div className="fixed inset-0 z-0 pointer-events-auto">
       <Canvas
-        camera={{ position: [0, 30, 68], fov: 52, near: 0.1, far: 2000 }}
+        camera={{ position: [0, 30, 68], fov: 55, near: 0.1, far: 2000 }}
         gl={{
           antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.0,
+          toneMappingExposure: 1.2,
           powerPreference: 'high-performance',
           failIfMajorPerformanceCaveat: false,
         }}

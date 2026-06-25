@@ -45,7 +45,7 @@ const atmosphereFragmentShader = `
     vec3 viewDir = normalize(cameraPosition - vPosition);
     float fresnel = pow(1.0 - max(dot(viewDir, vNormal), 0.0), uPower);
     float alpha = fresnel * uOpacity;
-    vec3 col = uColor * (0.6 + fresnel * 1.5);
+    vec3 col = uColor * (0.8 + fresnel * 2.0);
     gl_FragColor = vec4(col, alpha);
   }
 `;
@@ -114,19 +114,44 @@ function generateLightningTexture(): THREE.CanvasTexture {
 
 function PlanetGlow({ color, size }: { color: string; size: number }) {
   const ref = useRef<THREE.Sprite>(null);
+  const refOuter = useRef<THREE.Sprite>(null);
+  const col = new THREE.Color(color);
   const material = useMemo(() => {
     const canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 128;
+    canvas.width = 256;
+    canvas.height = 256;
     const ctx = canvas.getContext('2d')!;
-    const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-    const col = new THREE.Color(color);
-    gradient.addColorStop(0, `rgba(${Math.floor(col.r * 255)},${Math.floor(col.g * 255)},${Math.floor(col.b * 255)},0.5)`);
-    gradient.addColorStop(0.3, `rgba(${Math.floor(col.r * 255)},${Math.floor(col.g * 255)},${Math.floor(col.b * 255)},0.2)`);
-    gradient.addColorStop(0.7, `rgba(${Math.floor(col.r * 255)},${Math.floor(col.g * 255)},${Math.floor(col.b * 255)},0.05)`);
+    const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+    const r = Math.floor(col.r * 255), g = Math.floor(col.g * 255), b = Math.floor(col.b * 255);
+    gradient.addColorStop(0, `rgba(${r},${g},${b},0.7)`);
+    gradient.addColorStop(0.2, `rgba(${r},${g},${b},0.35)`);
+    gradient.addColorStop(0.5, `rgba(${r},${g},${b},0.12)`);
+    gradient.addColorStop(0.8, `rgba(${r},${g},${b},0.03)`);
     gradient.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 128, 128);
+    ctx.fillRect(0, 0, 256, 256);
+    const texture = new THREE.CanvasTexture(canvas);
+    return new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+  }, [color]);
+
+  const outerMaterial = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d')!;
+    const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+    const r = Math.floor(col.r * 255), g = Math.floor(col.g * 255), b = Math.floor(col.b * 255);
+    gradient.addColorStop(0, `rgba(${r},${g},${b},0.25)`);
+    gradient.addColorStop(0.3, `rgba(${r},${g},${b},0.12)`);
+    gradient.addColorStop(0.6, `rgba(${r},${g},${b},0.04)`);
+    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 256, 256);
     const texture = new THREE.CanvasTexture(canvas);
     return new THREE.SpriteMaterial({
       map: texture,
@@ -139,12 +164,23 @@ function PlanetGlow({ color, size }: { color: string; size: number }) {
   useFrame((state) => {
     if (ref.current) {
       const t = state.clock.elapsedTime;
-      const s = size * 4 + Math.sin(t * 0.8) * size * 0.3;
+      const s = size * 3.2 + Math.sin(t * 0.8 + size) * size * 0.15;
       ref.current.scale.set(s, s, 1);
+    }
+    if (refOuter.current) {
+      const t = state.clock.elapsedTime;
+      const s = size * 6 + Math.sin(t * 0.4 + size) * size * 0.4;
+      refOuter.current.scale.set(s, s, 1);
+      (refOuter.current.material as THREE.SpriteMaterial).opacity = 0.6 + Math.sin(t * 0.6) * 0.15;
     }
   });
 
-  return <sprite ref={ref} material={material} />;
+  return (
+    <group>
+      <sprite ref={refOuter} material={outerMaterial} />
+      <sprite ref={ref} material={material} />
+    </group>
+  );
 }
 
 export default function Planet({
@@ -185,9 +221,9 @@ export default function Planet({
 
   const hoverTarget = useRef({
     scale: 1,
-    emissiveIntensity: 0.08,
+    emissiveIntensity: 0.18,
     atmosphereScale: 1.18,
-    atmosphereOpacity: 0.5,
+    atmosphereOpacity: 0.55,
   });
 
   const lightningState = useRef({
@@ -200,10 +236,10 @@ export default function Planet({
 
   const planetMaterial = useMemo(() => new THREE.MeshStandardMaterial({
     map: texture,
-    roughness: 0.85,
-    metalness: 0.08,
+    roughness: 0.8,
+    metalness: 0.1,
     emissive: emissiveColor,
-    emissiveIntensity: 0.08,
+    emissiveIntensity: 0.18,
   }), [texture, emissiveColor]);
 
   const atmosphereMaterial = useMemo(() => new THREE.ShaderMaterial({
@@ -211,8 +247,8 @@ export default function Planet({
     fragmentShader: atmosphereFragmentShader,
     uniforms: {
       uColor: { value: new THREE.Color(color) },
-      uPower: { value: 3.5 },
-      uOpacity: { value: 0.5 },
+      uPower: { value: 3.0 },
+      uOpacity: { value: 0.6 },
     },
     transparent: true,
     blending: THREE.AdditiveBlending,
@@ -383,8 +419,8 @@ export default function Planet({
     }
 
     const target = hovered
-      ? { scale: 1.12, emissiveIntensity: 0.6, atmosphereScale: 1.3, atmosphereOpacity: 0.85 }
-      : { scale: 1, emissiveIntensity: 0.15, atmosphereScale: 1.18, atmosphereOpacity: 0.5 };
+      ? { scale: 1.12, emissiveIntensity: 0.7, atmosphereScale: 1.3, atmosphereOpacity: 0.9 }
+      : { scale: 1, emissiveIntensity: 0.18, atmosphereScale: 1.18, atmosphereOpacity: 0.55 };
     const lerpFactor = 1 - Math.pow(0.001, delta);
     hoverTarget.current.scale = THREE.MathUtils.lerp(hoverTarget.current.scale, target.scale, lerpFactor);
     hoverTarget.current.emissiveIntensity = THREE.MathUtils.lerp(hoverTarget.current.emissiveIntensity, target.emissiveIntensity, lerpFactor);

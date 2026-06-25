@@ -202,19 +202,21 @@ const prominenceFragmentShader = `
 
 function SunGlowSprite() {
   const ref = useRef<THREE.Sprite>(null);
+  const refOuter = useRef<THREE.Sprite>(null);
   const material = useMemo(() => {
     const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
+    canvas.width = 512;
+    canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
-    const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-    gradient.addColorStop(0, 'rgba(255,230,150,1)');
-    gradient.addColorStop(0.2, 'rgba(255,180,80,0.6)');
-    gradient.addColorStop(0.4, 'rgba(255,120,30,0.25)');
-    gradient.addColorStop(0.7, 'rgba(255,80,10,0.08)');
-    gradient.addColorStop(1, 'rgba(255,50,0,0)');
+    const gradient = ctx.createRadialGradient(256, 256, 0, 256, 256, 256);
+    gradient.addColorStop(0, 'rgba(255,245,210,1)');
+    gradient.addColorStop(0.1, 'rgba(255,220,140,0.9)');
+    gradient.addColorStop(0.25, 'rgba(255,170,70,0.55)');
+    gradient.addColorStop(0.5, 'rgba(255,110,30,0.25)');
+    gradient.addColorStop(0.75, 'rgba(255,70,15,0.08)');
+    gradient.addColorStop(1, 'rgba(255,40,0,0)');
     ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 256, 256);
+    ctx.fillRect(0, 0, 512, 512);
     const texture = new THREE.CanvasTexture(canvas);
     return new THREE.SpriteMaterial({
       map: texture,
@@ -225,16 +227,50 @@ function SunGlowSprite() {
     });
   }, []);
 
+  const outerMaterial = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+    const gradient = ctx.createRadialGradient(256, 256, 0, 256, 256, 256);
+    gradient.addColorStop(0, 'rgba(255,180,100,0.3)');
+    gradient.addColorStop(0.2, 'rgba(255,140,60,0.2)');
+    gradient.addColorStop(0.5, 'rgba(255,90,20,0.08)');
+    gradient.addColorStop(0.8, 'rgba(255,60,10,0.02)');
+    gradient.addColorStop(1, 'rgba(255,40,0,0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 512, 512);
+    const texture = new THREE.CanvasTexture(canvas);
+    return new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      color: 0xfff0d0,
+    });
+  }, []);
+
   useFrame((state) => {
     if (ref.current) {
       const t = state.clock.elapsedTime;
-      const scale = 45 + Math.sin(t * 0.5) * 3;
+      const scale = 30 + Math.sin(t * 0.5) * 2;
       ref.current.scale.set(scale, scale, 1);
-      (ref.current.material as THREE.SpriteMaterial).opacity = 0.8 + Math.sin(t * 0.7) * 0.1;
+      (ref.current.material as THREE.SpriteMaterial).opacity = 0.95 + Math.sin(t * 0.7) * 0.05;
+    }
+    if (refOuter.current) {
+      const t = state.clock.elapsedTime;
+      const scale = 70 + Math.sin(t * 0.3) * 5;
+      refOuter.current.scale.set(scale, scale, 1);
+      (refOuter.current.material as THREE.SpriteMaterial).opacity = 0.5 + Math.sin(t * 0.4) * 0.15;
     }
   });
 
-  return <sprite ref={ref} material={material} position={[0, 0, 0]} />;
+  return (
+    <group>
+      <sprite ref={refOuter} material={outerMaterial} position={[0, 0, 0]} />
+      <sprite ref={ref} material={material} position={[0, 0, 0]} />
+    </group>
+  );
 }
 
 export default function Sun() {
