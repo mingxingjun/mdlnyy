@@ -185,7 +185,7 @@ export default function Planet({
 
   const hoverTarget = useRef({
     scale: 1,
-    emissiveIntensity: 0.15,
+    emissiveIntensity: 0.08,
     atmosphereScale: 1.18,
     atmosphereOpacity: 0.5,
   });
@@ -200,10 +200,10 @@ export default function Planet({
 
   const planetMaterial = useMemo(() => new THREE.MeshStandardMaterial({
     map: texture,
-    roughness: 0.75,
-    metalness: 0.2,
+    roughness: 0.85,
+    metalness: 0.08,
     emissive: emissiveColor,
-    emissiveIntensity: 0.15,
+    emissiveIntensity: 0.08,
   }), [texture, emissiveColor]);
 
   const atmosphereMaterial = useMemo(() => new THREE.ShaderMaterial({

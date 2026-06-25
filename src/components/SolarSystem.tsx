@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
+import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import Sun from './Sun';
 import Planet from './Planet';
@@ -37,11 +38,11 @@ function Scene() {
       name: 'AI核星',
       description: 'AI智能核心引擎',
       radius: 22,
-      angle: 0,
+      angle: 0.3,
       size: 2.2,
       texture: aiCoreTexture,
-      color: '#b040ff',
-      emissiveColor: '#7030ff',
+      color: '#c060ff',
+      emissiveColor: '#9040ff',
       rotationSpeed: 0.005,
       orbitSpeed: 0.08,
       axisTilt: 0.1,
@@ -52,11 +53,11 @@ function Scene() {
       name: '驾驶舱星',
       description: '主控制台与导航中心',
       radius: 38,
-      angle: Math.PI * 0.4,
+      angle: Math.PI * 0.7,
       size: 2.5,
       texture: cockpitTexture,
-      color: '#00c8ff',
-      emissiveColor: '#0080ff',
+      color: '#40d4ff',
+      emissiveColor: '#0090ff',
       rotationSpeed: 0.003,
       orbitSpeed: 0.05,
       axisTilt: 0.2,
@@ -67,16 +68,16 @@ function Scene() {
       name: '专注星',
       description: '沉浸式专注工作区',
       radius: 52,
-      angle: Math.PI * 1.2,
+      angle: Math.PI * 1.35,
       size: 2.0,
       texture: focusTexture,
-      color: '#ff8800',
-      emissiveColor: '#cc5500',
+      color: '#ff9830',
+      emissiveColor: '#dd6000',
       rotationSpeed: 0.004,
       orbitSpeed: 0.035,
       axisTilt: 0.18,
       hasRings: true,
-      ringColor: '#ddbb88',
+      ringColor: '#e0c080',
       hasMoon: true,
       path: '/flow-chamber',
     },
@@ -84,11 +85,11 @@ function Scene() {
       name: '知识星',
       description: '知识库与学习资源',
       radius: 68,
-      angle: Math.PI * 1.6,
+      angle: Math.PI * 1.75,
       size: 2.8,
       texture: knowledgeTexture,
-      color: '#44ddaa',
-      emissiveColor: '#22aa66',
+      color: '#40eebb',
+      emissiveColor: '#20bb70',
       rotationSpeed: 0.002,
       orbitSpeed: 0.025,
       axisTilt: 0.25,
@@ -99,18 +100,29 @@ function Scene() {
 
   return (
     <>
-      <ambientLight intensity={0.18} color="#5050a0" />
+      <color attach="background" args={['#000108']} />
+      <fogExp2 attach="fog" args={['#000108', 0.0025]} />
+
+      <ambientLight intensity={0.06} color="#202050" />
+
+      <pointLight
+        position={[0, 0, 0]}
+        intensity={4}
+        distance={400}
+        decay={1.5}
+        color="#fff0d0"
+      />
 
       <OrbitControls
         makeDefault
         enablePan={false}
-        minDistance={18}
-        maxDistance={180}
-        minPolarAngle={Math.PI * 0.15}
-        maxPolarAngle={Math.PI * 0.65}
+        minDistance={14}
+        maxDistance={160}
+        minPolarAngle={Math.PI * 0.12}
+        maxPolarAngle={Math.PI * 0.68}
         enableDamping
-        dampingFactor={0.06}
-        rotateSpeed={0.6}
+        dampingFactor={0.05}
+        rotateSpeed={0.5}
       />
 
       <CameraController />
@@ -124,6 +136,7 @@ function Scene() {
           key={`orbit-${i}`}
           radius={p.radius}
           color={p.color}
+          opacity={0.06}
         />
       ))}
 
@@ -154,6 +167,16 @@ function Scene() {
           onSelect={() => handleWarpTo(p.path)}
         />
       ))}
+
+      <EffectComposer multisampling={0}>
+        <Bloom
+          intensity={1.4}
+          luminanceThreshold={0.2}
+          luminanceSmoothing={0.6}
+          mipmapBlur
+          radius={0.75}
+        />
+      </EffectComposer>
     </>
   );
 }
@@ -162,16 +185,15 @@ export default function SolarSystem() {
   return (
     <div className="fixed inset-0 z-0 pointer-events-auto">
       <Canvas
-        camera={{ position: [0, 40, 85], fov: 60, near: 0.5, far: 1000 }}
+        camera={{ position: [0, 30, 68], fov: 52, near: 0.1, far: 2000 }}
         gl={{
           antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.4,
+          toneMappingExposure: 1.0,
           powerPreference: 'high-performance',
           failIfMajorPerformanceCaveat: false,
         }}
-        dpr={[1, 1.5]}
-        style={{ background: '#000005' }}
+        dpr={[1, 2]}
       >
         <Scene />
       </Canvas>
