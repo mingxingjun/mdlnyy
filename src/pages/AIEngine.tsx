@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, BookMarked, CheckCircle2, XCircle, Lightbulb, HelpCircle, MessageCircle } from 'lucide-react';
+import { ArrowRight, BookMarked, CheckCircle2, XCircle, Lightbulb } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { useToastStore } from '@/components/Toast';
 import PaperCard from '@/components/PaperCard';
@@ -57,10 +57,8 @@ export default function AIEngine() {
 
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [showExplanation, setShowExplanation] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(true);
   const [explanationStyle, setExplanationStyle] = useState<ExplanationStyle>('detailed');
-  const [isWrongMarked, setIsWrongMarked] = useState(false);
-  const [isStampAnimating, setIsStampAnimating] = useState(false);
 
   const filteredQuestions = useMemo(() => {
     if (currentSubjectFilter) {
@@ -78,10 +76,8 @@ export default function AIEngine() {
   useEffect(() => {
     setSelectedOption(null);
     setIsSubmitted(false);
-    setShowExplanation(false);
+    setShowExplanation(true);
     setExplanationStyle('detailed');
-    setIsWrongMarked(false);
-    setIsStampAnimating(false);
   }, [currentQuestionIndex, currentSubjectFilter]);
 
   const handleSelectOption = useCallback((index: number) => {
@@ -93,6 +89,7 @@ export default function AIEngine() {
     if (selectedOption === null || !currentQuestion) return;
     const result = submitAnswer(currentQuestion.id, selectedOption);
     setIsSubmitted(true);
+    setShowExplanation(true);
     if (result.isCorrect) {
       addToast('success', '回答正确！继续加油～');
     } else {
@@ -104,23 +101,9 @@ export default function AIEngine() {
     nextQuestion();
   }, [nextQuestion]);
 
-  const handleMarkWrong = useCallback(() => {
-    if (!currentQuestion || !isWrongMarked) {
-      setIsStampAnimating(true);
-      setTimeout(() => {
-        setIsWrongMarked(true);
-        addToast('success', '已收录错题本 📕');
-      }, 400);
-    }
-  }, [currentQuestion, isWrongMarked, addToast]);
-
   const handleFilterChange = useCallback((subjectId: string | null) => {
     setCurrentSubjectFilter(subjectId);
   }, [setCurrentSubjectFilter]);
-
-  const handleShowAnswer = useCallback(() => {
-    setExplanationStyle('detailed');
-  }, []);
 
   const isCorrect = isSubmitted && selectedOption === currentQuestion?.correctIndex;
 
@@ -142,12 +125,11 @@ export default function AIEngine() {
 
   return (
     <div className="max-w-4xl mx-auto py-6 px-4 pb-24">
-      {/* 顶部：标题 + 学科筛选 */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h1 className="font-serif text-2xl font-bold text-ink-800 flex items-center gap-2">
             <BookMarked className="text-seal" size={24} />
-            智能出题
+            开始刷题
           </h1>
           <div className="font-serif text-ink-600 text-sm">
             第 <span className="text-seal font-bold text-lg">{displayIndex}</span> / {totalQuestions} 题
@@ -174,7 +156,6 @@ export default function AIEngine() {
         </div>
       </div>
 
-      {/* 题卡区域 */}
       <AnimatePresence mode="wait">
         <motion.div
           key={currentQuestion.id}
@@ -183,16 +164,8 @@ export default function AIEngine() {
           exit={{ opacity: 0, y: -20, rotateX: -5 }}
           transition={{ duration: 0.4, ease: 'easeOut' }}
         >
-          <PaperCard className="relative min-h-[400px]">
-            {/* 左侧密封线装饰 */}
-            <div className="absolute left-8 top-6 bottom-6 w-px border-l-2 border-dashed border-ink-600/20 pointer-events-none">
-              <div className="absolute top-1/2 -left-8 -translate-y-1/2 -rotate-90 text-ink-500/40 text-xs font-serif whitespace-nowrap tracking-widest">
-                密封线内不要答题
-              </div>
-            </div>
-
-            <div className="pl-16 pr-8 py-8">
-              {/* 顶部标签：学科 + 难度 */}
+          <PaperCard className="relative min-h-[380px]">
+            <div className="pl-8 pr-8 py-8">
               <div className="flex items-center gap-2 mb-6">
                 {currentSubject && (
                   <VintageTag color="ink">{currentSubject.icon} {currentSubject.name}</VintageTag>
@@ -203,7 +176,6 @@ export default function AIEngine() {
                 )}
               </div>
 
-              {/* 题号：红笔圈注 */}
               <div className="flex items-start gap-4 mb-6">
                 <div className="relative flex-shrink-0">
                   <div
@@ -216,7 +188,6 @@ export default function AIEngine() {
                   </div>
                 </div>
 
-                {/* 题干 */}
                 <div className="flex-1 pt-2">
                   <p className="font-serif text-xl text-ink-800 leading-relaxed">
                     {currentQuestion.question}
@@ -224,8 +195,7 @@ export default function AIEngine() {
                 </div>
               </div>
 
-              {/* 选项区域 */}
-              <div className="space-y-3 mt-8 ml-4">
+              <div className="space-y-3 mt-8">
                 {currentQuestion.options.map((option, index) => {
                   const isSelected = selectedOption === index;
                   const isCorrectOption = index === currentQuestion.correctIndex;
@@ -264,7 +234,6 @@ export default function AIEngine() {
                       whileHover={!isSubmitted ? { scale: 1.005 } : undefined}
                       whileTap={!isSubmitted ? { scale: 0.995 } : undefined}
                     >
-                      {/* 选项标记 */}
                       <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center font-mono font-bold text-lg relative">
                         {showCorrect ? (
                           <>
@@ -291,15 +260,6 @@ export default function AIEngine() {
                             >
                               ✗
                             </motion.span>
-                            <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 40 40">
-                              <motion.line
-                                x1="5" y1="5" x2="35" y2="35"
-                                stroke="#8B2500" strokeWidth="2.5" strokeLinecap="round"
-                                initial={{ pathLength: 0 }}
-                                animate={{ pathLength: 1 }}
-                                transition={{ delay: 0.2, duration: 0.3 }}
-                              />
-                            </svg>
                           </>
                         ) : (
                           <span className={`${isSelected ? 'text-seal' : 'text-ink-500'}`}>
@@ -308,7 +268,6 @@ export default function AIEngine() {
                         )}
                       </div>
 
-                      {/* 选项内容 */}
                       <div className="flex-1 pt-1">
                         <p className={`font-serif text-base leading-relaxed
                           ${showCorrect ? 'text-[#2D5A27] font-medium' : ''}
@@ -321,44 +280,6 @@ export default function AIEngine() {
                         </p>
                       </div>
 
-                      {/* 正确答案红圈标注 */}
-                      {showCorrect && isSubmitted && (
-                        <motion.div
-                          initial={{ scale: 0, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          transition={{ delay: 0.3, type: 'spring', stiffness: 200, damping: 15 }}
-                          className="absolute -right-2 -top-3 z-20"
-                        >
-                          <div className="relative">
-                            <svg width="100" height="36" viewBox="0 0 100 36" className="overflow-visible">
-                              <motion.ellipse
-                                cx="40" cy="18" rx="42" ry="16"
-                                fill="none" stroke="#8B2500" strokeWidth="2.5" strokeLinecap="round"
-                                strokeDasharray="200"
-                                initial={{ strokeDashoffset: 200 }}
-                                animate={{ strokeDashoffset: 0 }}
-                                transition={{ delay: 0.4, duration: 0.6, ease: 'easeOut' }}
-                                style={{ filter: 'drop-shadow(0 1px 1px rgba(139,37,0,0.2))' }}
-                              />
-                              <motion.text
-                                x="40" y="23"
-                                textAnchor="middle"
-                                fill="#8B2500"
-                                fontFamily='"Noto Serif SC", "STKaiti", "KaiTi", cursive'
-                                fontSize="14"
-                                fontStyle="italic"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: 0.9 }}
-                              >
-                                正确答案
-                              </motion.text>
-                            </svg>
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* 选中时的填涂效果 */}
                       {isSelected && !isSubmitted && (
                         <motion.div
                           layoutId="option-selected"
@@ -371,16 +292,14 @@ export default function AIEngine() {
                 })}
               </div>
 
-              {/* 结果反馈区 */}
               <AnimatePresence>
                 {isSubmitted && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="mt-8 ml-4"
+                    className="mt-8"
                   >
-                    {/* 答对反馈 */}
                     {isCorrect ? (
                       <div className="p-5 rounded-sm border-l-4 bg-[#2D5A27]/5 border-[#2D5A27]">
                         <div className="flex items-center gap-3 mb-3">
@@ -393,7 +312,7 @@ export default function AIEngine() {
                         {!showExplanation ? (
                           <motion.button
                             onClick={() => setShowExplanation(true)}
-                            className="font-serif text-sm text-[#2D5A27] italic underline decoration-dotted underline-offset-4 hover:opacity-70 transition-opacity"
+                            className="font-serif text-sm text-[#2D5A27] italic underline decoration-dotted underline-offset-4 hover:opacity-70 transition-opacity cursor-pointer"
                             whileHover={{ x: 2 }}
                           >
                             查看解析 →
@@ -416,33 +335,25 @@ export default function AIEngine() {
                         )}
                       </div>
                     ) : (
-                      /* 答错反馈 + 讲解面板 */
                       <div>
                         <div className="p-5 rounded-sm border-l-4 bg-seal/5 border-seal">
-                          <div className="flex items-center gap-3 mb-3">
+                          <div className="flex items-center gap-3 mb-2">
                             <XCircle className="text-seal" size={28} />
                             <span className="font-serif text-2xl font-bold text-seal">
                               回答错误
                             </span>
                           </div>
 
-                          <p className="font-serif text-ink-700 mb-2">
+                          <p className="font-serif text-ink-700 mb-3">
                             正确答案是：<span className="text-[#2D5A27] font-bold">[{OPTION_LABELS[currentQuestion.correctIndex]}] {currentQuestion.options[currentQuestion.correctIndex]}</span>
                           </p>
 
-                          {!showExplanation && (
-                            <VintageButton
-                              variant="primary"
-                              onClick={() => setShowExplanation(true)}
-                              className="mt-2"
-                            >
-                              <Lightbulb size={16} className="mr-2" />
-                              查看详细讲解
-                            </VintageButton>
-                          )}
+                          <div className="flex items-center gap-2 text-sm font-serif text-seal/80">
+                            <span>📕</span>
+                            <span>✓ 已自动加入错题本，稍后可复习</span>
+                          </div>
                         </div>
 
-                        {/* 讲解面板展开区域 */}
                         <AnimatePresence>
                           {showExplanation && (
                             <motion.div
@@ -453,11 +364,9 @@ export default function AIEngine() {
                               className="overflow-hidden"
                             >
                               <div className="mt-4 pt-4 border-t-2 border-seal/30 relative">
-                                {/* 左侧批改栏竖线 */}
                                 <div className="absolute left-0 top-4 bottom-4 w-0.5 bg-seal/20" />
 
-                                {/* 讲解风格切换器 */}
-                                <div className="flex items-center gap-2 mb-6 pl-4 flex-wrap">
+                                <div className="flex items-center gap-2 mb-5 pl-4 flex-wrap">
                                   <span className="handwritten text-seal text-sm mr-1" style={{ transform: 'skew(-1deg)' }}>
                                     讲解方式：
                                   </span>
@@ -466,7 +375,7 @@ export default function AIEngine() {
                                       key={style.id}
                                       onClick={() => setExplanationStyle(style.id)}
                                       className={`
-                                        px-3 py-1.5 font-serif text-xs rounded-sm border transition-all cursor-pointer
+                                        px-3 py-1 font-serif text-xs rounded-sm border transition-all cursor-pointer
                                         ${explanationStyle === style.id
                                           ? 'bg-seal text-paper-50 border-seal shadow-stamp'
                                           : 'bg-paper-50 text-ink-600 border-ink-600/20 hover:border-seal/40 hover:bg-seal/5'
@@ -482,10 +391,8 @@ export default function AIEngine() {
                                   ))}
                                 </div>
 
-                                {/* 讲解内容区域 */}
                                 <div className="pl-4 relative">
                                   <AnimatePresence mode="wait">
-                                    {/* 详细讲解风格 */}
                                     {explanationStyle === 'detailed' && (
                                       <motion.div
                                         key="detailed"
@@ -494,7 +401,6 @@ export default function AIEngine() {
                                         exit={{ opacity: 0, x: 10 }}
                                         transition={{ duration: 0.25 }}
                                       >
-                                        {/* 解题步骤 */}
                                         <div className="mb-6">
                                           <h4 className="handwritten text-seal text-lg mb-4 flex items-center gap-2" style={{ transform: 'skew(-2deg)', color: '#8B2500' }}>
                                             <span className="text-xl">【</span>
@@ -529,7 +435,6 @@ export default function AIEngine() {
                                           </div>
                                         </div>
 
-                                        {/* 易错点警示 */}
                                         {currentQuestion.mistakes.length > 0 && (
                                           <div className="mb-4">
                                             <h4 className="handwritten text-seal text-lg mb-3 flex items-center gap-2" style={{ transform: 'skew(-1deg)', color: '#8B2500' }}>
@@ -555,7 +460,6 @@ export default function AIEngine() {
                                       </motion.div>
                                     )}
 
-                                    {/* 简洁提示风格 */}
                                     {explanationStyle === 'concise' && (
                                       <motion.div
                                         key="concise"
@@ -580,7 +484,6 @@ export default function AIEngine() {
                                       </motion.div>
                                     )}
 
-                                    {/* 苏格拉底引导风格 */}
                                     {explanationStyle === 'socratic' && (
                                       <motion.div
                                         key="socratic"
@@ -591,7 +494,7 @@ export default function AIEngine() {
                                       >
                                         <div className="mb-4">
                                           <h4 className="handwritten text-ink-700 text-base mb-4 flex items-center gap-2 italic">
-                                            <HelpCircle size={18} className="text-blue-700" />
+                                            <Lightbulb size={18} className="text-blue-700" />
                                             先不要看答案，试着思考以下问题：
                                           </h4>
                                           <div className="space-y-3">
@@ -611,7 +514,7 @@ export default function AIEngine() {
                                                   <div className="flex items-start gap-2">
                                                     <span className="text-lg flex-shrink-0">❓</span>
                                                     <p className="text-[#2C3E50] font-serif text-base leading-relaxed">
-                                      {question}
+                                                      {question}
                                                     </p>
                                                   </div>
                                                 </StickyNote>
@@ -619,17 +522,6 @@ export default function AIEngine() {
                                             ))}
                                           </div>
                                         </div>
-
-                                        <motion.button
-                                          onClick={handleShowAnswer}
-                                          className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 font-serif text-sm bg-seal/10 text-seal border-2 border-seal/30 rounded-sm hover:bg-seal/20 transition-colors cursor-pointer"
-                                          whileHover={{ scale: 1.02, x: 3 }}
-                                          whileTap={{ scale: 0.98 }}
-                                          style={{ transform: 'rotate(-1deg)' }}
-                                        >
-                                          <MessageCircle size={16} />
-                                          我想出来了，查看答案 →
-                                        </motion.button>
                                       </motion.div>
                                     )}
                                   </AnimatePresence>
@@ -648,7 +540,6 @@ export default function AIEngine() {
         </motion.div>
       </AnimatePresence>
 
-      {/* 底部操作栏 */}
       <div className="mt-6 flex items-center justify-center gap-3 flex-wrap">
         {!isSubmitted ? (
           <VintageButton
@@ -661,78 +552,42 @@ export default function AIEngine() {
           </VintageButton>
         ) : (
           <>
-            {!isCorrect && (
-              <div className="relative">
+            {isCorrect ? (
+              <>
                 <motion.button
-                  onClick={handleMarkWrong}
-                  disabled={isWrongMarked}
-                  className={`
-                    relative inline-flex items-center justify-center font-serif font-bold
-                    w-24 h-24 rounded-full text-sm select-none
-                    transition-all duration-200 focus:outline-none
-                    ${isWrongMarked
-                      ? 'bg-ink-400/30 text-ink-500 border-2 border-ink-400/30 cursor-default'
-                      : 'bg-seal text-paper-50 border-2 border-seal-dark/40 shadow-stamp hover:opacity-100 opacity-85 cursor-pointer'
-                    }
-                  `}
-                  style={!isWrongMarked ? { letterSpacing: '1px' } : undefined}
-                  whileHover={!isWrongMarked ? { scale: 1.05, rotate: -6 } : undefined}
-                  whileTap={!isWrongMarked ? { scale: 0.97 } : undefined}
-                  animate={isStampAnimating ? {
-                    scale: [1, 1.3, 0.95, 1.02, 1],
-                    rotate: [-8, -10, -6, -9, -8],
-                    transition: { duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }
-                  } : { rotate: isWrongMarked ? -8 : -8 }}
+                  onClick={() => setShowExplanation(!showExplanation)}
+                  className="font-serif text-sm text-ink-600 italic underline decoration-dotted underline-offset-4 hover:text-ink-800 transition-colors cursor-pointer"
+                  whileHover={{ x: 2 }}
                 >
-                  {isWrongMarked ? (
-                    <>
-                      <span className="leading-tight text-center">
-                        已收录
-                        <br />
-                        <span className="text-lg">✓</span>
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="leading-tight text-center">
-                        📕
-                        <br />
-                        收录错题本
-                      </span>
-                    </>
-                  )}
+                  {showExplanation ? '收起解析' : '查看解析'}
                 </motion.button>
-
-                {/* 盖章动画效果 */}
-                <AnimatePresence>
-                  {isStampAnimating && !isWrongMarked && (
-                    <motion.div
-                      initial={{ scale: 2, opacity: 0, rotate: -15 }}
-                      animate={{ scale: 1, opacity: 0.9, rotate: -8 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
-                      className="absolute inset-0 rounded-full border-4 border-seal flex items-center justify-center pointer-events-none"
-                      style={{
-                        background: 'radial-gradient(circle, rgba(139,37,0,0.1) 0%, transparent 70%)',
-                        boxShadow: 'inset 0 0 20px rgba(139,37,0,0.15)'
-                      }}
-                    >
-                      <span className="font-serif text-seal text-xs font-bold" style={{ letterSpacing: '2px' }}>
-                        已收录
-                      </span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                <VintageButton
+                  variant="primary"
+                  size="lg"
+                  onClick={handleNext}
+                >
+                  下一题
+                  <ArrowRight size={16} className="ml-2" />
+                </VintageButton>
+              </>
+            ) : (
+              <>
+                <VintageButton
+                  variant="ghost"
+                  onClick={handleNext}
+                >
+                  跳过
+                </VintageButton>
+                <VintageButton
+                  variant="primary"
+                  size="lg"
+                  onClick={handleNext}
+                >
+                  下一题
+                  <ArrowRight size={16} className="ml-2" />
+                </VintageButton>
+              </>
             )}
-
-            <VintageButton
-              variant={isCorrect ? 'primary' : 'ghost'}
-              onClick={handleNext}
-            >
-              下一题
-              <ArrowRight size={16} className="ml-2" />
-            </VintageButton>
           </>
         )}
       </div>

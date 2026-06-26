@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Play, Pause, RotateCcw, Volume2, VolumeX, Users, LogIn,
-  Clock, Check, Headphones, CloudRain, BookOpen, Coffee, TreePine,
-  Flame, Music,
+  Play, Pause, RotateCcw, Volume2, VolumeX,
+  Clock, Check, Headphones, CloudRain, BookOpen, Coffee, Flame,
 } from 'lucide-react';
 import { useAppStore, type WhiteNoiseType } from '@/store/useAppStore';
 import { useToastStore } from '@/components/Toast';
@@ -16,8 +15,6 @@ const NOISE_CONFIG: { type: WhiteNoiseType; label: string; icon: typeof CloudRai
   { type: 'rain', label: '雨声', icon: CloudRain },
   { type: 'library', label: '图书馆', icon: BookOpen },
   { type: 'cafe', label: '咖啡馆', icon: Coffee },
-  { type: 'bass', label: '低音', icon: Music },
-  { type: 'forest', label: '森林', icon: TreePine },
   { type: 'fire', label: '壁炉', icon: Flame },
 ];
 
@@ -90,41 +87,6 @@ function createNoiseGenerator(
       source.start();
       return source;
     }
-    case 'bass': {
-      const osc = ctx.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.value = 60;
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.value = 120;
-      osc.connect(filter);
-      filter.connect(gainNode);
-      osc.start();
-      return osc;
-    }
-    case 'forest': {
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.loop = true;
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'bandpass';
-      filter.frequency.value = 600;
-      filter.Q.value = 2;
-      const lfo = ctx.createOscillator();
-      lfo.type = 'sine';
-      lfo.frequency.value = 0.3;
-      const lfoGain = ctx.createGain();
-      lfoGain.gain.value = 300;
-      lfo.connect(lfoGain);
-      lfoGain.connect(filter.frequency);
-      lfo.start();
-      source.connect(filter);
-      filter.connect(gainNode);
-      source.start();
-      return source;
-    }
     case 'fire': {
       const data = buffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) {
@@ -142,6 +104,16 @@ function createNoiseGenerator(
       filter.frequency.value = 2000;
       source.connect(filter);
       filter.connect(gainNode);
+      source.start();
+      return source;
+    }
+    default: {
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      source.connect(gainNode);
       source.start();
       return source;
     }
@@ -404,7 +376,7 @@ function WhiteNoisePanel() {
         白噪音
       </h3>
 
-      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {NOISE_CONFIG.map(({ type, label, icon: Icon }) => {
           const isActive = activeWhiteNoise.includes(type);
           return (
@@ -431,7 +403,7 @@ function WhiteNoisePanel() {
                 className={isActive ? 'text-seal' : 'text-ink-600'}
               />
               <span
-                className={`text-[11px] font-serif font-medium ${isActive ? 'text-seal' : 'text-ink-600'}`}
+                className={`text-xs font-serif font-medium ${isActive ? 'text-seal' : 'text-ink-600'}`}
               >
                 {label}
               </span>
@@ -448,81 +420,6 @@ function WhiteNoisePanel() {
                   }}
                 />
               )}
-            </div>
-          );
-        })}
-      </div>
-    </PaperCard>
-  );
-}
-
-function StudyRoomsPanel() {
-  const studyRooms = useAppStore((s) => s.studyRooms);
-  const joinedRooms = useAppStore((s) => s.joinedRooms);
-  const joinRoom = useAppStore((s) => s.joinRoom);
-  const leaveRoom = useAppStore((s) => s.leaveRoom);
-  const addToast = useToastStore((s) => s.addToast);
-
-  const handleJoinLeave = (roomId: string, roomName: string) => {
-    if (joinedRooms.includes(roomId)) {
-      leaveRoom(roomId);
-      addToast('info', `已离开「${roomName}」`);
-    } else {
-      joinRoom(roomId);
-      addToast('success', `已加入「${roomName}」`);
-    }
-  };
-
-  return (
-    <PaperCard className="p-5">
-      <h3 className="font-serif text-sm font-semibold text-ink-700 mb-4 flex items-center gap-2 tracking-wide">
-        <Users size={14} className="text-green-ink" />
-        自习室
-      </h3>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[340px] overflow-y-auto pr-1">
-        {studyRooms.map((room) => {
-          const isJoined = joinedRooms.includes(room.id);
-          return (
-            <div
-              key={room.id}
-              className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-md border transition-all duration-200 ${
-                isJoined
-                  ? 'bg-green-ink/8 border-green-ink/25'
-                  : 'bg-paper-100/60 border-ink-800/10 hover:border-ink-800/20'
-              }`}
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-serif text-ink-800 truncate">{room.name}</span>
-                  {room.isActive && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-ink animate-pulse flex-shrink-0" />
-                  )}
-                </div>
-                <span className="text-[11px] font-serif text-ink-600">
-                  {room.members}/{room.maxMembers} 人
-                </span>
-              </div>
-              <button
-                onClick={() => handleJoinLeave(room.id, room.name)}
-                className={`flex items-center gap-1 text-[11px] px-3 py-1 rounded-md font-serif font-medium transition-all duration-200 flex-shrink-0 ${
-                  isJoined
-                    ? 'bg-green-ink/10 border border-green-ink/25 text-green-ink'
-                    : 'bg-seal text-paper-50 hover:bg-seal-dark shadow-sm'
-                }`}
-              >
-                {isJoined ? (
-                  <>
-                    <Check size={10} />
-                    已加入
-                  </>
-                ) : (
-                  <>
-                    <LogIn size={10} />
-                    加入
-                  </>
-                )}
-              </button>
             </div>
           );
         })}
@@ -561,19 +458,9 @@ function FocusStats() {
       </div>
       <div className="w-px h-8 bg-ink-800/10 hidden sm:block" />
       <div className="flex items-center gap-3">
-        <Flame size={16} className="text-seal" />
-        <div>
-          <p className="text-[10px] font-serif text-ink-600 uppercase tracking-widest">完成番茄</p>
-          <p className="font-serif text-xl font-bold text-ink-800">
-            {completedToday}
-          </p>
-        </div>
-      </div>
-      <div className="w-px h-8 bg-ink-800/10 hidden sm:block" />
-      <div className="flex items-center gap-3">
         <Check size={16} className="text-green-ink" />
         <div>
-          <p className="text-[10px] font-serif text-ink-600 uppercase tracking-widest">连续轮次</p>
+          <p className="text-[10px] font-serif text-ink-600 uppercase tracking-widest">完成番茄</p>
           <p className="font-serif text-xl font-bold text-ink-800">
             {completedToday}
           </p>
@@ -585,21 +472,18 @@ function FocusStats() {
 
 export default function FlowChamber() {
   return (
-    <div className="max-w-5xl mx-auto space-y-8 px-4 md:px-0">
-      <div className="mb-2">
+    <div className="max-w-3xl mx-auto space-y-8 px-4 md:px-0 py-6">
+      <div className="mb-2 text-center">
         <h1 className="handwritten text-3xl md:text-4xl font-serif text-ink-800 leading-tight mb-1"
           style={{ fontFamily: '"Noto Serif SC", Georgia, serif', fontStyle: 'italic' }}>
-          专注时光 ⏳
+          番茄钟 ⏱️
         </h1>
-        <p className="font-serif text-ink-600 text-sm mt-1">番茄钟 · 白噪音 · 自习室</p>
+        <p className="font-serif text-ink-600 text-sm mt-1">25分钟专注 · 5分钟休息</p>
       </div>
 
       <PomodoroTimer />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <WhiteNoisePanel />
-        <StudyRoomsPanel />
-      </div>
+      <WhiteNoisePanel />
 
       <FocusStats />
     </div>

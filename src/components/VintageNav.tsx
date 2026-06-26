@@ -9,12 +9,12 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { path: '/dashboard', label: '复习计划', icon: '📋', primary: true },
-  { path: '/ai-engine', label: '智能出题', icon: '❓', primary: true },
-  { path: '/my-notes', label: '错题集', icon: '📝', primary: true },
+  { path: '/dashboard', label: '首页', icon: '🏠', primary: true },
+  { path: '/ai-engine', label: '开始刷题', icon: '✏️', primary: true },
+  { path: '/my-notes', label: '错题本', icon: '📕', primary: true },
   { path: '/flashcards', label: '记忆闪卡', icon: '🃏', primary: true },
-  { path: '/supervisor', label: '进度督学', icon: '📊', primary: true },
-  { path: '/flow-chamber', label: '沉浸流', icon: '🎯', primary: false },
+  { path: '/supervisor', label: '学习报告', icon: '📊', primary: true },
+  { path: '/flow-chamber', label: '番茄钟', icon: '⏱️', primary: false },
 ];
 
 export default function VintageNav() {
@@ -141,11 +141,7 @@ export default function VintageNav() {
           })}
         </div>
 
-        <div className="flex items-center gap-2 pb-2 pt-2">
-          <div className="text-ink-600/60 font-serif text-sm hidden md:block">
-            2026.06
-          </div>
-        </div>
+
       </nav>
 
       <div className="h-px bg-ink-800/10 mx-4 md:mx-6 mt-0" />

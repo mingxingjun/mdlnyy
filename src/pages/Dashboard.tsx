@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
@@ -6,10 +6,11 @@ import PaperCard from '@/components/PaperCard';
 import VintageTag from '@/components/VintageTag';
 import StickyNote from '@/components/StickyNote';
 import FileUploadZone from '@/components/FileUploadZone';
+import VintageButton from '@/components/VintageButton';
 
 const staggerContainer = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.12 } },
+  visible: { transition: { staggerChildren: 0.1 } },
 };
 
 const fadeUp = {
@@ -63,7 +64,8 @@ function getStatusTag(progress: number): { color: 'green' | 'seal' | 'ink'; text
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { subjects, flashCards } = useAppStore();
+  const { subjects, flashCards, answerRecords, wrongAnswers, setCurrentSubjectFilter } = useAppStore();
+  const [uploadExpanded, setUploadExpanded] = useState(false);
 
   const nearestExam = useMemo(() => {
     if (subjects.length === 0) return null;
@@ -86,24 +88,118 @@ export default function Dashboard() {
     return Math.round(subjects.reduce((s, sub) => s + sub.progress, 0) / subjects.length);
   }, [subjects]);
 
-  const unmasteredCount = useMemo(() => flashCards.filter(c => !c.mastered).length, [flashCards]);
-  const masteredCount = useMemo(() => flashCards.filter(c => c.mastered).length, [flashCards]);
+  const todayStart = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }, []);
+
+  const todayAnswerCount = useMemo(() => {
+    return answerRecords.filter(r => r.timestamp >= todayStart).length;
+  }, [answerRecords, todayStart]);
+
   const correctRate = useMemo(() => {
-    if (flashCards.length === 0) return 0;
-    return Math.round((masteredCount / flashCards.length) * 100);
-  }, [masteredCount, flashCards]);
+    if (answerRecords.length === 0) return null;
+    const correct = answerRecords.filter(r => r.isCorrect).length;
+    return Math.round((correct / answerRecords.length) * 100);
+  }, [answerRecords]);
+
+  const studyStreak = useMemo(() => {
+    const saved = localStorage.getItem('studyStreak');
+    return saved ? parseInt(saved, 10) : 7;
+  }, []);
+
+  const pendingWrongCount = useMemo(() => {
+    return wrongAnswers.filter(w => !w.reviewed).length;
+  }, [wrongAnswers]);
+
+  const now = Date.now();
+  const dueFlashcards = useMemo(() => {
+    return flashCards.filter(c => c.nextReviewDate <= now && !c.mastered).length;
+  }, [flashCards, now]);
 
   const lowestProgressSubject = useMemo(() => {
     if (subjects.length === 0) return null;
     return [...subjects].sort((a, b) => a.progress - b.progress)[0];
   }, [subjects]);
 
-  const stickyNotes = [
-    { color: 'yellow' as const, rotation: -3, text: '📌 今日待办：完成高数第五章练习题', top: 0 },
-    { color: 'pink' as const, rotation: 2, text: `💪 坚持就是胜利！已经复习${avgProgress}%了`, top: 15 },
-    { color: 'blue' as const, rotation: -1.5, text: '⚠️ 有3道错题待订正', top: 8 },
-    { color: 'green' as const, rotation: 2.5, text: `📚 ${unmasteredCount}张闪卡待复习`, top: 20 },
-  ];
+  const stickyNotes = useMemo(() => {
+    const notes = [];
+
+    if (nearestExam) {
+      notes.push({
+        color: 'yellow' as const,
+        rotation: -3,
+        text: nearestExam.passed
+          ? `🎉 ${nearestExam.name}考试加油！`
+          : `📌 ${nearestExam.name}还有${nearestExam.days}天考试`,
+        top: 0,
+      });
+    } else {
+      notes.push({
+        color: 'yellow' as const,
+        rotation: -3,
+        text: '📌 还没有添加考试科目哦',
+        top: 0,
+      });
+    }
+
+    let encourageText = '💪 今天也要加油复习呀！';
+    if (correctRate !== null) {
+      if (correctRate >= 80) {
+        encourageText = `🌟 正确率${correctRate}%！太棒了继续保持`;
+      } else if (correctRate >= 60) {
+        encourageText = `💪 正确率${correctRate}%，再接再厉！`;
+      } else {
+        encourageText = `📝 正确率${correctRate}%，多看看错题本吧`;
+      }
+    }
+    notes.push({
+      color: 'pink' as const,
+      rotation: 2,
+      text: encourageText,
+      top: 15,
+    });
+
+    if (pendingWrongCount > 0) {
+      notes.push({
+        color: 'blue' as const,
+        rotation: -1.5,
+        text: `⚠️ 有${pendingWrongCount}道错题待订正`,
+        top: 8,
+      });
+    } else {
+      notes.push({
+        color: 'blue' as const,
+        rotation: -1.5,
+        text: '🎉 错题都订正完了！',
+        top: 8,
+      });
+    }
+
+    if (dueFlashcards > 0) {
+      notes.push({
+        color: 'green' as const,
+        rotation: 2.5,
+        text: `📚 ${dueFlashcards}张闪卡待复习`,
+        top: 20,
+      });
+    } else {
+      notes.push({
+        color: 'green' as const,
+        rotation: 2.5,
+        text: '✨ 闪卡都复习完啦！',
+        top: 20,
+      });
+    }
+
+    return notes;
+  }, [nearestExam, correctRate, pendingWrongCount, dueFlashcards]);
+
+  const handleSubjectClick = (subjectId: string | null) => {
+    setCurrentSubjectFilter(subjectId);
+    navigate('/ai-engine');
+  };
 
   return (
     <motion.div
@@ -112,7 +208,7 @@ export default function Dashboard() {
       initial="hidden"
       animate="visible"
     >
-      <motion.div variants={fadeUp} className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-8">
+      <motion.div variants={fadeUp} className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="handwritten text-3xl md:text-4xl font-serif text-ink-800 leading-tight mb-1"
             style={{ fontFamily: '"Noto Serif SC", Georgia, serif', fontStyle: 'italic' }}>
@@ -122,19 +218,19 @@ export default function Dashboard() {
         </div>
         
         {nearestExam && (
-          <PaperCard status="default" rotation={-2} className="px-6 py-4">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 flex flex-col items-center justify-center bg-seal/10 border border-seal/20 rounded">
-                <span className="text-3xl font-serif font-bold text-seal leading-none">{nearestExam.days}</span>
-                <span className="text-[10px] font-serif text-seal/70 mt-1">天后考试</span>
+          <PaperCard status="default" rotation={-1} className="px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 flex flex-col items-center justify-center bg-seal/10 border border-seal/20 rounded">
+                <span className="text-2xl font-serif font-bold text-seal leading-none">{nearestExam.days}</span>
+                <span className="text-[9px] font-serif text-seal/70 mt-0.5">天后</span>
               </div>
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-lg">{nearestExam.icon}</span>
-                  <span className="font-serif text-lg text-ink-800 font-medium">{nearestExam.name}</span>
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="text-base">{nearestExam.icon}</span>
+                  <span className="font-serif text-base text-ink-800 font-medium">{nearestExam.name}</span>
                 </div>
                 <p className="font-serif text-xs text-ink-500">
-                  最近的考试 · {nearestExam.examDate}
+                  {nearestExam.examDate}
                 </p>
               </div>
             </div>
@@ -142,8 +238,72 @@ export default function Dashboard() {
         )}
       </motion.div>
 
-      <motion.div variants={fadeUp} className="mb-10">
-        <FileUploadZone />
+      <motion.div variants={fadeUp} className="mb-8">
+        <PaperCard status="active" rotation={-0.5} className="p-6">
+          <h2 className="font-serif text-2xl md:text-3xl text-ink-800 font-bold mb-5 flex items-center gap-2">
+            📝 今天学什么？
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+            {subjects.map((subject) => (
+              <motion.button
+                key={subject.id}
+                onClick={() => handleSubjectClick(subject.id)}
+                className="flex flex-col items-center gap-1.5 p-3 rounded-md border-2 border-dashed transition-all cursor-pointer hover:shadow-md"
+                style={{
+                  borderColor: subject.color + '40',
+                  backgroundColor: subject.color + '08',
+                }}
+                whileHover={{ y: -3, scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <span className="text-3xl">{subject.icon}</span>
+                <span className="font-serif text-sm font-medium text-ink-800">{subject.name}</span>
+                <span className="text-xs font-serif" style={{ color: subject.color }}>开始刷题 →</span>
+              </motion.button>
+            ))}
+            <motion.button
+              onClick={() => handleSubjectClick(null)}
+              className="flex flex-col items-center gap-1.5 p-3 rounded-md border-2 border-dashed border-ink-600/30 bg-paper-100/50 transition-all cursor-pointer hover:shadow-md hover:border-ink-600/50"
+              whileHover={{ y: -3, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <span className="text-3xl">📚</span>
+              <span className="font-serif text-sm font-medium text-ink-800">全部学科</span>
+              <span className="text-xs font-serif text-ink-600">开始刷题 →</span>
+            </motion.button>
+          </div>
+        </PaperCard>
+      </motion.div>
+
+      <motion.div variants={fadeUp} className="mb-8">
+        <div className="max-w-2xl">
+          {!uploadExpanded ? (
+            <motion.button
+              onClick={() => setUploadExpanded(true)}
+              className="w-full p-4 bg-paper-100/60 border border-dashed border-ink-600/20 rounded-md text-left hover:bg-paper-200/60 hover:border-ink-600/30 transition-colors cursor-pointer flex items-center gap-3"
+              whileHover={{ x: 4 }}
+            >
+              <span className="text-xl">📎</span>
+              <span className="font-serif text-ink-700">上传复习资料（PDF/Word）生成专属题目</span>
+              <span className="ml-auto text-ink-500 text-sm">点击展开 →</span>
+            </motion.button>
+          ) : (
+            <div className="relative">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-serif text-lg text-ink-800 font-semibold flex items-center gap-2">
+                  📎 上传资料
+                </h3>
+                <button
+                  onClick={() => setUploadExpanded(false)}
+                  className="text-ink-500 hover:text-ink-700 text-sm font-serif"
+                >
+                  收起 ↑
+                </button>
+              </div>
+              <FileUploadZone />
+            </div>
+          )}
+        </div>
       </motion.div>
 
       <motion.div variants={fadeUp} className="mb-10">
@@ -165,7 +325,7 @@ export default function Dashboard() {
               <motion.div
                 key={subject.id}
                 whileHover={{ y: -4 }}
-                onClick={() => navigate('/ai-engine')}
+                onClick={() => handleSubjectClick(subject.id)}
                 className="cursor-pointer flex-shrink-0"
                 style={{ width: '240px' }}
               >
@@ -232,15 +392,19 @@ export default function Dashboard() {
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <PaperCard className="p-5 text-center" rotation={-1}>
-            <div className="text-3xl font-serif font-bold text-ink-800 mb-1">12</div>
+            <div className="text-3xl font-serif font-bold text-ink-800 mb-1">
+              {todayAnswerCount > 0 ? todayAnswerCount : '--'}
+            </div>
             <div className="font-serif text-sm text-ink-600">今日答题</div>
           </PaperCard>
           <PaperCard className="p-5 text-center" rotation={0.5}>
-            <div className="text-3xl font-serif font-bold text-ink-800 mb-1">{correctRate}%</div>
+            <div className="text-3xl font-serif font-bold text-ink-800 mb-1">
+              {correctRate !== null ? `${correctRate}%` : '--'}
+            </div>
             <div className="font-serif text-sm text-ink-600">正确率</div>
           </PaperCard>
           <PaperCard className="p-5 text-center" rotation={-0.8}>
-            <div className="text-3xl font-serif font-bold text-ink-800 mb-1">7</div>
+            <div className="text-3xl font-serif font-bold text-ink-800 mb-1">{studyStreak}</div>
             <div className="font-serif text-sm text-ink-600">连续天数</div>
           </PaperCard>
           <PaperCard className="p-5 text-center" rotation={1.2}>
@@ -249,23 +413,31 @@ export default function Dashboard() {
           </PaperCard>
         </div>
 
-        <div className="mt-6">
-          <PaperCard className="p-5">
-            <h3 className="font-serif text-sm text-ink-700 mb-4">各学科进度对比</h3>
-            <div className="space-y-3">
-              {subjects.map((subject) => (
-                <div key={subject.id} className="flex items-center gap-3">
-                  <span className="text-lg w-6 flex-shrink-0">{subject.icon}</span>
-                  <span className="font-serif text-sm text-ink-700 w-20 flex-shrink-0 truncate">{subject.name}</span>
-                  <div className="flex-1">
-                    <HandDrawnProgressBar progress={subject.progress} color={subject.color} />
-                  </div>
-                  <span className="font-serif text-xs text-ink-600 w-10 text-right tabular-nums">{subject.progress}%</span>
+        {lowestProgressSubject && lowestProgressSubject.progress < 60 && (
+          <div className="mt-6">
+            <PaperCard className="p-5" rotation={-1}>
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">⚠️</span>
+                <div>
+                  <p className="font-serif text-ink-800 font-medium">
+                    {lowestProgressSubject.icon} {lowestProgressSubject.name}进度稍慢
+                  </p>
+                  <p className="font-serif text-sm text-ink-600 mt-0.5">
+                    当前掌握度 {lowestProgressSubject.progress}%，建议优先刷这科题目
+                  </p>
                 </div>
-              ))}
-            </div>
-          </PaperCard>
-        </div>
+                <VintageButton
+                  variant="primary"
+                  size="sm"
+                  className="ml-auto"
+                  onClick={() => handleSubjectClick(lowestProgressSubject.id)}
+                >
+                  去刷题
+                </VintageButton>
+              </div>
+            </PaperCard>
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );
