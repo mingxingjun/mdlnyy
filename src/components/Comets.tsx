@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -14,7 +14,7 @@ interface Comet {
 export default function Comets() {
   const trailRef = useRef<THREE.Points>(null);
   const nucleusRef = useRef<THREE.Mesh>(null);
-  const [comet, setComet] = useState<Comet>(() => spawnComet(3));
+  const cometRef = useRef<Comet>(spawnComet(3));
 
   const trailCount = 80;
 
@@ -70,11 +70,20 @@ export default function Comets() {
     transparent: true,
   }), []);
 
+  useEffect(() => {
+    return () => {
+      trailGeometry.dispose();
+      trailMaterial.dispose();
+      nucleusMaterial.dispose();
+    };
+  }, [trailGeometry, trailMaterial, nucleusMaterial]);
+
   useFrame((state) => {
     const time = state.clock.elapsedTime;
+    const comet = cometRef.current;
     if (!comet.active) {
       if (time > comet.startTime) {
-        setComet(spawnComet(time + 8 + Math.random() * 15));
+        cometRef.current = spawnComet(time + 8 + Math.random() * 15);
       }
       if (nucleusRef.current) nucleusRef.current.visible = false;
       return;
@@ -117,7 +126,7 @@ export default function Comets() {
     trailGeometry.attributes.size.needsUpdate = true;
 
     if (progress >= 1) {
-      setComet(spawnComet(time + 10 + Math.random() * 20));
+      cometRef.current = spawnComet(time + 10 + Math.random() * 20);
     }
   });
 

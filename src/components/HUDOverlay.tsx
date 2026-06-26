@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useMemo } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Rocket, Brain, NotebookPen, Headphones, Cpu, Settings, Sparkles, ChevronRight, Signal } from 'lucide-react';
 import { useNavigationStore } from '@/store/useNavigationStore';
@@ -85,7 +85,17 @@ function ScanLine({ color }: { color: string }) {
 
 function ModelStatusIndicator() {
   const navigate = useNavigate();
-  const modelSettings = useMemo(() => loadModelSettings(), []);
+  const [modelSettings, setModelSettings] = useState(loadModelSettings);
+
+  useEffect(() => {
+    const refresh = () => setModelSettings(loadModelSettings());
+    window.addEventListener('uniflow-model-settings-changed', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('uniflow-model-settings-changed', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, []);
 
   const providerDisplay = useMemo(() => {
     switch (modelSettings.activeProvider) {

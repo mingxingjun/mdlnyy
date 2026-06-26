@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -30,6 +30,15 @@ export default function OrbitPath({ radius, color, opacity = 0.12 }: OrbitPathPr
     depthWrite: false,
   }), [color, opacity]);
 
+  const line = useMemo(() => new THREE.Line(geometry, material), [geometry, material]);
+
+  useEffect(() => {
+    return () => {
+      geometry.dispose();
+      material.dispose();
+    };
+  }, [geometry, material]);
+
   useFrame((state) => {
     if (ref.current) {
       const pulse = 0.5 + Math.sin(state.clock.elapsedTime * 0.8 + radius * 0.1) * 0.3;
@@ -37,5 +46,5 @@ export default function OrbitPath({ radius, color, opacity = 0.12 }: OrbitPathPr
     }
   });
 
-  return <primitive object={new THREE.Line(geometry, material)} ref={ref} />;
+  return <primitive object={line} ref={ref} />;
 }

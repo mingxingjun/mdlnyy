@@ -402,9 +402,9 @@ export function getAgentSkillPrompt(agentId: string, skillName: string): string 
 }
 
 export function compressPrompt(agent: AgentIdentity, input: string): string {
-  let prompt = `${agent.systemPrompt}\n\n`;
-  prompt += `【任务】${input}\n\n`;
-  prompt += `【输出要求】严格遵循输出契约，简洁、结构化、突出重点。`;
+  // Returns the user-side prompt only; systemPrompt is passed separately to the model API.
+  let prompt = `【任务】${input}\n\n`;
+  prompt += `【输出要求】严格遵循 ${agent.name} 的输出契约（${agent.outputContract}），简洁、结构化、突出重点。`;
   return prompt;
 }
 
@@ -575,7 +575,7 @@ export function route(
       };
 
     case 'practice':
-      if (currentState === 'KnowledgeReady' || currentState === 'Diagnosed' || currentState === 'Reviewing') {
+      if (currentState === 'KnowledgeReady' || currentState === 'Diagnosed' || currentState === 'Reviewing' || currentState === 'Practicing') {
         return {
           intent,
           currentState,

@@ -6,7 +6,7 @@ import tsconfigPaths from "vite-tsconfig-paths";
 export default defineConfig({
   base: '/mdlnyy/',
   build: {
-    sourcemap: 'hidden',
+    sourcemap: false,
   },
   plugins: [
     react(),

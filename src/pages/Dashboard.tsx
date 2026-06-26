@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -278,7 +278,7 @@ function KnowledgeNav() {
   const [activeTag, setActiveTag] = useState<string | null>(null);
 
   // Set initial selected subject
-  useMemo(() => {
+  useEffect(() => {
     if (subjects.length > 0 && !selectedSubjectId) {
       setSelectedSubjectId(subjects[0].id);
     }
@@ -489,7 +489,7 @@ function SmartPanel() {
   const [todoItems, setTodoItems] = useState(todos);
 
   // Sync with computed todos
-  useMemo(() => {
+  useEffect(() => {
     setTodoItems(todos);
   }, [todos]);
 
@@ -689,6 +689,13 @@ function QuizPractice() {
   const [showExplanation, setShowExplanation] = useState(false);
   const [isStarred, setIsStarred] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const explanationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (explanationTimerRef.current) clearTimeout(explanationTimerRef.current);
+    };
+  }, []);
 
   const isAnswered = selectedOption !== null;
   const isCorrect = quizState ? selectedOption === quizState.correctIndex : false;
@@ -696,10 +703,12 @@ function QuizPractice() {
   const handleSelect = (idx: number) => {
     if (isAnswered) return;
     setSelectedOption(idx);
-    setTimeout(() => setShowExplanation(true), 400);
+    if (explanationTimerRef.current) clearTimeout(explanationTimerRef.current);
+    explanationTimerRef.current = setTimeout(() => setShowExplanation(true), 400);
   };
 
   const handleReset = () => {
+    if (explanationTimerRef.current) clearTimeout(explanationTimerRef.current);
     setSelectedOption(null);
     setShowExplanation(false);
     setIsStarred(false);

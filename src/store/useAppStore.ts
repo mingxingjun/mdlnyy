@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { LearningState } from '@/lib/agents/types';
+import type { AgentMessage, AgentSession, LearningState } from '@/lib/agents/types';
 
 export interface Subject {
   id: string;
@@ -24,21 +24,6 @@ export interface KnowledgePoint {
   subjectId: string;
   name: string;
   mastery: number;
-}
-
-export interface Material {
-  id: string;
-  title: string;
-  type: 'exam' | 'notes' | 'cheatsheet';
-  university: string;
-  college: string;
-  major: string;
-  professor: string;
-  rating: number;
-  downloads: number;
-  credits: number;
-  tags: string[];
-  description: string;
 }
 
 export interface PomodoroSession {
@@ -69,21 +54,6 @@ export interface Note {
   updatedAt: string;
 }
 
-export interface AgentMessage {
-  id: string;
-  agentId: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  timestamp: number;
-}
-
-export interface AgentSession {
-  id: string;
-  agentId: string;
-  messages: AgentMessage[];
-  createdAt: number;
-}
-
 interface AppState {
   currentUser: string | null;
   setCurrentUser: (name: string | null) => void;
@@ -93,13 +63,10 @@ interface AppState {
   subjects: Subject[];
   flashCards: FlashCard[];
   knowledgePoints: KnowledgePoint[];
-  materials: Material[];
   pomodoroSessions: PomodoroSession[];
   activeWhiteNoise: WhiteNoiseType[];
   studyRooms: StudyRoom[];
   joinedRooms: string[];
-  todayFlowMinutes: number;
-  weeklyFlowData: { day: string; minutes: number }[];
   notes: Note[];
 
   addSubject: (subject: Subject) => void;
@@ -120,7 +87,7 @@ interface AppState {
   updateNote: (id: string, updates: Partial<Omit<Note, 'id' | 'createdAt'>>) => void;
   removeNote: (id: string) => void;
 
-  joinRoom: (roomId: string) => void;
+  joinRoom: (roomId: string) => boolean;
   leaveRoom: (roomId: string) => void;
 
   agentSessions: AgentSession[];
@@ -148,14 +115,11 @@ export const useAppStore = create<AppState>()(
       subjects: [],
       flashCards: [],
       knowledgePoints: [],
-      materials: [],
       pomodoroSessions: [],
       notes: [],
 
       activeWhiteNoise: [],
       joinedRooms: [],
-      todayFlowMinutes: 0,
-      weeklyFlowData: [],
 
       // 公共数据：非用户私有
       studyRooms: defaultStudyRooms,
@@ -198,14 +162,23 @@ export const useAppStore = create<AppState>()(
       })),
       removeNote: (id) => set((state) => ({ notes: state.notes.filter((n) => n.id !== id) })),
 
-      joinRoom: (roomId) => set((state) => ({
-        joinedRooms: state.joinedRooms.includes(roomId)
-          ? state.joinedRooms
-          : [...state.joinedRooms, roomId],
-        studyRooms: state.studyRooms.map((r) =>
-          r.id === roomId ? { ...r, members: r.members + 1 } : r
-        ),
-      })),
+      joinRoom: (roomId) => {
+        let joined = false;
+        set((state) => {
+          if (state.joinedRooms.includes(roomId)) return state;
+          const room = state.studyRooms.find((r) => r.id === roomId);
+          if (!room) return state; // room does not exist
+          if (room.members >= room.maxMembers) return state; // room is full
+          joined = true;
+          return {
+            joinedRooms: [...state.joinedRooms, roomId],
+            studyRooms: state.studyRooms.map((r) =>
+              r.id === roomId ? { ...r, members: r.members + 1 } : r
+            ),
+          };
+        });
+        return joined;
+      },
       leaveRoom: (roomId) => set((state) => ({
         joinedRooms: state.joinedRooms.filter((id) => id !== roomId),
         studyRooms: state.studyRooms.map((r) =>
@@ -214,9 +187,9 @@ export const useAppStore = create<AppState>()(
       })),
 
       createAgentSession: (agentId) => {
-        const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        const id = crypto.randomUUID();
         set((state) => ({
-          agentSessions: [...state.agentSessions, { id, agentId, messages: [], createdAt: Date.now() }],
+          agentSessions: [...state.agentSessions, { id, agentId, messages: [], tasks: [], createdAt: Date.now() }],
         }));
         return id;
       },
@@ -242,7 +215,7 @@ export const useAppStore = create<AppState>()(
         pomodoroSessions: state.pomodoroSessions,
         notes: state.notes,
         joinedRooms: state.joinedRooms,
-        todayFlowMinutes: state.todayFlowMinutes,
+        studyRooms: state.studyRooms,
       }),
     }
   )

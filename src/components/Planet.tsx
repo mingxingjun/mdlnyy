@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState } from 'react';
+import { useRef, useMemo, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useCursor, Html } from '@react-three/drei';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -161,6 +161,15 @@ function PlanetGlow({ color, size }: { color: string; size: number }) {
     });
   }, [color]);
 
+  useEffect(() => {
+    return () => {
+      material.map?.dispose?.();
+      material.dispose();
+      outerMaterial.map?.dispose?.();
+      outerMaterial.dispose();
+    };
+  }, [material, outerMaterial]);
+
   useFrame((state) => {
     if (ref.current) {
       const t = state.clock.elapsedTime;
@@ -305,14 +314,18 @@ export default function Planet({
     });
   }, [cloudTexture]);
 
-  const lightningMaterial = useMemo(() => new THREE.SpriteMaterial({
-    map: generateLightningTexture(),
-    transparent: true,
-    opacity: 0,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    color: new THREE.Color('#ccddff'),
-  }), []);
+  const lightningMaterial = useMemo(() => {
+    const tex = generateLightningTexture();
+    lightningState.current.currentTexture = tex;
+    return new THREE.SpriteMaterial({
+      map: tex,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      color: new THREE.Color('#ccddff'),
+    });
+  }, []);
 
   const cityLightsGeometry = useMemo(() => {
     const lightCount = 120;
@@ -354,6 +367,29 @@ export default function Planet({
     roughness: 0.95,
     metalness: 0.05,
   }), []);
+
+  useEffect(() => {
+    return () => {
+      planetMaterial.map?.dispose?.();
+      planetMaterial.dispose();
+      atmosphereMaterial.dispose();
+      [innerRingMaterial, outerRingMaterial].forEach((m) => {
+        m.map?.dispose?.();
+        m.dispose();
+      });
+      cloudMaterial?.map?.dispose?.();
+      cloudMaterial?.dispose();
+      cityLightsGeometry.dispose();
+      cityLightsMaterial.dispose();
+      moonMaterial.dispose();
+      lightningMaterial.map?.dispose?.();
+      lightningMaterial.dispose();
+      lightningState.current.currentTexture?.dispose();
+    };
+  }, [
+    planetMaterial, atmosphereMaterial, innerRingMaterial, outerRingMaterial,
+    cloudMaterial, cityLightsGeometry, cityLightsMaterial, moonMaterial, lightningMaterial,
+  ]);
 
   useFrame((state, delta) => {
     const time = state.clock.elapsedTime;
@@ -407,7 +443,7 @@ export default function Planet({
         lightningState.current.flashIntensity = fp < 0.2 ? fp / 0.2 : Math.max(0, 1 - (fp - 0.2) / 0.8);
         lightningState.current.flashIntensity *= 0.7 + Math.random() * 0.3;
         (lightningRef.current.material as THREE.SpriteMaterial).opacity = lightningState.current.flashIntensity;
-        if (!lightningState.current.isFlashing || planetMaterial) {
+        if (planetMaterial) {
           planetMaterial.emissiveIntensity = hoverTarget.current.emissiveIntensity + lightningState.current.flashIntensity;
         }
         if (lightningState.current.flashDuration <= 0) {

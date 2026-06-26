@@ -167,6 +167,15 @@ export default function AIEngine() {
   const [workflowChatTyping, setWorkflowChatTyping] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const workflowChatEndRef = useRef<HTMLDivElement>(null);
+  const abortControllersRef = useRef<Set<AbortController>>(new Set());
+
+  /* ─── Abort in-flight requests on unmount ─── */
+  useEffect(() => {
+    return () => {
+      abortControllersRef.current.forEach((c) => c.abort());
+      abortControllersRef.current.clear();
+    };
+  }, []);
 
   /* ─── Model Settings State ─── */
   const [modelSettings, setModelSettings] = useState<ModelSettings>(loadModelSettings);
@@ -216,19 +225,29 @@ export default function AIEngine() {
   /* ================================================================== */
 
   const handleFileUpload = useCallback((file: File) => {
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    if (file.size > MAX_FILE_SIZE) {
+      addToast('error', '文件过大（上限 10MB）');
+      return;
+    }
+    if (file.name.endsWith('.pdf') || file.type === 'application/pdf') {
+      addToast('error', '暂不支持 PDF 直接解析，请转为 .txt 或 .md 后上传');
+      return;
+    }
+    if (file.name.endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      addToast('error', '暂不支持 docx 直接解析，请转为 .txt 或 .md 后上传');
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
       setUploadedFile({ name: file.name, size: file.size, content: text, type: file.type });
       addToast('success', '文件上传成功');
     };
-    if (file.type === 'text/plain' || file.name.endsWith('.md')) {
-      reader.readAsText(file);
-    } else if (file.name.endsWith('.pdf')) {
-      reader.readAsText(file);
-    } else {
-      reader.readAsText(file);
-    }
+    reader.onerror = () => {
+      addToast('error', '文件读取失败');
+    };
+    reader.readAsText(file);
   }, [addToast]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -275,8 +294,10 @@ export default function AIEngine() {
         ? `${step.prompt}\n\n${input}`
         : `基于上一步的分析结果：\n${outputs[i - 1].content}\n\n${step.prompt}`;
 
+      const controller = new AbortController();
+      abortControllersRef.current.add(controller);
       try {
-        const result = await callModelWithCache(modelSettings, agent.systemPrompt, prompt);
+        const result = await callModelWithCache(modelSettings, agent.systemPrompt, prompt, controller.signal);
         const output: StepOutput = {
           agentId: step.agentId,
           content: result.content,
@@ -292,6 +313,7 @@ export default function AIEngine() {
           tokenUsed: prev.tokenUsed + result.tokens,
         }));
       } catch (error: unknown) {
+        if (controller.signal.aborted) break;
         const output: StepOutput = {
           agentId: step.agentId,
           content: `❌ 调用失败：${error instanceof Error ? error.message : '未知错误'}`,
@@ -302,6 +324,8 @@ export default function AIEngine() {
         setStepOutputs([...outputs]);
         addToast('error', error instanceof Error ? error.message : '工作流执行失败');
         break;
+      } finally {
+        abortControllersRef.current.delete(controller);
       }
     }
 
@@ -356,8 +380,11 @@ export default function AIEngine() {
     const fullPrompt = `【工作流上下文】\n${contextParts}\n\n【用户问题】${userText}`;
 
     setWorkflowChatTyping(true);
+    const controller = new AbortController();
+    abortControllersRef.current.add(controller);
     try {
-      const result = await callModelWithCache(modelSettings, agent.systemPrompt, fullPrompt);
+      const result = await callModelWithCache(modelSettings, agent.systemPrompt, fullPrompt, controller.signal);
+      if (controller.signal.aborted) return;
       const aiMsg: AgentMessage = {
         id: `wc-ai-${Date.now()}`,
         agentId: workflowChatAgent,
@@ -368,9 +395,11 @@ export default function AIEngine() {
       };
       setWorkflowChatMessages((prev) => [...prev, aiMsg]);
     } catch (error: unknown) {
+      if (controller.signal.aborted) return;
       addToast('error', error instanceof Error ? error.message : 'AI 响应失败');
     } finally {
       setWorkflowChatTyping(false);
+      abortControllersRef.current.delete(controller);
     }
   }, [workflowChatInput, workflowChatTyping, workflowChatAgent, stepOutputs, modelSettings, addToast]);
 
@@ -395,7 +424,9 @@ export default function AIEngine() {
       const skillPrompt = getAgentSkillPrompt(selectedAgentId, selectedSkill);
       fullInput = skillPrompt + '\n\n' + userText;
     }
-    compressPrompt(selectedAgent, fullInput);
+    const promptForModel = modelSettings.enableCompression
+      ? compressPrompt(selectedAgent, fullInput)
+      : fullInput;
 
     const userMsg: AgentMessage = {
       id: `user-${Date.now()}`,
@@ -408,12 +439,16 @@ export default function AIEngine() {
 
     setIsTyping(true);
 
+    const controller = new AbortController();
+    abortControllersRef.current.add(controller);
     try {
       const result = await callModelWithCache(
         modelSettings,
         selectedAgent.systemPrompt,
-        fullInput,
+        promptForModel,
+        controller.signal,
       );
+      if (controller.signal.aborted) return;
 
       const aiMsg: AgentMessage = {
         id: `ai-${Date.now()}`,
@@ -430,6 +465,7 @@ export default function AIEngine() {
         tokenUsed: prev.tokenUsed + result.tokens,
       }));
     } catch (error: unknown) {
+      if (controller.signal.aborted) return;
       addToast('error', error instanceof Error ? error.message : 'AI 响应失败');
 
       const errMsg: AgentMessage = {
@@ -443,6 +479,7 @@ export default function AIEngine() {
     } finally {
       setIsTyping(false);
       setSelectedSkill(null);
+      abortControllersRef.current.delete(controller);
     }
   }, [
     chatInput,

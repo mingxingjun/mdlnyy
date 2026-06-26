@@ -16,16 +16,43 @@ interface ToastState {
   removeToast: (id: string) => void;
 }
 
+const TOAST_MAX = 5;
+const toastTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
 export const useToastStore = create<ToastState>((set) => ({
   toasts: [],
   addToast: (type, message) => {
-    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    set((state) => ({ toasts: [...state.toasts, { id, type, message }] }));
-    setTimeout(() => {
+    const id = crypto.randomUUID();
+    set((state) => {
+      const next = [...state.toasts, { id, type, message }];
+      // Drop oldest toasts beyond the cap
+      if (next.length > TOAST_MAX) {
+        const dropped = next.slice(0, next.length - TOAST_MAX);
+        dropped.forEach((t) => {
+          const timer = toastTimers.get(t.id);
+          if (timer) {
+            clearTimeout(timer);
+            toastTimers.delete(t.id);
+          }
+        });
+        return { toasts: next.slice(next.length - TOAST_MAX) };
+      }
+      return { toasts: next };
+    });
+    const timer = setTimeout(() => {
+      toastTimers.delete(id);
       set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
     }, 3000);
+    toastTimers.set(id, timer);
   },
-  removeToast: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
+  removeToast: (id) => {
+    const timer = toastTimers.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      toastTimers.delete(id);
+    }
+    set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
+  },
 }));
 
 const iconMap: Record<ToastType, typeof Check> = {

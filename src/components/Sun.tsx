@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -250,6 +250,15 @@ function SunGlowSprite() {
     });
   }, []);
 
+  useEffect(() => {
+    return () => {
+      material.map?.dispose?.();
+      material.dispose();
+      outerMaterial.map?.dispose?.();
+      outerMaterial.dispose();
+    };
+  }, [material, outerMaterial]);
+
   useFrame((state) => {
     if (ref.current) {
       const t = state.clock.elapsedTime;
@@ -348,6 +357,22 @@ export default function Sun() {
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   }), []);
+
+  useEffect(() => {
+    return () => {
+      sunMaterial.dispose();
+      innerCoronaMaterial.dispose();
+      midCoronaMaterial.dispose();
+      outerCoronaMaterial.dispose();
+      outerCoronaRingMaterial.dispose();
+      prominencesGeometry.dispose();
+      prominencesMaterial.dispose();
+    };
+  }, [
+    sunMaterial, innerCoronaMaterial, midCoronaMaterial,
+    outerCoronaMaterial, outerCoronaRingMaterial,
+    prominencesGeometry, prominencesMaterial,
+  ]);
 
   useFrame((state, delta) => {
     const time = state.clock.elapsedTime;

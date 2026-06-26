@@ -78,11 +78,14 @@ export default function Layout() {
       <LoadingScreen isLoading={isLoading} />
 
       {!isLoading && (
-        <ErrorBoundary fallback={
-          <FallbackView>
-            <Outlet />
-          </FallbackView>
-        }>
+        <ErrorBoundary
+          resetKeys={[location.pathname]}
+          fallback={
+            <FallbackView>
+              <Outlet />
+            </FallbackView>
+          }
+        >
           <SolarSystem />
           <CursorGlow />
           <HUDOverlay>

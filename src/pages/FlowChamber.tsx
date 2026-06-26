@@ -161,9 +161,24 @@ function PomodoroTimer() {
   const [selectedSubject, setSelectedSubject] = useState(subjects[0]?.id ?? '');
   const [completedAnimation, setCompletedAnimation] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const completedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const totalDuration = mode === 'work' ? WORK_DURATION : BREAK_DURATION;
   const progress = 1 - timeLeft / totalDuration;
+
+  // Keep selectedSubject valid when subjects list changes
+  useEffect(() => {
+    if (subjects.length > 0 && !subjects.find((s) => s.id === selectedSubject)) {
+      setSelectedSubject(subjects[0].id);
+    }
+  }, [subjects, selectedSubject]);
+
+  // Clear pending timers on unmount
+  useEffect(() => {
+    return () => {
+      if (completedTimerRef.current) clearTimeout(completedTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!running) return;
@@ -184,7 +199,8 @@ function PomodoroTimer() {
             addToast('info', '休息结束，继续加油！');
           }
           setCompletedAnimation(true);
-          setTimeout(() => setCompletedAnimation(false), 2000);
+          if (completedTimerRef.current) clearTimeout(completedTimerRef.current);
+          completedTimerRef.current = setTimeout(() => setCompletedAnimation(false), 2000);
           const nextMode = currentMode === 'work' ? 'break' : 'work';
           setMode(nextMode);
           return nextMode === 'work' ? WORK_DURATION : BREAK_DURATION;
@@ -483,8 +499,19 @@ function StudyRoomsPanel() {
       leaveRoom(roomId);
       addToast('info', `已离开「${roomName}」`);
     } else {
-      joinRoom(roomId);
-      addToast('success', `已加入「${roomName}」`);
+      const ok = joinRoom(roomId);
+      if (ok) {
+        addToast('success', `已加入「${roomName}」`);
+      } else {
+        const room = studyRooms.find((r) => r.id === roomId);
+        if (!room) {
+          addToast('error', '房间不存在');
+        } else if (room.members >= room.maxMembers) {
+          addToast('error', `「${roomName}」已满员`);
+        } else {
+          addToast('error', '加入房间失败');
+        }
+      }
     }
   };
 
