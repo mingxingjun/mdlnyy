@@ -6,12 +6,15 @@ import VintageButton from '@/components/VintageButton';
 import VintageTag from '@/components/VintageTag';
 import { useAppStore } from '@/store/useAppStore';
 import { useToastStore } from '@/components/Toast';
+import { extractFileText } from '@/lib/fileParser';
+import { parseMaterialAndGenerateQuestions } from '@/lib/llm';
+import type { GeneratedQuestion } from '@/store/useAppStore';
 
 interface FileUploadZoneProps {
   onUploadComplete?: (points: string[]) => void;
 }
 
-type UploadState = 'idle' | 'dragging' | 'uploading' | 'parsing' | 'complete';
+type UploadState = 'idle' | 'dragging' | 'uploading' | 'parsing' | 'generating' | 'complete' | 'error';
 
 const knowledgePointPools: Record<string, string[]> = {
   math: ['极限与连续', '导数与微分', '中值定理', '不定积分', '定积分应用', '微分方程', '多元函数微分', '重积分'],
@@ -26,6 +29,13 @@ const parsingSteps = [
   '提取核心公式...',
   '标注重点考点...',
   '整理知识脉络...',
+];
+
+const generatingSteps = [
+  '分析学科内容...',
+  '提取核心知识点...',
+  '构思题目类型...',
+  '生成选项与解析...',
 ];
 
 const subjectKeys = Object.keys(knowledgePointPools);
@@ -68,13 +78,19 @@ function HandDrawnProgressBar({ progress }: { progress: number }) {
 export default function FileUploadZone({ onUploadComplete }: FileUploadZoneProps) {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const currentFileRef = useRef<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadState, setUploadState] = useState<UploadState>('idle');
   const [uploadedFile, setUploadedFile] = useState<{ name: string; size: number } | null>(null);
   const [progress, setProgress] = useState(0);
   const [parsedPoints, setParsedPoints] = useState<string[]>([]);
   const [visibleSteps, setVisibleSteps] = useState<number[]>([]);
-  const { addKnowledgePoints, subjects } = useAppStore();
+  const [error, setError] = useState<string | null>(null);
+  const [generatedQuestions, setGeneratedQuestions] = useState<GeneratedQuestion[]>([]);
+  const [generatedSubjectId, setGeneratedSubjectId] = useState<string>('math');
+  const [generatedSubjectName, setGeneratedSubjectName] = useState<string>('高等数学');
+  const [isLLMGenerated, setIsLLMGenerated] = useState(false);
+  const { addKnowledgePoints, addGeneratedQuestions, setCurrentSubjectFilter, llmConfig } = useAppStore();
   const { addToast } = useToastStore();
 
   const resetUpload = useCallback(() => {
@@ -84,16 +100,79 @@ export default function FileUploadZone({ onUploadComplete }: FileUploadZoneProps
     setProgress(0);
     setParsedPoints([]);
     setVisibleSteps([]);
+    setError(null);
+    setGeneratedQuestions([]);
+    setIsLLMGenerated(false);
+    currentFileRef.current = null;
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   }, []);
 
+  const runMockGeneration = useCallback(() => {
+    const randomSubject = subjectKeys[Math.floor(Math.random() * subjectKeys.length)];
+    const pool = knowledgePointPools[randomSubject];
+    const count = 5 + Math.floor(Math.random() * 4);
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, Math.min(count, pool.length));
+    
+    setParsedPoints(selected);
+    setGeneratedQuestions([]);
+    setIsLLMGenerated(false);
+    
+    setTimeout(() => {
+      setUploadState('complete');
+    }, 400);
+  }, []);
+
+  const runLLMGeneration = useCallback(async (file: File) => {
+    try {
+      setUploadState('generating');
+      setVisibleSteps([]);
+      setError(null);
+
+      let stepIndex = 0;
+      const stepInterval = setInterval(() => {
+        if (stepIndex < generatingSteps.length) {
+          setVisibleSteps(prev => [...prev, stepIndex]);
+          stepIndex++;
+        }
+      }, 600);
+
+      const text = await extractFileText(file);
+      
+      if (!llmConfig || !llmConfig.apiKey) {
+        clearInterval(stepInterval);
+        runMockGeneration();
+        return;
+      }
+
+      const result = await parseMaterialAndGenerateQuestions(text, file.name, llmConfig);
+      
+      clearInterval(stepInterval);
+      
+      setGeneratedSubjectId(result.subjectId);
+      setGeneratedSubjectName(result.subjectName);
+      setParsedPoints(result.knowledgePoints);
+      setGeneratedQuestions(result.questions);
+      setIsLLMGenerated(true);
+      
+      setTimeout(() => {
+        setUploadState('complete');
+      }, 400);
+    } catch (err: any) {
+      setError(err.message || 'AI出题失败，请重试');
+      setUploadState('error');
+    }
+  }, [llmConfig, runMockGeneration]);
+
   const handleFile = useCallback((file: File) => {
+    currentFileRef.current = file;
     setUploadedFile({ name: file.name, size: file.size });
     setUploadState('uploading');
     setProgress(0);
     setVisibleSteps([]);
+    setError(null);
 
     const uploadDuration = 800;
     const uploadStartTime = Date.now();
@@ -115,22 +194,31 @@ export default function FileUploadZone({ onUploadComplete }: FileUploadZoneProps
           } else {
             clearInterval(stepInterval);
             
-            const randomSubject = subjectKeys[Math.floor(Math.random() * subjectKeys.length)];
-            const pool = knowledgePointPools[randomSubject];
-            const count = 5 + Math.floor(Math.random() * 4);
-            const shuffled = [...pool].sort(() => Math.random() - 0.5);
-            const selected = shuffled.slice(0, Math.min(count, pool.length));
-            
-            setParsedPoints(selected);
-            
-            setTimeout(() => {
-              setUploadState('complete');
-            }, 400);
+            if (llmConfig && llmConfig.apiKey) {
+              runLLMGeneration(file);
+            } else {
+              setTimeout(() => {
+                runMockGeneration();
+              }, 200);
+            }
           }
         }, 350);
       }
     }, 30);
-  }, []);
+  }, [llmConfig, runLLMGeneration, runMockGeneration]);
+
+  const handleRetry = useCallback(() => {
+    const file = currentFileRef.current;
+    if (file) {
+      handleFile(file);
+    } else {
+      resetUpload();
+    }
+  }, [handleFile, resetUpload]);
+
+  const handleUseMock = useCallback(() => {
+    runMockGeneration();
+  }, [runMockGeneration]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -174,26 +262,37 @@ export default function FileUploadZone({ onUploadComplete }: FileUploadZoneProps
   }, [handleFile]);
 
   const handleButtonClick = useCallback(() => {
-    if (uploadState === 'idle' || uploadState === 'dragging') {
+    if (uploadState === 'idle' || uploadState === 'dragging' || uploadState === 'error') {
       fileInputRef.current?.click();
     }
   }, [uploadState]);
 
   const handleStartPractice = useCallback(() => {
     if (parsedPoints.length > 0) {
-      const defaultSubjectId = subjects.length > 0 ? subjects[0].id : 'math';
+      let targetSubjectId = generatedSubjectId;
+      
+      if (isLLMGenerated && generatedQuestions.length > 0) {
+        addGeneratedQuestions(generatedQuestions, targetSubjectId);
+        addToast('success', `已生成${generatedQuestions.length}道专属题目，开始练习吧！`);
+      } else {
+        const randomSubject = subjectKeys[Math.floor(Math.random() * subjectKeys.length)];
+        targetSubjectId = randomSubject;
+        addToast('success', `资料解析成功，已生成${parsedPoints.length}个知识点`);
+      }
+      
       const points = parsedPoints.map((name, i) => ({
         id: `kp-${Date.now()}-${i}`,
-        subjectId: defaultSubjectId,
+        subjectId: targetSubjectId,
         name,
         mastery: Math.floor(Math.random() * 30) + 10,
       }));
       addKnowledgePoints(points);
-      addToast('success', `资料解析成功，已生成${parsedPoints.length}个知识点`);
+      setCurrentSubjectFilter(targetSubjectId);
+      
       onUploadComplete?.(parsedPoints);
       navigate('/ai-engine');
     }
-  }, [parsedPoints, subjects, addKnowledgePoints, addToast, onUploadComplete, navigate]);
+  }, [parsedPoints, generatedSubjectId, isLLMGenerated, generatedQuestions, addGeneratedQuestions, addKnowledgePoints, setCurrentSubjectFilter, addToast, onUploadComplete, navigate]);
 
   const tagColors: Array<'seal' | 'ink' | 'gold' | 'green' | 'worn'> = ['seal', 'ink', 'gold', 'green', 'worn'];
 
@@ -210,7 +309,7 @@ export default function FileUploadZone({ onUploadComplete }: FileUploadZoneProps
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
+          accept=".txt,.pdf,.doc,.docx,.png,.jpg,.jpeg"
           onChange={handleFileInputChange}
           className="hidden"
         />
@@ -241,9 +340,14 @@ export default function FileUploadZone({ onUploadComplete }: FileUploadZoneProps
                 <h3 className="font-serif text-xl text-ink-800 font-semibold mb-2">
                   {uploadState === 'dragging' ? '松开即可上传 ✨' : '拖拽复习资料到这里'}
                 </h3>
-                <p className="font-serif text-sm text-ink-600 mb-6">
-                  支持 PDF / Word / 图片 / TXT
+                <p className="font-serif text-sm text-ink-600 mb-2">
+                  支持 TXT 格式（推荐）/ PDF / Word / 图片
                 </p>
+                {!llmConfig?.apiKey && (
+                  <p className="font-serif text-xs text-ink-500 mb-4">
+                    💡 点击右上角⚙️配置AI API Key后可从资料生成专属题目
+                  </p>
+                )}
                 <VintageButton variant="stamp" size="lg" onClick={(e) => { e.stopPropagation(); handleButtonClick(); }}>
                   选择文件
                 </VintageButton>
@@ -385,6 +489,115 @@ export default function FileUploadZone({ onUploadComplete }: FileUploadZoneProps
             </motion.div>
           )}
 
+          {uploadState === 'generating' && (
+            <motion.div
+              key="generating"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="p-6 md:p-8"
+            >
+              <div className="max-w-md mx-auto">
+                <div className="flex items-center gap-3 mb-4">
+                  <motion.span
+                    animate={{ rotate: [0, 10, -10, 0] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                    className="text-3xl"
+                  >
+                    ✒️
+                  </motion.span>
+                  <div className="flex-1">
+                    <p className="font-serif text-lg text-ink-800 font-semibold">
+                      AI 正在为你出题...
+                    </p>
+                    <p className="font-serif text-xs text-ink-500">
+                      根据资料内容生成练习题...
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-paper-50 border border-ink-600/15 rounded-sm p-5 shadow-sm relative overflow-hidden min-h-[160px]">
+                  <div className="absolute inset-0 pointer-events-none opacity-30"
+                    style={{
+                      backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(92,64,51,0.08) 27px, rgba(92,64,51,0.08) 28px)',
+                    }}
+                  />
+                  
+                  <div className="space-y-3 relative z-[1]">
+                    <AnimatePresence>
+                      {generatingSteps.map((step, i) => (
+                        visibleSteps.includes(i) && (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, filter: 'blur(4px)', x: -10 }}
+                            animate={{ opacity: 1, filter: 'blur(0px)', x: 0 }}
+                            transition={{ duration: 0.5, ease: 'easeOut' }}
+                            className="flex items-center gap-2"
+                          >
+                            <span className="text-seal text-sm">✦</span>
+                            <span className="font-serif text-sm text-ink-700">{step}</span>
+                          </motion.div>
+                        )
+                      ))}
+                    </AnimatePresence>
+                    
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 0.5 }}
+                      className="flex items-center gap-2"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-ink-600/30" />
+                      <motion.span
+                        animate={{ opacity: [0.3, 0.7, 0.3] }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                        className="font-serif text-sm text-ink-500"
+                      >
+                        AI思考中，这可能需要10-30秒...
+                      </motion.span>
+                    </motion.div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {uploadState === 'error' && (
+            <motion.div
+              key="error"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="p-6 md:p-8"
+            >
+              <div className="max-w-md mx-auto text-center">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                  className="text-5xl mb-4"
+                >
+                  ❌
+                </motion.div>
+                <h3 className="font-serif text-lg text-ink-800 font-semibold mb-2">
+                  出题失败
+                </h3>
+                <p className="font-serif text-sm text-ink-600 mb-6 bg-paper-100/50 p-3 rounded-sm border border-red-200/50">
+                  {error}
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <VintageButton variant="primary" size="md" onClick={handleRetry}>
+                    重试
+                  </VintageButton>
+                  <VintageButton variant="ghost" size="md" onClick={handleUseMock}>
+                    使用演示题目
+                  </VintageButton>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {uploadState === 'complete' && (
             <motion.div
               key="complete"
@@ -406,9 +619,23 @@ export default function FileUploadZone({ onUploadComplete }: FileUploadZoneProps
                 <h3 className="font-serif text-xl text-ink-800 font-semibold mb-1">
                   解析完成！
                 </h3>
-                <p className="font-serif text-sm text-ink-600">
-                  从资料中提取了 <span className="text-seal font-semibold">{parsedPoints.length}</span> 个核心知识点
-                </p>
+                {isLLMGenerated ? (
+                  <p className="font-serif text-sm text-ink-600">
+                    学科：<span className="text-seal font-semibold">{generatedSubjectName}</span>
+                    {' · '}已生成 <span className="text-seal font-semibold">{generatedQuestions.length}</span> 道专属题目
+                  </p>
+                ) : (
+                  <>
+                    <p className="font-serif text-sm text-ink-600">
+                      从资料中提取了 <span className="text-seal font-semibold">{parsedPoints.length}</span> 个核心知识点
+                    </p>
+                    {!llmConfig?.apiKey && (
+                      <p className="font-serif text-xs text-ink-500 mt-2">
+                        💡 配置AI API Key后可从你的资料生成专属题目
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
 
               <div className="bg-paper-100/50 border border-ink-600/10 rounded-sm p-4 md:p-5 mb-6">

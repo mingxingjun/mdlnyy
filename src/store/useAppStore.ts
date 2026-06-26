@@ -123,6 +123,41 @@ export interface AnswerRecord {
   timestamp: number;
 }
 
+export interface QuizAnswer {
+  questionId: string;
+  userAnswer: number;
+  isCorrect: boolean;
+  timestamp: number;
+}
+
+export interface QuizSession {
+  id: string;
+  subjectId: string | null;
+  mode: 'practice' | 'wrong-review';
+  startTime: number;
+  endTime: number | null;
+  questionIds: string[];
+  answers: QuizAnswer[];
+  currentIndex: number;
+  completed: boolean;
+}
+
+export interface LLMConfig {
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+}
+
+export interface GeneratedQuestion {
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+  steps: string[];
+  mistakes: string[];
+  difficulty: 'easy' | 'medium' | 'hard';
+}
+
 interface AppState {
   currentUser: string | null;
   setCurrentUser: (name: string | null) => void;
@@ -174,6 +209,10 @@ interface AppState {
   answerRecords: AnswerRecord[];
   currentQuestionIndex: number;
   currentSubjectFilter: string | null;
+  currentSession: QuizSession | null;
+  quizHistory: QuizSession[];
+  llmConfig: LLMConfig | null;
+  onboardingCompleted: boolean;
 
   setCurrentSubjectFilter: (id: string | null) => void;
   submitAnswer: (questionId: string, userAnswer: number) => { isCorrect: boolean };
@@ -182,6 +221,25 @@ interface AppState {
   clearReviewedWrongAnswers: () => void;
   resetQuiz: () => void;
   nextQuestion: () => void;
+
+  startQuizSession: (subjectId: string | null, mode?: 'practice' | 'wrong-review', customQuestionIds?: string[]) => void;
+  submitAnswerInSession: (questionId: string, userAnswer: number) => { isCorrect: boolean };
+  advanceSession: () => { finished: boolean };
+  endQuizSession: () => QuizSession | null;
+  resetCurrentSession: () => void;
+  setLLMConfig: (config: LLMConfig | null) => void;
+  setOnboardingCompleted: (completed: boolean) => void;
+  addGeneratedQuestions: (questions: GeneratedQuestion[], subjectId: string) => void;
+  markWrongAsReviewedByQuestion: (questionId: string) => void;
+}
+
+function shuffleArray<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 // 自习室是公共房间，不属于用户数据，保留默认值
@@ -678,6 +736,10 @@ export const useAppStore = create<AppState>()(
       answerRecords: [],
       currentQuestionIndex: 0,
       currentSubjectFilter: null,
+      currentSession: null,
+      quizHistory: [],
+      llmConfig: null,
+      onboardingCompleted: false,
 
       setCurrentUser: (name) => set({ currentUser: name }),
 
@@ -874,6 +936,195 @@ export const useAppStore = create<AppState>()(
         const nextIndex = (state.currentQuestionIndex + 1) % filteredQuestions.length;
         return { currentQuestionIndex: nextIndex };
       }),
+
+      startQuizSession: (subjectId, mode = 'practice', customQuestionIds) => {
+        const state = get();
+        let questionIds: string[];
+
+        if (mode === 'wrong-review' && customQuestionIds && customQuestionIds.length > 0) {
+          questionIds = customQuestionIds;
+        } else {
+          const filtered = subjectId
+            ? state.quizQuestions.filter((q) => q.subjectId === subjectId)
+            : state.quizQuestions;
+          questionIds = filtered.map((q) => q.id);
+        }
+
+        const shuffledIds = shuffleArray(questionIds);
+
+        const newSession: QuizSession = {
+          id: `session-${Date.now()}`,
+          subjectId,
+          mode,
+          startTime: Date.now(),
+          endTime: null,
+          questionIds: shuffledIds,
+          answers: [],
+          currentIndex: 0,
+          completed: false,
+        };
+
+        set({ currentSession: newSession, currentQuestionIndex: 0 });
+      },
+
+      submitAnswerInSession: (questionId, userAnswer) => {
+        const state = get();
+        const question = state.quizQuestions.find((q) => q.id === questionId);
+        if (!question) return { isCorrect: false };
+
+        const isCorrect = userAnswer === question.correctIndex;
+        const recordId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        const timestamp = Date.now();
+
+        const sessionAnswer: QuizAnswer = {
+          questionId,
+          userAnswer,
+          isCorrect,
+          timestamp,
+        };
+
+        const record: AnswerRecord = {
+          id: recordId,
+          questionId,
+          subjectId: question.subjectId,
+          userAnswer,
+          isCorrect,
+          timestamp,
+        };
+
+        set((s) => {
+          if (!s.currentSession) {
+            return { answerRecords: [...s.answerRecords, record] };
+          }
+
+          const updatedSession: QuizSession = {
+            ...s.currentSession,
+            answers: [...s.currentSession.answers, sessionAnswer],
+          };
+
+          if (!isCorrect) {
+            const existingUnreviewedWrong = s.wrongAnswers.find(
+              (w) => w.questionId === questionId && !w.reviewed
+            );
+            if (existingUnreviewedWrong) {
+              return {
+                currentSession: updatedSession,
+                answerRecords: [...s.answerRecords, record],
+              };
+            }
+            const wrongId = 'w-' + recordId;
+            const wrong: WrongAnswer = {
+              id: wrongId,
+              questionId,
+              subjectId: question.subjectId,
+              userAnswer,
+              correctAnswer: question.correctIndex,
+              timestamp,
+              reviewed: false,
+            };
+            return {
+              currentSession: updatedSession,
+              answerRecords: [...s.answerRecords, record],
+              wrongAnswers: [...s.wrongAnswers, wrong],
+            };
+          }
+
+          return {
+            currentSession: updatedSession,
+            answerRecords: [...s.answerRecords, record],
+          };
+        });
+
+        return { isCorrect };
+      },
+
+      advanceSession: () => {
+        const state = get();
+        const session = state.currentSession;
+        if (!session) return { finished: true };
+
+        const nextIndex = session.currentIndex + 1;
+        if (nextIndex >= session.questionIds.length) {
+          const completedSession: QuizSession = {
+            ...session,
+            currentIndex: nextIndex,
+            completed: true,
+            endTime: Date.now(),
+          };
+          set({ currentSession: completedSession });
+          return { finished: true };
+        }
+
+        set((s) =>
+          s.currentSession
+            ? {
+                currentSession: { ...s.currentSession, currentIndex: nextIndex },
+                currentQuestionIndex: nextIndex,
+              }
+            : {}
+        );
+        return { finished: false };
+      },
+
+      endQuizSession: () => {
+        const state = get();
+        const session = state.currentSession;
+        if (!session) return null;
+
+        const endedSession: QuizSession = {
+          ...session,
+          completed: true,
+          endTime: Date.now(),
+        };
+
+        set((s) => {
+          const newHistory = [...s.quizHistory, endedSession];
+          const trimmedHistory = newHistory.slice(-10);
+          return {
+            currentSession: endedSession,
+            quizHistory: trimmedHistory,
+          };
+        });
+
+        return endedSession;
+      },
+
+      resetCurrentSession: () => {
+        const state = get();
+        const session = state.currentSession;
+        if (!session) return;
+        state.startQuizSession(session.subjectId, session.mode);
+      },
+
+      setLLMConfig: (config) => set({ llmConfig: config }),
+
+      setOnboardingCompleted: (completed) => set({ onboardingCompleted: completed }),
+
+      addGeneratedQuestions: (questions, subjectId) => {
+        const timestamp = Date.now();
+        const newQuestions: QuizQuestion[] = questions.map((q, i) => ({
+          id: `q-llm-${timestamp}-${i}`,
+          subjectId,
+          type: 'choice' as const,
+          question: q.question,
+          options: q.options,
+          correctIndex: q.correctIndex,
+          explanation: q.explanation,
+          steps: q.steps,
+          mistakes: q.mistakes,
+          difficulty: q.difficulty,
+        }));
+
+        set((s) => ({
+          quizQuestions: [...s.quizQuestions, ...newQuestions],
+        }));
+      },
+
+      markWrongAsReviewedByQuestion: (questionId) => set((state) => ({
+        wrongAnswers: state.wrongAnswers.map((w) =>
+          w.questionId === questionId && !w.reviewed ? { ...w, reviewed: true } : w
+        ),
+      })),
     }),
     {
       name: 'uniflow-storage',
@@ -891,6 +1142,9 @@ export const useAppStore = create<AppState>()(
         answerRecords: state.answerRecords,
         currentQuestionIndex: state.currentQuestionIndex,
         currentSubjectFilter: state.currentSubjectFilter,
+        llmConfig: state.llmConfig,
+        onboardingCompleted: state.onboardingCompleted,
+        quizHistory: state.quizHistory.slice(-10),
       }),
       onRehydrateStorage: () => (state) => {
         if (state && (!state.subjects || state.subjects.length === 0)) {
@@ -903,6 +1157,9 @@ export const useAppStore = create<AppState>()(
         if (!state) return;
         if (!state.wrongAnswers) state.wrongAnswers = [];
         if (!state.answerRecords) state.answerRecords = [];
+        if (state.llmConfig === undefined || state.llmConfig === null) state.llmConfig = null;
+        if (state.onboardingCompleted === undefined || state.onboardingCompleted === null) state.onboardingCompleted = false;
+        if (!state.quizHistory) state.quizHistory = [];
         if (state.flashCards) {
           state.flashCards = state.flashCards.map((card) => ({
             repetitions: 0,

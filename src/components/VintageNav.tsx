@@ -8,6 +8,10 @@ interface NavItem {
   primary: boolean;
 }
 
+interface VintageNavProps {
+  onSettingsClick?: () => void;
+}
+
 const NAV_ITEMS: NavItem[] = [
   { path: '/dashboard', label: '首页', icon: '🏠', primary: true },
   { path: '/ai-engine', label: '开始刷题', icon: '✏️', primary: true },
@@ -17,7 +21,7 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/flow-chamber', label: '番茄钟', icon: '⏱️', primary: false },
 ];
 
-export default function VintageNav() {
+export default function VintageNav({ onSettingsClick }: VintageNavProps) {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -139,6 +143,19 @@ export default function VintageNav() {
               </motion.button>
             );
           })}
+
+          {onSettingsClick && (
+            <motion.button
+              onClick={onSettingsClick}
+              className="ml-2 md:ml-3 w-9 h-9 rounded-full flex items-center justify-center text-ink-600 hover:text-ink-800 hover:bg-paper-200/60 transition-colors text-lg border border-ink-600/10"
+              whileHover={{ rotate: 90, scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 0.3 }}
+              title="AI设置"
+            >
+              ⚙️
+            </motion.button>
+          )}
         </div>
 
 

@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight, BookMarked, CheckCircle2, XCircle, Lightbulb } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { useToastStore } from '@/components/Toast';
@@ -7,6 +8,7 @@ import PaperCard from '@/components/PaperCard';
 import VintageButton from '@/components/VintageButton';
 import VintageTag from '@/components/VintageTag';
 import StickyNote from '@/components/StickyNote';
+import QuizResultPage from '@/components/QuizResultPage';
 
 const SUBJECT_FILTERS = [
   { id: null, name: '全部', icon: '📝' },
@@ -44,41 +46,104 @@ const SOCRATIC_QUESTIONS = [
 ];
 
 export default function AIEngine() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { addToast } = useToastStore();
   const {
     quizQuestions,
     subjects,
-    currentQuestionIndex,
+    wrongAnswers,
     currentSubjectFilter,
     setCurrentSubjectFilter,
-    submitAnswer,
-    nextQuestion,
+    currentSession,
+    startQuizSession,
+    submitAnswerInSession,
+    advanceSession,
+    endQuizSession,
+    markWrongAsReviewedByQuestion,
   } = useAppStore();
+
+  const mode = useMemo(
+    () => (searchParams.get('mode') as 'practice' | 'wrong-review') || 'practice',
+    [searchParams]
+  );
+
+  const wrongIdsKey = useMemo(
+    () => searchParams.get('ids') || '',
+    [searchParams]
+  );
 
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showExplanation, setShowExplanation] = useState(true);
   const [explanationStyle, setExplanationStyle] = useState<ExplanationStyle>('detailed');
+  const [showResult, setShowResult] = useState(false);
+  const initRef = useRef(false);
 
-  const filteredQuestions = useMemo(() => {
-    if (currentSubjectFilter) {
-      return quizQuestions.filter((q) => q.subjectId === currentSubjectFilter);
+  const questionMap = useMemo(() => {
+    const map = new Map<string, typeof quizQuestions[0]>();
+    quizQuestions.forEach((q) => map.set(q.id, q));
+    return map;
+  }, [quizQuestions]);
+
+  const subjectMap = useMemo(() => {
+    const map = new Map<string, { name: string; icon: string; color: string }>();
+    subjects.forEach((s) => map.set(s.id, { name: s.name, icon: s.icon, color: s.color }));
+    return map;
+  }, [subjects]);
+
+  useEffect(() => {
+    if (mode === 'wrong-review' && wrongIdsKey) {
+      const ids = wrongIdsKey.split(',').filter(Boolean);
+      const questionIds = ids
+        .map((wid) => wrongAnswers.find((w) => w.id === wid))
+        .filter((w): w is NonNullable<typeof w> => !!w && !w.reviewed)
+        .map((w) => w.questionId);
+      startQuizSession(null, 'wrong-review', questionIds);
+    } else {
+      startQuizSession(currentSubjectFilter, 'practice');
     }
-    return quizQuestions;
-  }, [quizQuestions, currentSubjectFilter]);
+    initRef.current = true;
+    setShowResult(false);
+    setSelectedOption(null);
+    setIsSubmitted(false);
+    setShowExplanation(true);
+    setExplanationStyle('detailed');
+  }, [mode, wrongIdsKey]);
 
-  const currentQuestion = filteredQuestions[currentQuestionIndex] || null;
-  const currentSubject = subjects.find((s) => s.id === currentQuestion?.subjectId);
+  useEffect(() => {
+    if (mode !== 'practice' || !initRef.current) return;
+    startQuizSession(currentSubjectFilter, 'practice');
+    setShowResult(false);
+    setSelectedOption(null);
+    setIsSubmitted(false);
+    setShowExplanation(true);
+    setExplanationStyle('detailed');
+  }, [currentSubjectFilter, mode]);
 
-  const totalQuestions = filteredQuestions.length;
-  const displayIndex = currentQuestionIndex + 1;
+  const sessionQuestionIds = currentSession?.questionIds || [];
+  const sessionCurrentIndex = currentSession?.currentIndex || 0;
+  const totalQuestions = sessionQuestionIds.length;
+
+  const currentQuestionId = sessionQuestionIds[sessionCurrentIndex] || null;
+  const currentQuestion = currentQuestionId ? questionMap.get(currentQuestionId) || null : null;
+  const currentSubject = currentQuestion ? subjectMap.get(currentQuestion.subjectId) : null;
+
+  const displayIndex = Math.min(sessionCurrentIndex + 1, totalQuestions);
 
   useEffect(() => {
     setSelectedOption(null);
     setIsSubmitted(false);
     setShowExplanation(true);
     setExplanationStyle('detailed');
-  }, [currentQuestionIndex, currentSubjectFilter]);
+  }, [sessionCurrentIndex, currentSession?.id]);
+
+  const resetAnswerState = useCallback(() => {
+    setSelectedOption(null);
+    setIsSubmitted(false);
+    setShowExplanation(true);
+    setExplanationStyle('detailed');
+  }, []);
 
   const handleSelectOption = useCallback((index: number) => {
     if (isSubmitted) return;
@@ -87,41 +152,155 @@ export default function AIEngine() {
 
   const handleSubmit = useCallback(() => {
     if (selectedOption === null || !currentQuestion) return;
-    const result = submitAnswer(currentQuestion.id, selectedOption);
+    const result = submitAnswerInSession(currentQuestion.id, selectedOption);
     setIsSubmitted(true);
     setShowExplanation(true);
     if (result.isCorrect) {
       addToast('success', '回答正确！继续加油～');
+      if (mode === 'wrong-review') {
+        markWrongAsReviewedByQuestion(currentQuestion.id);
+      }
     } else {
       addToast('error', '答错了，看看解析吧');
     }
-  }, [selectedOption, currentQuestion, submitAnswer, addToast]);
+  }, [selectedOption, currentQuestion, submitAnswerInSession, addToast, mode, markWrongAsReviewedByQuestion]);
 
   const handleNext = useCallback(() => {
-    nextQuestion();
-  }, [nextQuestion]);
+    const result = advanceSession();
+    if (result.finished) {
+      endQuizSession();
+      setShowResult(true);
+    } else {
+      resetAnswerState();
+    }
+  }, [advanceSession, endQuizSession, resetAnswerState]);
 
   const handleFilterChange = useCallback((subjectId: string | null) => {
+    if (mode === 'wrong-review') return;
     setCurrentSubjectFilter(subjectId);
-  }, [setCurrentSubjectFilter]);
+  }, [setCurrentSubjectFilter, mode]);
+
+  const handleRetry = useCallback(() => {
+    if (currentSession?.mode === 'wrong-review') {
+      startQuizSession(null, 'wrong-review', currentSession.questionIds);
+    } else {
+      startQuizSession(currentSession?.subjectId ?? null, 'practice');
+    }
+    setShowResult(false);
+    resetAnswerState();
+  }, [currentSession, startQuizSession, resetAnswerState]);
+
+  const handleGoHome = useCallback(() => {
+    navigate('/');
+  }, [navigate]);
+
+  const handleReviewWrong = useCallback(() => {
+    navigate('/my-notes');
+  }, [navigate]);
 
   const isCorrect = isSubmitted && selectedOption === currentQuestion?.correctIndex;
 
-  if (!currentQuestion) {
+  const resultData = useMemo(() => {
+    if (!currentSession || !showResult) return null;
+
+    const answers = currentSession.answers;
+    const correctCount = answers.filter((a) => a.isCorrect).length;
+    const wrongCount = answers.filter((a) => !a.isCorrect).length;
+    const total = currentSession.questionIds.length;
+    const accuracy = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+    const durationSeconds = Math.round(
+      ((currentSession.endTime || Date.now()) - currentSession.startTime) / 1000
+    );
+
+    const wrongSubjectMap = new Map<string, { name: string; icon: string; count: number; color: string }>();
+    answers
+      .filter((a) => !a.isCorrect)
+      .forEach((a) => {
+        const q = questionMap.get(a.questionId);
+        if (!q) return;
+        const s = subjectMap.get(q.subjectId);
+        if (!s) return;
+        const existing = wrongSubjectMap.get(q.subjectId);
+        if (existing) {
+          existing.count++;
+        } else {
+          wrongSubjectMap.set(q.subjectId, { name: s.name, icon: s.icon, count: 1, color: s.color });
+        }
+      });
+
+    const weakSubjects = Array.from(wrongSubjectMap.values());
+
+    return {
+      id: currentSession.id,
+      subjectId: currentSession.subjectId,
+      mode: currentSession.mode,
+      totalQuestions: total,
+      correctCount,
+      wrongCount,
+      accuracy,
+      durationSeconds,
+      weakSubjects: weakSubjects.length > 0 ? weakSubjects : undefined,
+    };
+  }, [currentSession, showResult, questionMap, subjectMap]);
+
+  const stepRotations = useMemo(
+    () => (currentQuestion?.steps || []).map(() => (Math.random() - 0.5) * 3),
+    [currentQuestion?.id]
+  );
+
+  if (showResult && resultData) {
+    return (
+      <QuizResultPage
+        session={resultData}
+        onReviewWrong={handleReviewWrong}
+        onRetry={handleRetry}
+        onGoHome={handleGoHome}
+      />
+    );
+  }
+
+  if (!initRef.current) {
     return (
       <div className="max-w-4xl mx-auto py-12 px-4">
         <PaperCard className="p-12 text-center">
-          <p className="font-serif text-ink-600 text-lg">暂无题目</p>
+          <p className="font-serif text-ink-600 text-lg">加载中...</p>
+        </PaperCard>
+      </div>
+    );
+  }
+
+  if (!currentQuestion || totalQuestions === 0) {
+    return (
+      <div className="max-w-4xl mx-auto py-12 px-4">
+        <PaperCard className="p-12 text-center">
+          {mode === 'wrong-review' ? (
+            <>
+              <p className="font-serif text-2xl text-ink-800 mb-4">🎉</p>
+              <p className="font-serif text-ink-700 text-lg mb-2">没有待订正的错题</p>
+              <p className="font-serif text-ink-500 text-sm mb-6">太棒了！所有错题都已订正</p>
+              <div className="flex justify-center gap-3">
+                <VintageButton variant="ghost" onClick={handleGoHome}>
+                  🏠 返回首页
+                </VintageButton>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="font-serif text-ink-600 text-lg mb-4">该学科暂无题目</p>
+              <p className="font-serif text-ink-500 text-sm mb-6">去上传资料生成题目吧</p>
+              <div className="flex justify-center gap-3">
+                <VintageButton variant="ghost" onClick={handleGoHome}>
+                  🏠 返回首页
+                </VintageButton>
+              </div>
+            </>
+          )}
         </PaperCard>
       </div>
     );
   }
 
   const difficulty = DIFFICULTY_LABEL[currentQuestion.difficulty];
-  const stepRotations = useMemo(
-    () => currentQuestion.steps.map(() => (Math.random() - 0.5) * 3),
-    [currentQuestion.id]
-  );
 
   return (
     <div className="max-w-4xl mx-auto py-6 px-4 pb-24">
@@ -129,30 +308,51 @@ export default function AIEngine() {
         <div className="flex items-center justify-between mb-4">
           <h1 className="font-serif text-2xl font-bold text-ink-800 flex items-center gap-2">
             <BookMarked className="text-seal" size={24} />
-            开始刷题
+            {mode === 'wrong-review' ? '错题订正' : '开始刷题'}
           </h1>
           <div className="font-serif text-ink-600 text-sm">
             第 <span className="text-seal font-bold text-lg">{displayIndex}</span> / {totalQuestions} 题
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {SUBJECT_FILTERS.map((filter) => (
-            <button
-              key={filter.id ?? 'all'}
-              onClick={() => handleFilterChange(filter.id)}
-              className={`
-                px-4 py-1.5 font-serif text-sm rounded-sm border transition-all duration-200 cursor-pointer
-                ${currentSubjectFilter === filter.id
-                  ? 'bg-seal text-paper-50 border-seal shadow-stamp'
-                  : 'bg-paper-100 text-ink-700 border-ink-600/20 hover:bg-paper-200'
-                }
-              `}
-            >
-              <span className="mr-1">{filter.icon}</span>
-              {filter.name}
-            </button>
-          ))}
+        {mode === 'wrong-review' ? (
+          <div className="flex items-center gap-2">
+            <StickyNote color="pink" rotation={-1} className="!py-2 !px-4 !min-h-0 inline-flex">
+              <span className="font-serif text-sm flex items-center gap-1">
+                📕 错题订正模式
+              </span>
+            </StickyNote>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 flex-wrap">
+            {SUBJECT_FILTERS.map((filter) => (
+              <button
+                key={filter.id ?? 'all'}
+                onClick={() => handleFilterChange(filter.id)}
+                className={`
+                  px-4 py-1.5 font-serif text-sm rounded-sm border transition-all duration-200 cursor-pointer
+                  ${currentSubjectFilter === filter.id
+                    ? 'bg-seal text-paper-50 border-seal shadow-stamp'
+                    : 'bg-paper-100 text-ink-700 border-ink-600/20 hover:bg-paper-200'
+                  }
+                `}
+              >
+                <span className="mr-1">{filter.icon}</span>
+                {filter.name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-4 max-w-full">
+          <div className="h-1.5 bg-paper-300 rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-seal/70 rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: `${(sessionCurrentIndex / totalQuestions) * 100}%` }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+            />
+          </div>
         </div>
       </div>
 
@@ -183,7 +383,7 @@ export default function AIEngine() {
                     style={{ boxShadow: '0 0 0 1px rgba(139,37,0,0.1)' }}
                   >
                     <span className="font-serif text-seal font-bold text-sm">
-                      {CHINESE_NUMERALS[currentQuestionIndex] || `Q${displayIndex}`}
+                      {CHINESE_NUMERALS[sessionCurrentIndex] || `Q${displayIndex}`}
                     </span>
                   </div>
                 </div>
@@ -552,42 +752,23 @@ export default function AIEngine() {
           </VintageButton>
         ) : (
           <>
-            {isCorrect ? (
-              <>
-                <motion.button
-                  onClick={() => setShowExplanation(!showExplanation)}
-                  className="font-serif text-sm text-ink-600 italic underline decoration-dotted underline-offset-4 hover:text-ink-800 transition-colors cursor-pointer"
-                  whileHover={{ x: 2 }}
-                >
-                  {showExplanation ? '收起解析' : '查看解析'}
-                </motion.button>
-                <VintageButton
-                  variant="primary"
-                  size="lg"
-                  onClick={handleNext}
-                >
-                  下一题
-                  <ArrowRight size={16} className="ml-2" />
-                </VintageButton>
-              </>
-            ) : (
-              <>
-                <VintageButton
-                  variant="ghost"
-                  onClick={handleNext}
-                >
-                  跳过
-                </VintageButton>
-                <VintageButton
-                  variant="primary"
-                  size="lg"
-                  onClick={handleNext}
-                >
-                  下一题
-                  <ArrowRight size={16} className="ml-2" />
-                </VintageButton>
-              </>
+            {isCorrect && (
+              <motion.button
+                onClick={() => setShowExplanation(!showExplanation)}
+                className="font-serif text-sm text-ink-600 italic underline decoration-dotted underline-offset-4 hover:text-ink-800 transition-colors cursor-pointer"
+                whileHover={{ x: 2 }}
+              >
+                {showExplanation ? '收起解析' : '查看解析'}
+              </motion.button>
             )}
+            <VintageButton
+              variant="primary"
+              size="lg"
+              onClick={handleNext}
+            >
+              {sessionCurrentIndex >= totalQuestions - 1 ? '查看结果' : '下一题'}
+              <ArrowRight size={16} className="ml-2" />
+            </VintageButton>
           </>
         )}
       </div>

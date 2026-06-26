@@ -95,7 +95,7 @@ interface WrongAnswerCardProps {
   onToggleExpand: (id: string) => void;
   onMarkReviewed: (id: string) => void;
   onDelete: (id: string) => void;
-  onRetry: (subjectId: string) => void;
+  onRetry: (wrongId: string) => void;
   index: number;
 }
 
@@ -169,7 +169,7 @@ function WrongAnswerCard({
             <VintageButton
               variant="primary"
               size="sm"
-              onClick={() => onRetry(question.subjectId)}
+              onClick={() => onRetry(wrongAnswer.id)}
               disabled={isReviewed}
             >
               <RotateCcw size={14} className="mr-1" />
@@ -339,7 +339,6 @@ export default function WrongNotebook() {
     markWrongReviewed,
     deleteWrongAnswer,
     clearReviewedWrongAnswers,
-    setCurrentSubjectFilter,
   } = useAppStore();
 
   const [subjectFilter, setSubjectFilter] = useState<string | null>(null);
@@ -390,20 +389,18 @@ export default function WrongNotebook() {
     if (expandedId === id) setExpandedId(null);
   }, [deleteWrongAnswer, expandedId]);
 
-  const handleRetry = useCallback((subjectId: string) => {
-    setCurrentSubjectFilter(subjectId);
-    navigate('/ai-engine');
-  }, [setCurrentSubjectFilter, navigate]);
+  const handleRetrySingle = useCallback((wrongId: string) => {
+    navigate(`/ai-engine?mode=wrong-review&ids=${wrongId}`);
+  }, [navigate]);
 
   const handleStartReview = useCallback(() => {
-    const wrongSubjects = [...new Set(wrongAnswers.filter(w => !w.reviewed).map(w => w.subjectId))];
-    if (wrongSubjects.length === 1) {
-      setCurrentSubjectFilter(wrongSubjects[0]);
-    } else {
-      setCurrentSubjectFilter(null);
+    const pendingWrongs = wrongAnswers.filter(w => !w.reviewed);
+    if (pendingWrongs.length === 0) {
+      return;
     }
-    navigate('/ai-engine');
-  }, [wrongAnswers, setCurrentSubjectFilter, navigate]);
+    const ids = pendingWrongs.map(w => w.id).join(',');
+    navigate(`/ai-engine?mode=wrong-review&ids=${ids}`);
+  }, [wrongAnswers, navigate]);
 
   const handleClearReviewed = useCallback(() => {
     clearReviewedWrongAnswers();
@@ -449,6 +446,11 @@ export default function WrongNotebook() {
           </div>
           <div className="text-ink-500 text-sm mt-1">
             待订正 <span className="text-seal font-bold">{pendingCount}</span> 道
+            {totalCount > 0 && (
+              <span className="ml-3 text-[#2D5A27]">
+                订正率 {Math.round((reviewedCount / totalCount) * 100)}%
+              </span>
+            )}
           </div>
         </div>
       </motion.div>
@@ -600,7 +602,7 @@ export default function WrongNotebook() {
               onToggleExpand={handleToggleExpand}
               onMarkReviewed={handleMarkReviewed}
               onDelete={handleDelete}
-              onRetry={handleRetry}
+              onRetry={handleRetrySingle}
               index={index}
             />
           ))}
@@ -618,14 +620,19 @@ export default function WrongNotebook() {
                 </p>
               </div>
               <div className="flex items-center gap-3 flex-wrap">
-                <VintageButton
-                  variant="stamp"
-                  size="lg"
-                  onClick={handleStartReview}
-                  disabled={pendingCount === 0}
-                >
-                  开始错题复习
-                </VintageButton>
+                {pendingCount === 0 ? (
+                  <div className="font-serif text-[#2D5A27] font-bold text-lg flex items-center gap-2">
+                    🎉 全部订正完了！
+                  </div>
+                ) : (
+                  <VintageButton
+                    variant="stamp"
+                    size="lg"
+                    onClick={handleStartReview}
+                  >
+                    📝 开始订正（{pendingCount}道）
+                  </VintageButton>
+                )}
 
                 {reviewedCount > 0 && (
                   <>

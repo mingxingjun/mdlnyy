@@ -7,16 +7,21 @@ import ThreeLayerBackground from './ThreeLayerBackground';
 import IntroAnimation from './IntroAnimation';
 import PageTransition from './PageTransition';
 import VintageNav from './VintageNav';
+import OnboardingGuide from './OnboardingGuide';
+import LLMSettingsModal from './LLMSettingsModal';
 import { useNavigationStore } from '@/store/useNavigationStore';
+import { useAppStore } from '@/store/useAppStore';
 
 export default function Layout() {
   const location = useLocation();
   const syncFromRoute = useNavigationStore((s) => s.syncFromRoute);
   const setInitialLoadComplete = useNavigationStore((s) => s.setInitialLoadComplete);
+  const { onboardingCompleted, setOnboardingCompleted } = useAppStore();
 
   const [isLoading, setIsLoading] = useState(true);
   const [showIntro, setShowIntro] = useState(true);
   const [contentReady, setContentReady] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -59,7 +64,7 @@ export default function Layout() {
     <>
       <ThreeLayerBackground>
         <div className="min-h-screen flex flex-col">
-          <VintageNav />
+          <VintageNav onSettingsClick={() => setShowSettings(true)} />
           <main className="flex-1 relative z-10 px-6 py-6 pb-12">
             <div className="max-w-7xl mx-auto">
               <ErrorBoundary fallback={<FallbackView />}>
@@ -82,6 +87,20 @@ export default function Layout() {
       {showIntro && (
         <IntroAnimation onComplete={handleIntroComplete} />
       )}
+
+      {!onboardingCompleted && contentReady && (
+        <OnboardingGuide onDismiss={() => setOnboardingCompleted(true)} />
+      )}
+
+      <button
+        className="fixed bottom-6 right-6 w-10 h-10 rounded-full bg-paper-50 border border-ink-600/20 shadow-paper text-ink-600 hover:bg-paper-200 flex items-center justify-center font-serif text-lg z-40 transition-colors"
+        onClick={() => setOnboardingCompleted(false)}
+        title="使用帮助"
+      >
+        ?
+      </button>
+
+      <LLMSettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
     </>
   );
 }
