@@ -1,95 +1,87 @@
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useRef, useState } from 'react';
-import SolarSystem from './SolarSystem';
-import CursorGlow from './CursorGlow';
+import { useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import ErrorBoundary from './ErrorBoundary';
-import HUDOverlay from './HUDOverlay';
 import FallbackView from './FallbackView';
-import LoadingScreen from './LoadingScreen';
-import { useNavigationStore, PLANET_PATHS } from '@/store/useNavigationStore';
+import ThreeLayerBackground from './ThreeLayerBackground';
+import IntroAnimation from './IntroAnimation';
+import PageTransition from './PageTransition';
+import VintageNav from './VintageNav';
+import { useNavigationStore } from '@/store/useNavigationStore';
 
 export default function Layout() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const view = useNavigationStore((s) => s.view);
-  const targetPlanet = useNavigationStore((s) => s.targetPlanet);
   const syncFromRoute = useNavigationStore((s) => s.syncFromRoute);
   const setInitialLoadComplete = useNavigationStore((s) => s.setInitialLoadComplete);
 
   const [isLoading, setIsLoading] = useState(true);
-
-  const isNavigatingRef = useRef(false);
-  const initializedRef = useRef(false);
-  const prevViewRef = useRef(view);
+  const [showIntro, setShowIntro] = useState(true);
+  const [contentReady, setContentReady] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 800);
+    }, 400);
     return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
     const currentPath = location.pathname;
+    syncFromRoute(currentPath);
+    setInitialLoadComplete();
+  }, [location.pathname, syncFromRoute, setInitialLoadComplete]);
 
-    if (!initializedRef.current) {
-      initializedRef.current = true;
-      syncFromRoute(currentPath);
-      setInitialLoadComplete();
-      prevViewRef.current = useNavigationStore.getState().view;
-      return;
-    }
+  const handleIntroComplete = () => {
+    setContentReady(true);
+    setTimeout(() => {
+      setShowIntro(false);
+    }, 400);
+  };
 
-    if (isNavigatingRef.current) {
-      isNavigatingRef.current = false;
-      return;
-    }
-
-    const currentState = useNavigationStore.getState();
-    const isPlanetPath = PLANET_PATHS.includes(currentPath);
-    const isCurrentlyPlanet = currentState.view === 'planet';
-
-    if ((isPlanetPath && !isCurrentlyPlanet) || (!isPlanetPath && isCurrentlyPlanet) ||
-        (isPlanetPath && currentState.targetPlanet !== currentPath)) {
-      syncFromRoute(currentPath);
-    }
-  }, [location.pathname]);
-
-  useEffect(() => {
-    if (!initializedRef.current) {
-      prevViewRef.current = view;
-      return;
-    }
-
-    if (prevViewRef.current === 'warping' && view !== 'warping') {
-      isNavigatingRef.current = true;
-      if (view === 'planet' && targetPlanet) {
-        const search = location.pathname === targetPlanet ? location.search : '';
-        navigate(targetPlanet + search);
-      } else if (view === 'galaxy') {
-        navigate('/');
-      }
-    }
-    prevViewRef.current = view;
-  }, [view, targetPlanet, navigate, location.pathname, location.search]);
+  if (isLoading) {
+    return (
+      <ThreeLayerBackground>
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-ink-700 font-serif text-lg"
+          >
+            加载中...
+          </motion.div>
+        </div>
+      </ThreeLayerBackground>
+    );
+  }
 
   return (
-    <div className="fixed inset-0 overflow-hidden" style={{ background: '#010308' }}>
-      <LoadingScreen isLoading={isLoading} />
+    <>
+      <ThreeLayerBackground>
+        <div className="min-h-screen flex flex-col">
+          <VintageNav />
+          <main className="flex-1 relative z-10 px-6 py-6 pb-12">
+            <div className="max-w-7xl mx-auto">
+              <ErrorBoundary fallback={<FallbackView />}>
+                {contentReady && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.4, ease: 'easeOut' }}
+                  >
+                    <PageTransition />
+                  </motion.div>
+                )}
+              </ErrorBoundary>
+            </div>
+          </main>
+          <footer className="h-1 bg-ink-800/20 mt-auto" />
+        </div>
+      </ThreeLayerBackground>
 
-      {!isLoading && (
-        <ErrorBoundary fallback={
-          <FallbackView>
-            <Outlet />
-          </FallbackView>
-        }>
-          <SolarSystem />
-          <CursorGlow />
-          <HUDOverlay>
-            <Outlet />
-          </HUDOverlay>
-        </ErrorBoundary>
+      {showIntro && (
+        <IntroAnimation onComplete={handleIntroComplete} />
       )}
-    </div>
+    </>
   );
 }

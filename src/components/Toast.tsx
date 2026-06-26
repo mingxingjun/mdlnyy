@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, X, AlertCircle, Info } from 'lucide-react';
+import { Check, X, AlertCircle, Info, Stamp } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -36,17 +36,17 @@ const iconMap: Record<ToastType, typeof Check> = {
 };
 
 const colorMap: Record<ToastType, { bg: string; border: string; text: string; iconBg: string }> = {
-  success: { bg: 'rgba(0,217,36,0.1)', border: 'rgba(0,217,36,0.25)', text: '#00D924', iconBg: 'rgba(0,217,36,0.15)' },
-  error: { bg: 'rgba(255,61,0,0.1)', border: 'rgba(255,61,0,0.25)', text: '#FF3D00', iconBg: 'rgba(255,61,0,0.15)' },
-  warning: { bg: 'rgba(255,184,0,0.1)', border: 'rgba(255,184,0,0.25)', text: '#FFB800', iconBg: 'rgba(255,184,0,0.15)' },
-  info: { bg: 'rgba(99,91,255,0.1)', border: 'rgba(99,91,255,0.25)', text: '#635BFF', iconBg: 'rgba(99,91,255,0.15)' },
+  success: { bg: 'rgba(45,90,39,0.08)', border: 'rgba(45,90,39,0.25)', text: '#2D5A27', iconBg: 'rgba(45,90,39,0.12)' },
+  error: { bg: 'rgba(139,37,0,0.08)', border: 'rgba(139,37,0,0.25)', text: '#8B2500', iconBg: 'rgba(139,37,0,0.12)' },
+  warning: { bg: 'rgba(184,134,11,0.08)', border: 'rgba(184,134,11,0.25)', text: '#B8860B', iconBg: 'rgba(184,134,11,0.12)' },
+  info: { bg: 'rgba(92,64,51,0.08)', border: 'rgba(92,64,51,0.2)', text: '#5C4033', iconBg: 'rgba(92,64,51,0.1)' },
 };
 
 export function ToastContainer() {
   const { toasts, removeToast } = useToastStore();
 
   return (
-    <div className="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 z-[100] flex flex-col items-center sm:items-end gap-2 pointer-events-none">
+    <div className="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 z-[100] flex flex-col items-center sm:items-end gap-3 pointer-events-none">
       <AnimatePresence>
         {toasts.map((toast) => {
           const colors = colorMap[toast.type];
@@ -54,33 +54,42 @@ export function ToastContainer() {
           return (
             <motion.div
               key={toast.id}
-              initial={{ opacity: 0, x: 60, scale: 0.95 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 60, scale: 0.95 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-[12px] min-w-[260px] max-w-[calc(100vw-32px)] sm:max-w-sm"
-              style={{
-                background: colors.bg,
-                border: `1px solid ${colors.border}`,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                backdropFilter: 'blur(12px)',
-              }}
+              initial={{ opacity: 0, x: 60, y: -20, rotate: 3, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, y: 0, rotate: -1, scale: 1 }}
+              exit={{ opacity: 0, x: 60, y: -20, rotate: 3, scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              className="pointer-events-auto relative"
             >
               <div
-                className="w-7 h-7 rounded-[8px] flex items-center justify-center flex-shrink-0"
-                style={{ background: colors.iconBg }}
+                className="flex items-center gap-3 px-5 py-3 min-w-[260px] max-w-[calc(100vw-32px)] sm:max-w-sm rounded-sm"
+                style={{
+                  background: '#FBF7F0',
+                  border: `1.5px solid ${colors.border}`,
+                  boxShadow: '2px 3px 8px rgba(92,64,51,0.15), 0 0 0 1px rgba(92,64,51,0.05) inset',
+                }}
               >
-                <Icon size={14} style={{ color: colors.text }} />
+                <div
+                  className="w-8 h-8 rounded-sm flex items-center justify-center flex-shrink-0"
+                  style={{ background: colors.iconBg }}
+                >
+                  <Icon size={16} style={{ color: colors.text, strokeWidth: 2.5 }} />
+                </div>
+                <p className="font-serif text-sm flex-1" style={{ color: colors.text }}>
+                  {toast.message}
+                </p>
+                <button
+                  onClick={() => removeToast(toast.id)}
+                  className="p-1 rounded hover:bg-ink-600/10 transition-colors flex-shrink-0"
+                >
+                  <X size={14} style={{ color: 'rgba(92,64,51,0.5)' }} />
+                </button>
+
+                <Stamp
+                  size={14}
+                  className="absolute -bottom-1 -right-1 opacity-20"
+                  style={{ color: colors.text, transform: 'rotate(-12deg)' }}
+                />
               </div>
-              <p className="text-sm font-sans flex-1" style={{ color: colors.text }}>
-                {toast.message}
-              </p>
-              <button
-                onClick={() => removeToast(toast.id)}
-                className="p-1 rounded hover:bg-white/5 transition-colors flex-shrink-0"
-              >
-                <X size={12} className="text-[#6b7c93]" />
-              </button>
             </motion.div>
           );
         })}

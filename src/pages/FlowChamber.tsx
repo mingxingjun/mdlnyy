@@ -7,8 +7,8 @@ import {
 } from 'lucide-react';
 import { useAppStore, type WhiteNoiseType } from '@/store/useAppStore';
 import { useToastStore } from '@/components/Toast';
+import PaperCard from '@/components/PaperCard';
 
-/* ──────────────── 常量 ──────────────── */
 const WORK_DURATION = 25 * 60;
 const BREAK_DURATION = 5 * 60;
 
@@ -21,7 +21,6 @@ const NOISE_CONFIG: { type: WhiteNoiseType; label: string; icon: typeof CloudRai
   { type: 'fire', label: '壁炉', icon: Flame },
 ];
 
-/* ──────────────── 白噪音音频生成器 ──────────────── */
 function createNoiseGenerator(
   ctx: AudioContext,
   type: WhiteNoiseType,
@@ -149,7 +148,6 @@ function createNoiseGenerator(
   }
 }
 
-/* ──────────────── 番茄钟 ──────────────── */
 function PomodoroTimer() {
   const subjects = useAppStore((s) => s.subjects);
   const addPomodoroSession = useAppStore((s) => s.addPomodoroSession);
@@ -213,7 +211,7 @@ function PomodoroTimer() {
 
   const currentSubject = subjects.find((s) => s.id === selectedSubject);
 
-  const strokeColor = mode === 'work' ? '#635BFF' : '#00D924';
+  const strokeColor = mode === 'work' ? '#8B2500' : '#2D5A27';
 
   return (
     <motion.div
@@ -222,8 +220,7 @@ function PomodoroTimer() {
       transition={{ duration: 0.6 }}
       className="flex flex-col items-center gap-8"
     >
-      {/* 模式切换 */}
-      <div className="flex items-center gap-2 bg-[#1a3a5c] rounded-full p-1 w-full sm:w-auto">
+      <div className="flex items-center gap-2 bg-paper-200/60 rounded-full p-1 w-full sm:w-auto border border-ink-800/10">
         {(['work', 'break'] as const).map((m) => (
           <button
             key={m}
@@ -232,12 +229,12 @@ function PomodoroTimer() {
               setTimeLeft(m === 'work' ? WORK_DURATION : BREAK_DURATION);
               setRunning(false);
             }}
-            className={`flex-1 sm:flex-none px-5 py-1.5 rounded-full text-sm font-medium transition-all duration-300 ${
+            className={`flex-1 sm:flex-none px-5 py-1.5 rounded-full text-sm font-serif font-medium transition-all duration-300 ${
               mode === m
                 ? m === 'work'
-                  ? 'bg-[#635BFF]/10 text-[#635BFF] shadow-sm'
-                  : 'bg-[#00D924]/10 text-[#00D924] shadow-sm'
-                : 'text-[#6b7c93] hover:text-[#6b7c93]'
+                  ? 'bg-seal/10 text-seal shadow-sm'
+                  : 'bg-green-ink/10 text-green-ink shadow-sm'
+                : 'text-ink-600 hover:text-ink-700'
             }`}
           >
             {m === 'work' ? '专注' : '休息'}
@@ -245,21 +242,18 @@ function PomodoroTimer() {
         ))}
       </div>
 
-      {/* SVG 圆环计时器 — 英雄元素 */}
       <div
         className={`relative ${running ? 'animate-breathe' : ''} ${
-          completedAnimation ? 'animate-completion-pulse' : ''
+          completedAnimation ? 'completion-pulse' : ''
         }`}
       >
         <svg viewBox="0 0 320 320" className="w-[200px] h-[200px] sm:w-[280px] sm:h-[280px] lg:w-[320px] lg:h-[320px] -rotate-90">
-          {/* 背景圆 */}
           <circle
             cx="160" cy="160" r={radius}
             fill="none"
-            stroke="#1a3a5c"
+            stroke="#E0D4C0"
             strokeWidth="6"
           />
-          {/* 进度圆 */}
           <circle
             cx="160" cy="160" r={radius}
             fill="none"
@@ -269,20 +263,20 @@ function PomodoroTimer() {
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             className="transition-all duration-1000 ease-linear"
+            style={{ opacity: 0.8 }}
           />
         </svg>
 
-        {/* 中心内容 */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="font-sans text-6xl font-bold tracking-widest tabular-nums text-[#ffffff] transition-all duration-300">
+          <span className="font-serif text-6xl font-bold tracking-widest tabular-nums text-ink-800 transition-all duration-300">
             {minutes}:{seconds}
           </span>
-          <span className="text-[#6b7c93] text-xs tracking-widest uppercase mt-2">
+          <span className="text-ink-600 text-xs tracking-widest uppercase mt-2 font-serif">
             {mode === 'work' ? '专注中' : '休息中'}
           </span>
           {currentSubject && (
             <span
-              className="text-xs mt-1.5 font-medium opacity-70"
+              className="text-xs mt-1.5 font-serif font-medium opacity-70"
               style={{ color: currentSubject.color }}
             >
               {currentSubject.name}
@@ -291,11 +285,10 @@ function PomodoroTimer() {
         </div>
       </div>
 
-      {/* 控制按钮 */}
       <div className="flex items-center gap-3">
         <button
           onClick={handleReset}
-          className="w-10 h-10 min-w-[44px] min-h-[44px] rounded-full border border-white/[0.06] flex items-center justify-center text-[#6b7c93] hover:text-[#a3b5cc] hover:border-white/[0.12] transition-all bg-[#0d2d4a]"
+          className="w-10 h-10 min-w-[44px] min-h-[44px] rounded-full border border-ink-800/15 flex items-center justify-center text-ink-600 hover:text-ink-800 hover:border-ink-800/25 transition-all bg-paper-100"
         >
           <RotateCcw size={16} />
         </button>
@@ -303,34 +296,32 @@ function PomodoroTimer() {
           onClick={running ? handlePause : handleStart}
           className={`w-14 h-14 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center transition-all duration-300 ${
             mode === 'work'
-              ? 'bg-[#635BFF] hover:bg-[#5a6aff]'
-              : 'bg-[#00D924] hover:bg-[#2dd4a0]'
-          } text-white`}
+              ? 'bg-seal hover:bg-seal-dark'
+              : 'bg-green-ink hover:bg-green-ink/90'
+          } text-paper-50 shadow-paper`}
         >
           {running ? <Pause size={22} /> : <Play size={22} className="ml-0.5" />}
         </button>
-        <div className="w-10 h-10" /> {/* 占位保持居中 */}
+        <div className="w-10 h-10" />
       </div>
 
-      {/* 科目选择 */}
       {subjects.length > 0 ? (
         <select
           value={selectedSubject}
           onChange={(e) => setSelectedSubject(e.target.value)}
-          className="w-full sm:w-auto bg-[#0d2d4a] border border-white/[0.06] rounded-[10px] px-4 py-2 text-sm text-[#a3b5cc] focus:outline-none focus:border-[#635BFF]/30 transition-colors"
+          className="w-full sm:w-auto bg-paper-100 border border-ink-800/15 rounded-md px-4 py-2 text-sm font-serif text-ink-700 focus:outline-none focus:border-seal/30 transition-colors"
         >
           {subjects.map((s) => (
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
       ) : (
-        <p className="text-xs text-[#6b7c93]">请先在仪表盘添加考试科目</p>
+        <p className="text-xs text-ink-600 font-serif">请先在仪表盘添加考试科目</p>
       )}
     </motion.div>
   );
 }
 
-/* ──────────────── 白噪音面板 ──────────────── */
 function WhiteNoisePanel() {
   const activeWhiteNoise = useAppStore((s) => s.activeWhiteNoise);
   const toggleWhiteNoise = useAppStore((s) => s.toggleWhiteNoise);
@@ -407,14 +398,9 @@ function WhiteNoisePanel() {
   }, []);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.5, delay: 0.15 }}
-      className="card p-5"
-    >
-      <h3 className="font-sans text-sm font-semibold text-[#a3b5cc] mb-4 flex items-center gap-2 tracking-wide">
-        <Headphones size={14} className="text-[#635BFF]" />
+    <PaperCard className="p-5">
+      <h3 className="font-serif text-sm font-semibold text-ink-700 mb-4 flex items-center gap-2 tracking-wide">
+        <Headphones size={14} className="text-seal" />
         白噪音
       </h3>
 
@@ -424,28 +410,28 @@ function WhiteNoisePanel() {
           return (
             <div
               key={type}
-              className={`flex flex-col items-center gap-2 p-3 rounded-[16px] border transition-all duration-300 ${
+              className={`flex flex-col items-center gap-2 p-3 rounded-md border transition-all duration-300 ${
                 isActive
-                  ? 'bg-[#635BFF]/10 border-[#635BFF]/30'
-                  : 'bg-[#0d2d4a] border-white/[0.06] hover:border-white/[0.12]'
+                  ? 'bg-seal/8 border-seal/25'
+                  : 'bg-paper-100/60 border-ink-800/10 hover:border-ink-800/20'
               }`}
             >
               <button
                 onClick={() => handleToggle(type)}
-                className={`w-10 h-10 rounded-[10px] flex items-center justify-center transition-all duration-300 ${
+                className={`w-10 h-10 rounded-md flex items-center justify-center transition-all duration-300 ${
                   isActive
-                    ? 'bg-[#635BFF]/10 text-[#635BFF]'
-                    : 'bg-[#0A2540] text-[#6b7c93]'
+                    ? 'bg-seal/10 text-seal'
+                    : 'bg-paper-200 text-ink-600'
                 }`}
               >
                 {isActive ? <Volume2 size={18} /> : <VolumeX size={18} />}
               </button>
               <Icon
                 size={16}
-                className={isActive ? 'text-[#635BFF]' : 'text-[#6b7c93]'}
+                className={isActive ? 'text-seal' : 'text-ink-600'}
               />
               <span
-                className={`text-[11px] font-medium ${isActive ? 'text-[#635BFF]' : 'text-[#6b7c93]'}`}
+                className={`text-[11px] font-serif font-medium ${isActive ? 'text-seal' : 'text-ink-600'}`}
               >
                 {label}
               </span>
@@ -456,9 +442,9 @@ function WhiteNoisePanel() {
                   max={100}
                   value={volumes[type]}
                   onChange={(e) => handleVolumeChange(type, Number(e.target.value))}
-                  className="w-full h-0.5 rounded-full appearance-none cursor-pointer accent-[#635BFF]"
+                  className="w-full h-1 rounded-full appearance-none cursor-pointer accent-seal"
                   style={{
-                    background: `linear-gradient(to right, #635BFF ${volumes[type]}%, rgba(255,255,255,0.06) ${volumes[type]}%)`,
+                    background: `linear-gradient(to right, #8B2500 ${volumes[type]}%, rgba(92,64,51,0.1) ${volumes[type]}%)`,
                   }}
                 />
               )}
@@ -466,11 +452,10 @@ function WhiteNoisePanel() {
           );
         })}
       </div>
-    </motion.div>
+    </PaperCard>
   );
 }
 
-/* ──────────────── 虚拟自习室 ──────────────── */
 function StudyRoomsPanel() {
   const studyRooms = useAppStore((s) => s.studyRooms);
   const joinedRooms = useAppStore((s) => s.joinedRooms);
@@ -489,14 +474,9 @@ function StudyRoomsPanel() {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.5, delay: 0.25 }}
-      className="card p-5"
-    >
-      <h3 className="font-sans text-sm font-semibold text-[#a3b5cc] mb-4 flex items-center gap-2 tracking-wide">
-        <Users size={14} className="text-[#00D924]" />
+    <PaperCard className="p-5">
+      <h3 className="font-serif text-sm font-semibold text-ink-700 mb-4 flex items-center gap-2 tracking-wide">
+        <Users size={14} className="text-green-ink" />
         自习室
       </h3>
 
@@ -506,29 +486,29 @@ function StudyRoomsPanel() {
           return (
             <div
               key={room.id}
-              className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-[10px] border transition-all duration-200 ${
+              className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-md border transition-all duration-200 ${
                 isJoined
-                  ? 'bg-[#00D924]/10 border-[#00D924]/30'
-                  : 'bg-[#0d2d4a] border-white/[0.06] hover:border-white/[0.12]'
+                  ? 'bg-green-ink/8 border-green-ink/25'
+                  : 'bg-paper-100/60 border-ink-800/10 hover:border-ink-800/20'
               }`}
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-[#ffffff] truncate">{room.name}</span>
+                  <span className="text-sm font-serif text-ink-800 truncate">{room.name}</span>
                   {room.isActive && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-ink animate-pulse flex-shrink-0" />
                   )}
                 </div>
-                <span className="text-[11px] text-[#6b7c93]">
+                <span className="text-[11px] font-serif text-ink-600">
                   {room.members}/{room.maxMembers} 人
                 </span>
               </div>
               <button
                 onClick={() => handleJoinLeave(room.id, room.name)}
-                className={`flex items-center gap-1 text-[11px] px-3 py-1 rounded-[8px] font-medium transition-all duration-200 flex-shrink-0 ${
+                className={`flex items-center gap-1 text-[11px] px-3 py-1 rounded-md font-serif font-medium transition-all duration-200 flex-shrink-0 ${
                   isJoined
-                    ? 'bg-[#00D924]/10 border border-[#00D924]/30 text-[#00D924]'
-                    : 'bg-gradient-to-r from-[#635BFF] to-[#7C5CFF] text-white hover:opacity-90'
+                    ? 'bg-green-ink/10 border border-green-ink/25 text-green-ink'
+                    : 'bg-seal text-paper-50 hover:bg-seal-dark shadow-sm'
                 }`}
               >
                 {isJoined ? (
@@ -547,11 +527,10 @@ function StudyRoomsPanel() {
           );
         })}
       </div>
-    </motion.div>
+    </PaperCard>
   );
 }
 
-/* ──────────────── 今日专注统计 ──────────────── */
 function FocusStats() {
   const pomodoroSessions = useAppStore((s) => s.pomodoroSessions);
 
@@ -570,59 +549,58 @@ function FocusStats() {
   const mins = todayFlowMinutes % 60;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.35 }}
-      className="card px-6 py-4 flex flex-col sm:flex-row items-center gap-4 sm:gap-8"
-    >
+    <PaperCard className="px-6 py-4 flex flex-col sm:flex-row items-center gap-4 sm:gap-8">
       <div className="flex items-center gap-3">
-        <Clock size={16} className="text-[#635BFF]" />
+        <Clock size={16} className="text-seal" />
         <div>
-          <p className="text-[10px] text-[#6b7c93] uppercase tracking-widest">今日专注</p>
-          <p className="font-sans text-xl font-bold text-[#ffffff]">
+          <p className="text-[10px] font-serif text-ink-600 uppercase tracking-widest">今日专注</p>
+          <p className="font-serif text-xl font-bold text-ink-800">
             {hours}h {mins}m
           </p>
         </div>
       </div>
-      <div className="w-px h-8 bg-white/[0.06] hidden sm:block" />
+      <div className="w-px h-8 bg-ink-800/10 hidden sm:block" />
       <div className="flex items-center gap-3">
-        <Flame size={16} className="text-[#635BFF]" />
+        <Flame size={16} className="text-seal" />
         <div>
-          <p className="text-[10px] text-[#6b7c93] uppercase tracking-widest">完成番茄</p>
-          <p className="font-sans text-xl font-bold text-[#ffffff]">
+          <p className="text-[10px] font-serif text-ink-600 uppercase tracking-widest">完成番茄</p>
+          <p className="font-serif text-xl font-bold text-ink-800">
             {completedToday}
           </p>
         </div>
       </div>
-      <div className="w-px h-8 bg-white/[0.06] hidden sm:block" />
+      <div className="w-px h-8 bg-ink-800/10 hidden sm:block" />
       <div className="flex items-center gap-3">
-        <Check size={16} className="text-[#00D924]" />
+        <Check size={16} className="text-green-ink" />
         <div>
-          <p className="text-[10px] text-[#6b7c93] uppercase tracking-widest">连续轮次</p>
-          <p className="font-sans text-xl font-bold text-[#ffffff]">
+          <p className="text-[10px] font-serif text-ink-600 uppercase tracking-widest">连续轮次</p>
+          <p className="font-serif text-xl font-bold text-ink-800">
             {completedToday}
           </p>
         </div>
       </div>
-    </motion.div>
+    </PaperCard>
   );
 }
 
-/* ──────────────── 主页面 ──────────────── */
 export default function FlowChamber() {
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
-      {/* 番茄钟 — 居中英雄 */}
+    <div className="max-w-5xl mx-auto space-y-8 px-4 md:px-0">
+      <div className="mb-2">
+        <h1 className="handwritten text-3xl md:text-4xl font-serif text-ink-800 leading-tight mb-1"
+          style={{ fontFamily: '"Noto Serif SC", Georgia, serif', fontStyle: 'italic' }}>
+          专注时光 ⏳
+        </h1>
+        <p className="font-serif text-ink-600 text-sm mt-1">番茄钟 · 白噪音 · 自习室</p>
+      </div>
+
       <PomodoroTimer />
 
-      {/* 白噪音 + 自习室并排 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <WhiteNoisePanel />
         <StudyRoomsPanel />
       </div>
 
-      {/* 今日统计 */}
       <FocusStats />
     </div>
   );
