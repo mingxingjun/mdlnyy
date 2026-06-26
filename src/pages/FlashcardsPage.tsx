@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import PaperCard from '@/components/PaperCard';
@@ -28,7 +28,7 @@ function Confetti() {
   );
 
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-50">
       {pieces.map((p) => (
         <div
           key={p.id}
@@ -57,28 +57,50 @@ interface FlashCardViewProps {
   onRate: (rating: CardRating) => void;
   cardNumber: number;
   totalCards: number;
+  direction: 'left' | 'right' | 'none';
 }
 
-function FlashCardView({ card, subjectName, subjectColor, isFlipped, onFlip, onRate, cardNumber, totalCards }: FlashCardViewProps) {
+function FlashCardView({ card, subjectName, subjectColor, isFlipped, onFlip, onRate, cardNumber, totalCards, direction }: FlashCardViewProps) {
+  const slideVariants = {
+    enter: (dir: 'left' | 'right' | 'none') => ({
+      x: dir === 'left' ? 200 : dir === 'right' ? -200 : 0,
+      opacity: 0,
+      rotateY: dir === 'left' ? 15 : dir === 'right' ? -15 : 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+      rotateY: 0,
+      transition: { type: 'spring', stiffness: 250, damping: 28 },
+    },
+    exit: (dir: 'left' | 'right' | 'none') => ({
+      x: dir === 'left' ? -200 : dir === 'right' ? 200 : 0,
+      opacity: 0,
+      rotateY: dir === 'left' ? -15 : dir === 'right' ? 15 : 0,
+      transition: { duration: 0.25, ease: 'easeIn' },
+    }),
+  };
+
   return (
     <motion.div
-      className="flex flex-col items-center"
-      initial={{ opacity: 0, x: 60, rotateY: 10 }}
-      animate={{ opacity: 1, x: 0, rotateY: 0 }}
-      exit={{ opacity: 0, x: -60, rotateY: -10 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+      className="flex flex-col items-center w-full max-w-[460px] mx-auto"
+      custom={direction}
+      variants={slideVariants}
+      initial="enter"
+      animate="center"
+      exit="exit"
     >
-      <div className="flash-card mx-auto" onClick={!isFlipped ? onFlip : undefined}>
+      <div className="flash-card w-full" onClick={!isFlipped ? onFlip : undefined}>
         <div className={`flash-card-inner ${isFlipped ? 'flipped' : ''}`}>
           <div className="flash-card-face flash-card-front">
-            <div className="index-card w-full h-full min-h-[300px] p-6 flex flex-col">
+            <div className="index-card w-full h-full p-6 flex flex-col">
               <div className="index-card-grain" />
               <div className="index-card-lines" />
               <div className="index-card-hole" />
               <div className="index-card-corner" />
 
               <div className="relative z-10 flex flex-col h-full">
-                <div className="flex justify-between items-start mb-6 pt-1 pl-6">
+                <div className="flex justify-between items-start mb-4 pt-1 pl-6">
                   <VintageTag color="ink" className="text-[11px]">
                     <span style={{ color: subjectColor }}>●</span> {subjectName}
                   </VintageTag>
@@ -87,13 +109,13 @@ function FlashCardView({ card, subjectName, subjectColor, isFlipped, onFlip, onR
                   </span>
                 </div>
 
-                <div className="flex-1 flex items-center justify-center px-4 pl-8">
+                <div className="flex-1 flex items-center justify-center px-2 pl-8 py-4">
                   <p className="font-serif text-xl text-ink-800 text-center leading-relaxed">
                     {card.front}
                   </p>
                 </div>
 
-                <div className="text-center pt-4 pb-2">
+                <div className="text-center pt-2">
                   <p className="text-xs text-ink-400 font-serif italic">
                     ~ 点击卡片查看答案 ~
                   </p>
@@ -103,14 +125,14 @@ function FlashCardView({ card, subjectName, subjectColor, isFlipped, onFlip, onR
           </div>
 
           <div className="flash-card-face flash-card-back">
-            <div className="index-card w-full h-full min-h-[300px] p-6 flex flex-col">
+            <div className="index-card w-full h-full p-6 flex flex-col overflow-hidden">
               <div className="index-card-grain" />
               <div className="index-card-lines" />
               <div className="index-card-hole" />
               <div className="index-card-corner" />
 
               <div className="relative z-10 flex flex-col h-full">
-                <div className="flex justify-between items-start mb-4 pt-1 pl-6">
+                <div className="flex justify-between items-start mb-3 pt-1 pl-6">
                   <VintageTag color="green" className="text-[11px]">
                     ✓ 答案
                   </VintageTag>
@@ -119,22 +141,22 @@ function FlashCardView({ card, subjectName, subjectColor, isFlipped, onFlip, onR
                   </span>
                 </div>
 
-                <div className="flex-1 flex items-center justify-center px-4 pl-8 overflow-auto">
+                <div className="flex-1 flex items-center justify-center px-2 pl-8 py-3 overflow-auto">
                   <p className="font-serif text-lg text-ink-700 text-center leading-relaxed">
                     {card.back}
                   </p>
                 </div>
 
-                <div className="pt-4">
-                  <p className="text-[10px] text-center text-ink-400 font-serif mb-3">
+                <div className="pt-3">
+                  <p className="text-[10px] text-center text-ink-400 font-serif mb-2">
                     你记得有多清楚？
                   </p>
-                  <div className="flex gap-2 justify-center flex-wrap" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex gap-2 justify-center flex-wrap">
                     <VintageButton
                       variant="secondary"
                       size="sm"
                       className="rating-btn border-seal/50 text-seal hover:bg-seal/10"
-                      onClick={() => onRate('again')}
+                      onClick={(e) => { e?.stopPropagation?.(); onRate('again'); }}
                     >
                       😕 忘记
                     </VintageButton>
@@ -142,7 +164,7 @@ function FlashCardView({ card, subjectName, subjectColor, isFlipped, onFlip, onR
                       variant="secondary"
                       size="sm"
                       className="rating-btn border-gold/50 text-gold hover:bg-gold/10"
-                      onClick={() => onRate('hard')}
+                      onClick={(e) => { e?.stopPropagation?.(); onRate('hard'); }}
                     >
                       🤔 模糊
                     </VintageButton>
@@ -150,7 +172,7 @@ function FlashCardView({ card, subjectName, subjectColor, isFlipped, onFlip, onR
                       variant="secondary"
                       size="sm"
                       className="rating-btn"
-                      onClick={() => onRate('good')}
+                      onClick={(e) => { e?.stopPropagation?.(); onRate('good'); }}
                     >
                       😐 记得
                     </VintageButton>
@@ -158,7 +180,7 @@ function FlashCardView({ card, subjectName, subjectColor, isFlipped, onFlip, onR
                       variant="primary"
                       size="sm"
                       className="rating-btn bg-[#2D5A27] hover:bg-[#234B1F] text-paper-50 border-none"
-                      onClick={() => onRate('easy')}
+                      onClick={(e) => { e?.stopPropagation?.(); onRate('easy'); }}
                     >
                       😊 很熟
                     </VintageButton>
@@ -188,17 +210,16 @@ export default function FlashcardsPage() {
   const navigate = useNavigate();
   const { subjects, flashCards, rateCard, getDueCards } = useAppStore();
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const [sessionQueue, setSessionQueue] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [reviewedCount, setReviewedCount] = useState(0);
   const [masteredToday, setMasteredToday] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
-
-  const dueCards = useMemo(() => getDueCards(selectedSubject), [getDueCards, selectedSubject, flashCards]);
-  const totalCards = flashCards.length;
-  const masteredCount = flashCards.filter(c => c.mastered).length;
-  const currentCard = dueCards[currentIndex];
+  const [direction, setDirection] = useState<'left' | 'right' | 'none'>('none');
+  const [animating, setAnimating] = useState(false);
+  const initializedRef = useRef(false);
 
   const subjectMap = useMemo(() => {
     const map = new Map<string, { name: string; color: string }>();
@@ -206,29 +227,55 @@ export default function FlashcardsPage() {
     return map;
   }, [subjects]);
 
+  const cardMap = useMemo(() => {
+    const map = new Map<string, FlashCard>();
+    flashCards.forEach(c => map.set(c.id, c));
+    return map;
+  }, [flashCards]);
+
+  const initSession = useCallback((subjectId: string | null) => {
+    const due = getDueCards(subjectId);
+    setSessionQueue(due.map(c => c.id));
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    setReviewedCount(0);
+    setMasteredToday(0);
+    setIsComplete(due.length === 0);
+    setShowConfetti(false);
+    setDirection('none');
+    setAnimating(false);
+  }, [getDueCards]);
+
   useEffect(() => {
-    if (dueCards.length === 0 && !isComplete) {
-      setIsComplete(true);
-      setShowConfetti(true);
-      const timer = setTimeout(() => setShowConfetti(false), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [dueCards.length, isComplete]);
+    initSession(selectedSubject);
+    initializedRef.current = true;
+  }, [selectedSubject, initSession]);
+
+  const totalCards = flashCards.length;
+  const masteredCount = flashCards.filter(c => c.mastered).length;
+  const dueCountNow = useMemo(() => getDueCards(selectedSubject).length, [getDueCards, selectedSubject, flashCards]);
+  const sessionTotal = sessionQueue.length;
+  const currentCardId = sessionQueue[currentIndex];
+  const currentCard = currentCardId ? cardMap.get(currentCardId) : undefined;
 
   const handleFlip = useCallback(() => {
-    if (!isFlipped) {
+    if (!isFlipped && !animating) {
       setIsFlipped(true);
     }
-  }, [isFlipped]);
+  }, [isFlipped, animating]);
 
   const handleRate = useCallback((rating: CardRating) => {
-    if (!currentCard) return;
+    if (!currentCard || animating) return;
+    if (!isFlipped) return;
+
+    setAnimating(true);
 
     const wasMastered = currentCard.mastered;
     rateCard(currentCard.id, rating);
     setReviewedCount(prev => prev + 1);
 
-    const willBeMastered = rating === 'easy' || (rating === 'good' && currentCard.repetitions >= 4);
+    const willBeMastered = (rating === 'easy' && currentCard.repetitions >= 4) ||
+      (rating === 'good' && currentCard.repetitions >= 5);
     if (willBeMastered && !wasMastered) {
       setMasteredToday(prev => prev + 1);
     }
@@ -236,24 +283,26 @@ export default function FlashcardsPage() {
     setIsFlipped(false);
 
     setTimeout(() => {
-      if (currentIndex + 1 >= dueCards.length) {
-        setIsComplete(true);
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 3000);
-      } else {
-        setCurrentIndex(prev => prev + 1);
-      }
-    }, 100);
-  }, [currentCard, currentIndex, dueCards.length, rateCard]);
+      setDirection('left');
+      setTimeout(() => {
+        const nextIndex = currentIndex + 1;
+        if (nextIndex >= sessionQueue.length) {
+          setIsComplete(true);
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 3500);
+          setAnimating(false);
+        } else {
+          setCurrentIndex(nextIndex);
+          setDirection('right');
+          setAnimating(false);
+        }
+      }, 280);
+    }, 350);
+  }, [currentCard, currentIndex, sessionQueue.length, rateCard, isFlipped, animating]);
 
   const handleReset = useCallback(() => {
-    setCurrentIndex(0);
-    setIsFlipped(false);
-    setReviewedCount(0);
-    setMasteredToday(0);
-    setIsComplete(false);
-    setShowConfetti(false);
-  }, []);
+    initSession(selectedSubject);
+  }, [initSession, selectedSubject]);
 
   const subjectInfo = currentCard ? subjectMap.get(currentCard.subjectId) : null;
 
@@ -278,16 +327,19 @@ export default function FlashcardsPage() {
             <p className="text-ink-600 font-serif text-sm">间隔重复，高效记忆</p>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleReset}
+              className="px-3 py-2 text-xs font-serif bg-paper-50 border border-ink-600/15 rounded-[3px] text-ink-600 hover:bg-paper-200 transition-colors"
+            >
+              ↻ 重新开始
+            </button>
             <select
               value={selectedSubject || ''}
               onChange={(e) => {
                 setSelectedSubject(e.target.value || null);
-                setCurrentIndex(0);
-                setIsFlipped(false);
-                setIsComplete(false);
               }}
-              className="px-3 py-2 text-sm font-serif bg-paper-50 border border-ink-600/15 rounded-[3px] focus:outline-none focus:border-seal/40"
+              className="px-3 py-2 text-sm font-serif bg-paper-50 border border-ink-600/15 rounded-[3px] focus:outline-none focus:border-seal/40 text-ink-800"
             >
               <option value="">全部学科</option>
               {subjects.map(s => (
@@ -301,19 +353,39 @@ export default function FlashcardsPage() {
       <motion.div variants={fadeUp}>
         <div className="grid grid-cols-3 gap-3 max-w-lg">
           <PaperCard className="p-3 text-center" rotation={-1}>
-            <p className="text-[10px] text-ink-500 font-serif mb-1">今日待复习</p>
-            <p className="font-serif text-2xl font-bold text-seal">{dueCards.length}</p>
+            <p className="text-[10px] text-ink-500 font-serif mb-1">本次待复习</p>
+            <p className="font-serif text-2xl font-bold text-seal tabular-nums">{sessionTotal}</p>
           </PaperCard>
           <PaperCard className="p-3 text-center" rotation={0.5}>
             <p className="text-[10px] text-ink-500 font-serif mb-1">总卡片数</p>
-            <p className="font-serif text-2xl font-bold text-ink-700">{totalCards}</p>
+            <p className="font-serif text-2xl font-bold text-ink-700 tabular-nums">{totalCards}</p>
           </PaperCard>
           <PaperCard className="p-3 text-center" rotation={1}>
             <p className="text-[10px] text-ink-500 font-serif mb-1">已掌握</p>
-            <p className="font-serif text-2xl font-bold text-[#2D5A27]">{masteredCount}</p>
+            <p className="font-serif text-2xl font-bold text-[#2D5A27] tabular-nums">{masteredCount}</p>
           </PaperCard>
         </div>
       </motion.div>
+
+      {sessionTotal > 0 && !isComplete && (
+        <motion.div variants={fadeUp}>
+          <div className="max-w-[460px] mx-auto">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex-1 h-1.5 bg-paper-300 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-seal/70 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(currentIndex / sessionTotal) * 100}%` }}
+                  transition={{ duration: 0.3, ease: 'easeOut' }}
+                />
+              </div>
+              <span className="text-[10px] text-ink-500 font-serif tabular-nums whitespace-nowrap">
+                {currentIndex + 1} / {sessionTotal}
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       <AnimatePresence mode="wait">
         {isComplete ? (
@@ -335,13 +407,13 @@ export default function FlashcardsPage() {
               </motion.div>
 
               <h2 className="font-serif text-xl text-ink-800 font-bold mb-2">
-                {reviewedCount > 0 ? '今日复习完成！' : '暂无待复习卡片'}
+                {reviewedCount > 0 ? '本次复习完成！' : '暂无待复习卡片'}
               </h2>
 
               {reviewedCount > 0 ? (
                 <>
                   <p className="text-ink-600 font-serif text-sm mb-6">
-                    太棒了！你今天复习了 <span className="text-seal font-bold">{reviewedCount}</span> 张卡片
+                    太棒了！你本次复习了 <span className="text-seal font-bold">{reviewedCount}</span> 张卡片
                     {masteredToday > 0 && <>，新掌握了 <span className="text-[#2D5A27] font-bold">{masteredToday}</span> 张</>}
                   </p>
 
@@ -385,7 +457,7 @@ export default function FlashcardsPage() {
           </motion.div>
         ) : currentCard ? (
           <motion.div
-            key="card"
+            key={`card-${currentCard.id}-${currentIndex}`}
             className="flex justify-center py-4"
           >
             <FlashCardView
@@ -396,7 +468,8 @@ export default function FlashcardsPage() {
               onFlip={handleFlip}
               onRate={handleRate}
               cardNumber={currentIndex + 1}
-              totalCards={dueCards.length}
+              totalCards={sessionTotal}
+              direction={direction}
             />
           </motion.div>
         ) : null}
