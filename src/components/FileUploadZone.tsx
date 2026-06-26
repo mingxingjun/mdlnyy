@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import PaperCard from '@/components/PaperCard';
@@ -7,14 +7,14 @@ import VintageTag from '@/components/VintageTag';
 import { useAppStore } from '@/store/useAppStore';
 import { useToastStore } from '@/components/Toast';
 import { extractFileText } from '@/lib/fileParser';
-import { parseMaterialAndGenerateQuestions } from '@/lib/llm';
+import { parseAndGenerateQuiz, parseMaterialAndGenerateQuestions } from '@/lib/llm';
 import type { GeneratedQuestion } from '@/store/useAppStore';
 
 interface FileUploadZoneProps {
   onUploadComplete?: (points: string[]) => void;
 }
 
-type UploadState = 'idle' | 'dragging' | 'uploading' | 'parsing' | 'generating' | 'complete' | 'error';
+type UploadState = 'idle' | 'dragging' | 'uploading' | 'parsing' | 'document-parsing' | 'quiz-generating' | 'generating' | 'complete' | 'error';
 
 const knowledgePointPools: Record<string, string[]> = {
   math: ['极限与连续', '导数与微分', '中值定理', '不定积分', '定积分应用', '微分方程', '多元函数微分', '重积分'],
@@ -29,6 +29,20 @@ const parsingSteps = [
   '提取核心公式...',
   '标注重点考点...',
   '整理知识脉络...',
+];
+
+const documentSteps = [
+  '通读资料内容...',
+  '识别学科分类...',
+  '提取核心知识点...',
+  '整理章节大纲...',
+];
+
+const quizSteps = [
+  '分析考点分布...',
+  '构思题目难度...',
+  '设计选项陷阱...',
+  '编写解析步骤...',
 ];
 
 const generatingSteps = [
@@ -90,8 +104,33 @@ export default function FileUploadZone({ onUploadComplete }: FileUploadZoneProps
   const [generatedSubjectId, setGeneratedSubjectId] = useState<string>('math');
   const [generatedSubjectName, setGeneratedSubjectName] = useState<string>('高等数学');
   const [isLLMGenerated, setIsLLMGenerated] = useState(false);
-  const { addKnowledgePoints, addGeneratedQuestions, setCurrentSubjectFilter, llmConfig } = useAppStore();
+  const { addKnowledgePoints, addGeneratedQuestions, setCurrentSubjectFilter, llmConfig, modelConfigs, modelRoles } = useAppStore();
   const { addToast } = useToastStore();
+
+  const hasNewConfig = useMemo(() => {
+    return modelConfigs.some(m => m.enabled && m.apiKey);
+  }, [modelConfigs]);
+
+  const isDualMode = useMemo(() => {
+    if (!hasNewConfig) return false;
+    const docId = modelRoles.document;
+    const quizId = modelRoles.quiz;
+    if (!docId || !quizId) return false;
+    const docModel = modelConfigs.find(m => m.id === docId);
+    const quizModel = modelConfigs.find(m => m.id === quizId);
+    if (!docModel?.enabled || !docModel?.apiKey || !quizModel?.enabled || !quizModel?.apiKey) return false;
+    return docId !== quizId;
+  }, [modelConfigs, modelRoles, hasNewConfig]);
+
+  const docModelName = useMemo(() => {
+    const m = modelConfigs.find(m => m.id === modelRoles.document);
+    return m?.name || '文档模型';
+  }, [modelConfigs, modelRoles.document]);
+
+  const quizModelName = useMemo(() => {
+    const m = modelConfigs.find(m => m.id === modelRoles.quiz);
+    return m?.name || '出题模型';
+  }, [modelConfigs, modelRoles.quiz]);
 
   const resetUpload = useCallback(() => {
     setUploadState('idle');
@@ -127,44 +166,92 @@ export default function FileUploadZone({ onUploadComplete }: FileUploadZoneProps
 
   const runLLMGeneration = useCallback(async (file: File) => {
     try {
-      setUploadState('generating');
-      setVisibleSteps([]);
       setError(null);
-
-      let stepIndex = 0;
-      const stepInterval = setInterval(() => {
-        if (stepIndex < generatingSteps.length) {
-          setVisibleSteps(prev => [...prev, stepIndex]);
-          stepIndex++;
-        }
-      }, 600);
 
       const text = await extractFileText(file);
       
-      if (!llmConfig || !llmConfig.apiKey) {
-        clearInterval(stepInterval);
-        runMockGeneration();
-        return;
-      }
+      const useNewAPI = hasNewConfig;
 
-      const result = await parseMaterialAndGenerateQuestions(text, file.name, llmConfig);
-      
-      clearInterval(stepInterval);
-      
-      setGeneratedSubjectId(result.subjectId);
-      setGeneratedSubjectName(result.subjectName);
-      setParsedPoints(result.knowledgePoints);
-      setGeneratedQuestions(result.questions);
-      setIsLLMGenerated(true);
-      
-      setTimeout(() => {
-        setUploadState('complete');
-      }, 400);
+      if (isDualMode) {
+        // 双模式：先文档解析，再出题
+        setUploadState('document-parsing');
+        setVisibleSteps([]);
+
+        let stepIndex = 0;
+        const stepInterval1 = setInterval(() => {
+          if (stepIndex < documentSteps.length) {
+            setVisibleSteps(prev => [...prev, stepIndex]);
+            stepIndex++;
+          }
+        }, 500);
+
+        const result = await parseAndGenerateQuiz(text, file.name, modelRoles, modelConfigs);
+        
+        clearInterval(stepInterval1);
+
+        setUploadState('quiz-generating');
+        setVisibleSteps([]);
+        stepIndex = 0;
+        const stepInterval2 = setInterval(() => {
+          if (stepIndex < quizSteps.length) {
+            setVisibleSteps(prev => [...prev, stepIndex]);
+            stepIndex++;
+          }
+        }, 400);
+
+        await new Promise(resolve => setTimeout(resolve, 1200));
+        clearInterval(stepInterval2);
+
+        setGeneratedSubjectId(result.subjectId);
+        setGeneratedSubjectName(result.subjectName);
+        setParsedPoints(result.knowledgePoints);
+        setGeneratedQuestions(result.questions);
+        setIsLLMGenerated(true);
+        
+        setTimeout(() => {
+          setUploadState('complete');
+        }, 400);
+      } else {
+        // 单模式：统一处理
+        setUploadState('generating');
+        setVisibleSteps([]);
+
+        let stepIndex = 0;
+        const stepInterval = setInterval(() => {
+          if (stepIndex < generatingSteps.length) {
+            setVisibleSteps(prev => [...prev, stepIndex]);
+            stepIndex++;
+          }
+        }, 600);
+
+        let result;
+        if (useNewAPI) {
+          result = await parseAndGenerateQuiz(text, file.name, modelRoles, modelConfigs);
+        } else if (llmConfig && llmConfig.apiKey) {
+          result = await parseMaterialAndGenerateQuestions(text, file.name, llmConfig);
+        } else {
+          clearInterval(stepInterval);
+          runMockGeneration();
+          return;
+        }
+        
+        clearInterval(stepInterval);
+        
+        setGeneratedSubjectId(result.subjectId);
+        setGeneratedSubjectName(result.subjectName);
+        setParsedPoints(result.knowledgePoints);
+        setGeneratedQuestions(result.questions);
+        setIsLLMGenerated(true);
+        
+        setTimeout(() => {
+          setUploadState('complete');
+        }, 400);
+      }
     } catch (err: any) {
       setError(err.message || 'AI出题失败，请重试');
       setUploadState('error');
     }
-  }, [llmConfig, runMockGeneration]);
+  }, [hasNewConfig, isDualMode, modelConfigs, modelRoles, llmConfig, runMockGeneration]);
 
   const handleFile = useCallback((file: File) => {
     currentFileRef.current = file;
@@ -194,7 +281,7 @@ export default function FileUploadZone({ onUploadComplete }: FileUploadZoneProps
           } else {
             clearInterval(stepInterval);
             
-            if (llmConfig && llmConfig.apiKey) {
+            if (hasNewConfig || (llmConfig && llmConfig.apiKey)) {
               runLLMGeneration(file);
             } else {
               setTimeout(() => {
@@ -205,7 +292,7 @@ export default function FileUploadZone({ onUploadComplete }: FileUploadZoneProps
         }, 350);
       }
     }, 30);
-  }, [llmConfig, runLLMGeneration, runMockGeneration]);
+  }, [hasNewConfig, llmConfig, runLLMGeneration, runMockGeneration]);
 
   const handleRetry = useCallback(() => {
     const file = currentFileRef.current;
@@ -343,7 +430,7 @@ export default function FileUploadZone({ onUploadComplete }: FileUploadZoneProps
                 <p className="font-serif text-sm text-ink-600 mb-2">
                   支持 TXT 格式（推荐）/ PDF / Word / 图片
                 </p>
-                {!llmConfig?.apiKey && (
+                {!hasNewConfig && !llmConfig?.apiKey && (
                   <p className="font-serif text-xs text-ink-500 mb-4">
                     💡 点击右上角⚙️配置AI API Key后可从资料生成专属题目
                   </p>
@@ -562,6 +649,170 @@ export default function FileUploadZone({ onUploadComplete }: FileUploadZoneProps
             </motion.div>
           )}
 
+          {uploadState === 'document-parsing' && (
+            <motion.div
+              key="document-parsing"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="p-6 md:p-8"
+            >
+              <div className="max-w-md mx-auto">
+                <div className="flex items-center gap-3 mb-4">
+                  <motion.span
+                    animate={{ rotate: [0, 10, -10, 0] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                    className="text-3xl"
+                  >
+                    📄
+                  </motion.span>
+                  <div className="flex-1">
+                    <p className="font-serif text-lg text-ink-800 font-semibold">
+                      {docModelName} 正在解析文档...
+                    </p>
+                    <p className="font-serif text-xs text-ink-500">
+                      阶段 1/2 · 理解资料内容
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-paper-50 border border-ink-600/15 rounded-sm p-5 shadow-sm relative overflow-hidden min-h-[140px]">
+                  <div className="absolute inset-0 pointer-events-none opacity-30"
+                    style={{
+                      backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(92,64,51,0.08) 27px, rgba(92,64,51,0.08) 28px)',
+                    }}
+                  />
+                  
+                  <div className="space-y-3 relative z-[1]">
+                    <AnimatePresence>
+                      {documentSteps.map((step, i) => (
+                        visibleSteps.includes(i) && (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, filter: 'blur(4px)', x: -10 }}
+                            animate={{ opacity: 1, filter: 'blur(0px)', x: 0 }}
+                            transition={{ duration: 0.5, ease: 'easeOut' }}
+                            className="flex items-center gap-2"
+                          >
+                            <span className="text-seal text-sm">✦</span>
+                            <span className="font-serif text-sm text-ink-700">{step}</span>
+                          </motion.div>
+                        )
+                      ))}
+                    </AnimatePresence>
+                    
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 0.5 }}
+                      className="flex items-center gap-2"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-ink-600/30" />
+                      <motion.span
+                        animate={{ opacity: [0.3, 0.7, 0.3] }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                        className="font-serif text-sm text-ink-500"
+                      >
+                        阅读中...
+                      </motion.span>
+                    </motion.div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center gap-2">
+                  <div className="flex-1">
+                    <HandDrawnProgressBar progress={50} />
+                  </div>
+                  <span className="font-serif text-xs text-ink-500 tabular-nums whitespace-nowrap">
+                    阶段 1/2
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {uploadState === 'quiz-generating' && (
+            <motion.div
+              key="quiz-generating"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="p-6 md:p-8"
+            >
+              <div className="max-w-md mx-auto">
+                <div className="flex items-center gap-3 mb-4">
+                  <motion.span
+                    animate={{ rotate: [0, 10, -10, 0] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                    className="text-3xl"
+                  >
+                    🧠
+                  </motion.span>
+                  <div className="flex-1">
+                    <p className="font-serif text-lg text-ink-800 font-semibold">
+                      {quizModelName} 正在出题...
+                    </p>
+                    <p className="font-serif text-xs text-ink-500">
+                      阶段 2/2 · 根据知识点生成题目
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-paper-50 border border-ink-600/15 rounded-sm p-5 shadow-sm relative overflow-hidden min-h-[140px]">
+                  <div className="absolute inset-0 pointer-events-none opacity-30"
+                    style={{
+                      backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(92,64,51,0.08) 27px, rgba(92,64,51,0.08) 28px)',
+                    }}
+                  />
+                  
+                  <div className="space-y-3 relative z-[1]">
+                    <AnimatePresence>
+                      {quizSteps.map((step, i) => (
+                        visibleSteps.includes(i) && (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, filter: 'blur(4px)', x: -10 }}
+                            animate={{ opacity: 1, filter: 'blur(0px)', x: 0 }}
+                            transition={{ duration: 0.5, ease: 'easeOut' }}
+                            className="flex items-center gap-2"
+                          >
+                            <span className="text-seal text-sm">✦</span>
+                            <span className="font-serif text-sm text-ink-700">{step}</span>
+                          </motion.div>
+                        )
+                      ))}
+                    </AnimatePresence>
+                    
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 0.5 }}
+                      className="flex items-center gap-2"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-ink-600/30" />
+                      <motion.span
+                        animate={{ opacity: [0.3, 0.7, 0.3] }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                        className="font-serif text-sm text-ink-500"
+                      >
+                        构思中，马上就好...
+                      </motion.span>
+                    </motion.div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center gap-2">
+                  <div className="flex-1">
+                    <HandDrawnProgressBar progress={90} />
+                  </div>
+                  <span className="font-serif text-xs text-ink-500 tabular-nums whitespace-nowrap">
+                    阶段 2/2
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {uploadState === 'error' && (
             <motion.div
               key="error"
@@ -629,7 +880,7 @@ export default function FileUploadZone({ onUploadComplete }: FileUploadZoneProps
                     <p className="font-serif text-sm text-ink-600">
                       从资料中提取了 <span className="text-seal font-semibold">{parsedPoints.length}</span> 个核心知识点
                     </p>
-                    {!llmConfig?.apiKey && (
+                    {!hasNewConfig && !llmConfig?.apiKey && (
                       <p className="font-serif text-xs text-ink-500 mt-2">
                         💡 配置AI API Key后可从你的资料生成专属题目
                       </p>

@@ -142,10 +142,26 @@ export interface QuizSession {
   completed: boolean;
 }
 
+/** @deprecated Use ModelConfig instead */
 export interface LLMConfig {
   apiKey: string;
   baseUrl: string;
   model: string;
+}
+
+export interface ModelConfig {
+  id: string;
+  name: string;
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  enabled: boolean;
+}
+
+export interface ModelRoleConfig {
+  document: string | null;
+  quiz: string | null;
+  explanation: string | null;
 }
 
 export interface GeneratedQuestion {
@@ -212,6 +228,8 @@ interface AppState {
   currentSession: QuizSession | null;
   quizHistory: QuizSession[];
   llmConfig: LLMConfig | null;
+  modelConfigs: ModelConfig[];
+  modelRoles: ModelRoleConfig;
   onboardingCompleted: boolean;
 
   setCurrentSubjectFilter: (id: string | null) => void;
@@ -228,6 +246,11 @@ interface AppState {
   endQuizSession: () => QuizSession | null;
   resetCurrentSession: () => void;
   setLLMConfig: (config: LLMConfig | null) => void;
+  addModelConfig: (config: Omit<ModelConfig, 'id'>) => string;
+  updateModelConfig: (id: string, updates: Partial<ModelConfig>) => void;
+  removeModelConfig: (id: string) => void;
+  setModelRole: (role: keyof ModelRoleConfig, modelId: string | null) => void;
+  resetModelPreset: (preset: 'deepseek-single' | 'kimi-deepseek' | 'single') => void;
   setOnboardingCompleted: (completed: boolean) => void;
   addGeneratedQuestions: (questions: GeneratedQuestion[], subjectId: string) => void;
   markWrongAsReviewedByQuestion: (questionId: string) => void;
@@ -739,6 +762,8 @@ export const useAppStore = create<AppState>()(
       currentSession: null,
       quizHistory: [],
       llmConfig: null,
+      modelConfigs: [],
+      modelRoles: { document: null, quiz: null, explanation: null },
       onboardingCompleted: false,
 
       setCurrentUser: (name) => set({ currentUser: name }),
@@ -1096,7 +1121,123 @@ export const useAppStore = create<AppState>()(
         state.startQuizSession(session.subjectId, session.mode);
       },
 
-      setLLMConfig: (config) => set({ llmConfig: config }),
+      setLLMConfig: (config) => {
+        set({ llmConfig: config });
+        if (config) {
+          const state = get();
+          const existingDefault = state.modelConfigs.find((m) => m.name === 'Default Model');
+          if (existingDefault) {
+            set((s) => ({
+              modelConfigs: s.modelConfigs.map((m) =>
+                m.id === existingDefault.id
+                  ? { ...m, baseUrl: config.baseUrl, apiKey: config.apiKey, model: config.model, enabled: true }
+                  : m
+              ),
+              modelRoles: { document: existingDefault.id, quiz: existingDefault.id, explanation: existingDefault.id },
+            }));
+          } else {
+            const id = 'm-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+            set((s) => ({
+              modelConfigs: [...s.modelConfigs, {
+                id,
+                name: 'Default Model',
+                baseUrl: config.baseUrl,
+                apiKey: config.apiKey,
+                model: config.model,
+                enabled: true,
+              }],
+              modelRoles: { document: id, quiz: id, explanation: id },
+            }));
+          }
+        }
+      },
+
+      addModelConfig: (config) => {
+        const id = 'm-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+        set((state) => ({
+          modelConfigs: [...state.modelConfigs, { ...config, id }],
+        }));
+        return id;
+      },
+
+      updateModelConfig: (id, updates) => {
+        set((state) => ({
+          modelConfigs: state.modelConfigs.map((m) =>
+            m.id === id ? { ...m, ...updates } : m
+          ),
+        }));
+      },
+
+      removeModelConfig: (id) => {
+        set((state) => {
+          const newRoles = { ...state.modelRoles };
+          (Object.keys(newRoles) as Array<keyof ModelRoleConfig>).forEach((role) => {
+            if (newRoles[role] === id) {
+              newRoles[role] = null;
+            }
+          });
+          return {
+            modelConfigs: state.modelConfigs.filter((m) => m.id !== id),
+            modelRoles: newRoles,
+          };
+        });
+      },
+
+      setModelRole: (role, modelId) => {
+        set((state) => ({
+          modelRoles: { ...state.modelRoles, [role]: modelId },
+        }));
+      },
+
+      resetModelPreset: (preset) => {
+        if (preset === 'single') {
+          set({ modelConfigs: [], modelRoles: { document: null, quiz: null, explanation: null } });
+          return;
+        }
+
+        if (preset === 'deepseek-single') {
+          const id = 'm-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+          set({
+            modelConfigs: [{
+              id,
+              name: 'DeepSeek',
+              baseUrl: 'https://api.deepseek.com/v1',
+              apiKey: '',
+              model: 'deepseek-chat',
+              enabled: true,
+            }],
+            modelRoles: { document: id, quiz: id, explanation: id },
+          });
+          return;
+        }
+
+        if (preset === 'kimi-deepseek') {
+          const id1 = 'm-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+          const id2 = 'm-' + (Date.now() + 1) + '-' + Math.random().toString(36).slice(2, 6);
+          set({
+            modelConfigs: [
+              {
+                id: id1,
+                name: 'Kimi 文档解析',
+                baseUrl: 'https://api.moonshot.cn/v1',
+                apiKey: '',
+                model: 'moonshot-v1-8k',
+                enabled: true,
+              },
+              {
+                id: id2,
+                name: 'DeepSeek 出题',
+                baseUrl: 'https://api.deepseek.com/v1',
+                apiKey: '',
+                model: 'deepseek-chat',
+                enabled: true,
+              },
+            ],
+            modelRoles: { document: id1, quiz: id2, explanation: id2 },
+          });
+          return;
+        }
+      },
 
       setOnboardingCompleted: (completed) => set({ onboardingCompleted: completed }),
 
@@ -1143,6 +1284,8 @@ export const useAppStore = create<AppState>()(
         currentQuestionIndex: state.currentQuestionIndex,
         currentSubjectFilter: state.currentSubjectFilter,
         llmConfig: state.llmConfig,
+        modelConfigs: state.modelConfigs,
+        modelRoles: state.modelRoles,
         onboardingCompleted: state.onboardingCompleted,
         quizHistory: state.quizHistory.slice(-10),
       }),
@@ -1160,6 +1303,20 @@ export const useAppStore = create<AppState>()(
         if (state.llmConfig === undefined || state.llmConfig === null) state.llmConfig = null;
         if (state.onboardingCompleted === undefined || state.onboardingCompleted === null) state.onboardingCompleted = false;
         if (!state.quizHistory) state.quizHistory = [];
+        if (!state.modelConfigs) state.modelConfigs = [];
+        if (!state.modelRoles) state.modelRoles = { document: null, quiz: null, explanation: null };
+        if (state.modelConfigs.length === 0 && state.llmConfig && state.llmConfig.apiKey) {
+          const id = 'm-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+          state.modelConfigs = [{
+            id,
+            name: 'Default Model',
+            baseUrl: state.llmConfig.baseUrl,
+            apiKey: state.llmConfig.apiKey,
+            model: state.llmConfig.model,
+            enabled: true,
+          }];
+          state.modelRoles = { document: id, quiz: id, explanation: id };
+        }
         if (state.flashCards) {
           state.flashCards = state.flashCards.map((card) => ({
             repetitions: 0,
