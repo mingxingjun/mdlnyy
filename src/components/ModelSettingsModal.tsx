@@ -121,7 +121,7 @@ export default function ModelSettingsModal({ open, onClose }: ModelSettingsModal
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[90] flex items-start md:items-center justify-center p-4 md:p-6 overflow-y-auto"
+          className="fixed inset-0 z-[90] flex items-start md:items-center justify-center p-3 md:p-6"
           style={{ background: 'rgba(92,64,51,0.4)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -130,14 +130,14 @@ export default function ModelSettingsModal({ open, onClose }: ModelSettingsModal
           onClick={handleOverlayClick}
         >
           <motion.div
-            className="w-full max-w-2xl my-4"
+            className="w-full max-w-2xl max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-3rem)] flex flex-col"
             initial={{ opacity: 0, y: 16, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <PaperCard className="p-6 md:p-8" rotation={0}>
+            <PaperCard className="p-5 md:p-7 flex flex-col max-h-full overflow-hidden" rotation={0}>
               {/* Header */}
               <div className="flex items-start justify-between mb-1">
                 <div>
@@ -154,9 +154,11 @@ export default function ModelSettingsModal({ open, onClose }: ModelSettingsModal
                 </button>
               </div>
 
+              {/* 可滚动主体区 */}
+              <div className="overflow-y-auto -mx-1 px-1 pb-1 mt-1 max-h-[calc(100vh-16rem)]">
               {/* 任务分工 */}
-              <h3 className="font-serif text-base text-ink-800 font-semibold mb-3 mt-6">任务分工</h3>
-              <div className="space-y-3 mb-6">
+              <h3 className="font-serif text-base text-ink-800 font-semibold mb-3 mt-5">任务分工</h3>
+              <div className="space-y-3 mb-5">
                 {TASK_KEYS.map((task) => {
                   const meta = TASK_META[task];
                   const current = settings.taskRouting[task];
@@ -296,9 +298,11 @@ export default function ModelSettingsModal({ open, onClose }: ModelSettingsModal
                   );
                 })}
               </div>
+              </div>
+              {/* /可滚动主体区 */}
 
               {/* Actions */}
-              <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-ink-600/15">
+              <div className="flex items-center justify-end gap-3 mt-4 pt-4 border-t border-ink-600/15 flex-shrink-0">
                 <VintageButton variant="ghost" onClick={onClose}>
                   关闭
                 </VintageButton>

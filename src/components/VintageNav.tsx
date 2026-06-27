@@ -58,14 +58,14 @@ export default function VintageNav({ onSettingsClick }: VintageNavProps) {
           </h1>
         </div>
 
-        <div className="flex items-end gap-1 md:gap-2">
+        <div className="flex items-end gap-0.5 md:gap-2 overflow-x-auto no-scrollbar">
           {NAV_ITEMS.map((item) => {
             const isActive = activeView === item.view;
             return (
               <motion.button
                 key={item.view}
                 onClick={() => handleNavClick(item.view)}
-                className={`relative px-3 md:px-4 py-2 rounded-b-md border-b-2 border-l border-r transition-colors flex items-center gap-1.5 md:gap-2 text-sm md:text-base ${
+                className={`relative px-2 md:px-4 py-2 rounded-b-md border-b-2 border-l border-r transition-colors flex items-center gap-1 md:gap-2 text-sm md:text-base flex-shrink-0 ${
                   isActive
                     ? 'bg-paper-50 border-ink-600/30 text-ink-900 font-bold shadow-md'
                     : 'bg-paper-200/60 border-ink-600/10 text-ink-700 hover:bg-paper-100/80'
@@ -86,7 +86,7 @@ export default function VintageNav({ onSettingsClick }: VintageNavProps) {
                 }}
               >
                 <span className="text-base md:text-lg">{item.icon}</span>
-                <span className="whitespace-nowrap font-serif">{item.label}</span>
+                <span className="hidden sm:inline whitespace-nowrap font-serif">{item.label}</span>
                 {isActive && (
                   <motion.div
                     className="absolute bottom-0 left-0 right-0 h-0.5 bg-ink-800"

@@ -68,6 +68,15 @@ body {
   overflow-x: hidden;
 }
 
+/* 隐藏横向滚动条（导航栏横向滚动用） */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 #root {
   position: relative;
 }
