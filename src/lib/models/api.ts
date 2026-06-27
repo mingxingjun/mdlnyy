@@ -71,10 +71,12 @@ export function saveModelSettings(settings: ModelSettings): void {
 
 /**
  * 检查指定 provider 是否已配置可用（有 API Key，ollama 除外）。
+ * 注：只要 provider 被分配了任务且有 key 即视为可用，不强制要求 enabled 开关打开，
+ * 避免"填了 key 但忘开开关"导致功能静默失败。
  */
 export function isProviderConfigured(settings: ModelSettings, provider: ModelProvider): boolean {
   const config = settings.providers[provider];
-  if (!config || !config.enabled) return false;
+  if (!config) return false;
   if (config.provider === 'ollama') return true;
   return !!config.apiKey && config.apiKey.trim().length > 0;
 }

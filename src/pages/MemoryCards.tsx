@@ -7,7 +7,7 @@ import {
 import { useAppStore } from '@/store/useAppStore';
 import type { MemoryCard } from '@/store/useAppStore';
 import { useToastStore } from '@/components/Toast';
-import { loadModelSettings, callModelWithCache } from '@/lib/models/api';
+import { loadModelSettings, callModelForTask, isTaskConfigured } from '@/lib/models/api';
 import { getAgent, compressPrompt } from '@/lib/agents/definitions';
 import { cn } from '@/lib/utils';
 import PaperCard from '@/components/PaperCard';
@@ -78,14 +78,11 @@ function parseCardsResponse(content: string): ParsedCard[] {
     .filter((c) => c.knowledgePointId.length > 0 && c.front.length > 0 && c.back.length > 0);
 }
 
-/** 检查当前激活的模型 provider 是否已配置 API Key（ollama 无需 key） */
+/** 检查记忆卡片生成任务（chat 路由）的 provider 是否已配置 API Key */
 function isApiKeyConfigured(): boolean {
   try {
     const settings = loadModelSettings();
-    const config = settings.providers[settings.activeProvider];
-    if (!config) return false;
-    if (config.provider === 'ollama') return true;
-    return !!config.apiKey && config.apiKey.trim().length > 0;
+    return isTaskConfigured(settings, 'chat');
   } catch {
     return false;
   }
@@ -405,8 +402,8 @@ ${kpList}
     try {
       const settings = loadModelSettings();
       const userMessage = compressPrompt(agent, input);
-      const { content } = await callModelWithCache(
-        settings, agent.systemPrompt, userMessage, controller.signal,
+      const { content } = await callModelForTask(
+        settings, 'chat', agent.systemPrompt, userMessage, controller.signal,
       );
       if (controller.signal.aborted) return;
       const parsed = parseCardsResponse(content);

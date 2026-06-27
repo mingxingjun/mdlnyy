@@ -7,7 +7,7 @@ import {
 import { useAppStore } from '@/store/useAppStore';
 import type { Question, WrongQuestion } from '@/store/useAppStore';
 import { useToastStore } from '@/components/Toast';
-import { loadModelSettings, callModelWithCache } from '@/lib/models/api';
+import { loadModelSettings, callModelForTask, isTaskConfigured } from '@/lib/models/api';
 import { getAgent, compressPrompt } from '@/lib/agents/definitions';
 import type { ExplanationStyle } from '@/lib/agents/types';
 import { cn } from '@/lib/utils';
@@ -63,14 +63,11 @@ interface JudgedResult {
    工具函数
    ═══════════════════════════════════════════════════════ */
 
-/** 检查当前激活的模型 provider 是否已配置 API Key（ollama 无需 key） */
+/** 检查出题/讲解任务（chat 路由）的 provider 是否已配置 API Key */
 function isApiKeyConfigured(): boolean {
   try {
     const settings = loadModelSettings();
-    const config = settings.providers[settings.activeProvider];
-    if (!config) return false;
-    if (config.provider === 'ollama') return true;
-    return !!config.apiKey && config.apiKey.trim().length > 0;
+    return isTaskConfigured(settings, 'chat');
   } catch {
     return false;
   }
@@ -469,8 +466,8 @@ ${optionsBlock}【学生答案】${userAnswer}
       try {
         const settings = loadModelSettings();
         const userMessage = compressPrompt(agent, input);
-        const { content } = await callModelWithCache(
-          settings, agent.systemPrompt, userMessage, controller.signal,
+        const { content } = await callModelForTask(
+          settings, 'chat', agent.systemPrompt, userMessage, controller.signal,
         );
         if (controller.signal.aborted) return;
         const parsed = parseExplanationResponse(content);
@@ -547,8 +544,8 @@ ${kpList}
     try {
       const settings = loadModelSettings();
       const userMessage = compressPrompt(agent, input);
-      const { content } = await callModelWithCache(
-        settings, agent.systemPrompt, userMessage, controller.signal,
+      const { content } = await callModelForTask(
+        settings, 'chat', agent.systemPrompt, userMessage, controller.signal,
       );
       if (controller.signal.aborted) return;
       const qs = parseQuestionsResponse(content, materialId);
