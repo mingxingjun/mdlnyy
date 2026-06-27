@@ -9,7 +9,7 @@ import type { AgentMessage, AgentSession, LearningState } from '@/lib/agents/typ
 export interface StudyMaterial {
   id: string;
   name: string;
-  type: 'pdf' | 'word' | 'text' | 'markdown';
+  type: 'pdf' | 'word' | 'ppt' | 'text' | 'markdown';
   size: number;
   uploadedAt: number;
   parsedText?: string;       // raw extracted text

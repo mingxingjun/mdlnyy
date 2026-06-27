@@ -129,7 +129,8 @@ export function clearCache(): void {
 export async function callModel(
   config: ModelConfig,
   messages: { role: string; content: string }[],
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  overrides?: { temperature?: number; maxTokens?: number }
 ): Promise<string> {
   if (!config.apiKey && config.provider !== 'ollama') {
     throw new Error(`请先配置 ${config.name} 的 API Key`);
@@ -145,8 +146,9 @@ export async function callModel(
   const body = {
     model: config.model,
     messages,
-    temperature: config.temperature,
-    max_tokens: config.maxTokens,
+    // agent 级别 overrides 优先于 provider 默认值，让各 agent 的 temperature/maxTokens 真正生效
+    temperature: overrides?.temperature ?? config.temperature,
+    max_tokens: overrides?.maxTokens ?? config.maxTokens,
     top_p: config.topP,
     stream: false,
   };
@@ -207,6 +209,9 @@ export async function callModelWithCache(
  * - 'doc_parse' → 走 taskRouting.doc_parse（默认 Kimi，长上下文文档解析）
  * - 'chat' → 走 taskRouting.chat（默认 DeepSeek，出题/讲解/分析）
  *
+ * `agentOverrides` 用于把 Agent 自身的 temperature/maxTokens 注入到本次请求，
+ * 使各 Agent 的个性化采样参数真正生效（而非一律使用 provider 默认值）。
+ *
  * 若对应 provider 未配置 API Key，抛出带提示的错误。
  */
 export async function callModelForTask(
@@ -214,15 +219,20 @@ export async function callModelForTask(
   task: ModelTaskType,
   systemPrompt: string,
   userMessage: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  agentOverrides?: { temperature?: number; maxTokens?: number }
 ): Promise<{ content: string; tokens: number }> {
   const provider = settings.taskRouting[task];
   const config = settings.providers[provider];
   if (!config) {
     throw new Error(`任务 "${task}" 未配置模型服务，请在设置中选择对应 provider`);
   }
-  // 缓存 key 需区分任务与 provider，避免不同任务串缓存
-  const cacheKey = `task:${task}:${getCacheKey(config.provider, config.model, systemPrompt + userMessage)}`;
+  // 缓存 key 需区分任务、provider 与采样参数，避免不同 agent 串缓存
+  const cacheKey = `task:${task}:${getCacheKey(
+    config.provider,
+    config.model,
+    `${systemPrompt + userMessage}|t=${agentOverrides?.temperature ?? ''}|m=${agentOverrides?.maxTokens ?? ''}`,
+  )}`;
 
   if (settings.enableCache) {
     const cached = getCachedResponse(cacheKey, settings.cacheTTL);
@@ -236,7 +246,7 @@ export async function callModelForTask(
     { role: 'user', content: userMessage },
   ];
 
-  const content = await callModel(config, messages, signal);
+  const content = await callModel(config, messages, signal, agentOverrides);
   const tokens = Math.ceil(content.length * 0.5);
 
   if (settings.enableCache) {

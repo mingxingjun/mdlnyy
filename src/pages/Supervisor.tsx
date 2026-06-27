@@ -428,6 +428,7 @@ ${wrongSummary}
       const userMessage = compressPrompt(agent, input);
       const { content } = await callModelForTask(
         settings, 'chat', agent.systemPrompt, userMessage, controller.signal,
+        { temperature: agent.temperature, maxTokens: agent.maxTokens },
       );
       if (controller.signal.aborted) return;
       const parsed = parseReportResponse(content);

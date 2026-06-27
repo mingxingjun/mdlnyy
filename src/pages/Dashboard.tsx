@@ -103,6 +103,7 @@ function detectMaterialType(file: File): StudyMaterial['type'] {
   const name = file.name.toLowerCase();
   if (name.endsWith('.pdf')) return 'pdf';
   if (name.endsWith('.docx') || name.endsWith('.doc')) return 'word';
+  if (name.endsWith('.pptx') || name.endsWith('.ppt')) return 'ppt';
   if (name.endsWith('.md') || name.endsWith('.markdown')) return 'markdown';
   return 'text';
 }
@@ -453,7 +454,7 @@ ${text.slice(0, 6000)}`;
       <input
         ref={fileInputRef}
         type="file"
-        accept=".txt,.md,.markdown,.csv,.log,.pdf,.docx,.doc"
+        accept=".txt,.md,.markdown,.csv,.log,.pdf,.docx,.pptx"
         aria-label="选择复习资料文件"
         title="选择复习资料文件"
         className="hidden"
@@ -492,7 +493,7 @@ ${text.slice(0, 6000)}`;
           <p className="font-serif text-sm text-ink-800">
             拖拽文件到此处，或<span className="text-seal font-semibold">点击选择</span>
           </p>
-          <p className="text-xs text-ink-500 font-sans">支持 TXT / MD / CSV / LOG；PDF 与 Word 请改用下方「粘贴文本」</p>
+          <p className="text-xs text-ink-500 font-sans">支持 TXT / MD / CSV / LOG / PDF / DOCX / PPTX（扫描件与老格式请用「粘贴文本」）</p>
         </motion.div>
       </div>
 
@@ -587,7 +588,7 @@ function MaterialRow({
   onReparse: () => void;
   onRemove: () => void;
 }) {
-  const typeIcon = material.type === 'pdf' ? '📄' : material.type === 'word' ? '📝' : material.type === 'markdown' ? '📑' : '📃';
+  const typeIcon = material.type === 'pdf' ? '📄' : material.type === 'word' ? '📝' : material.type === 'ppt' ? '📊' : material.type === 'markdown' ? '📑' : '📃';
 
   return (
     <li className="flex items-center gap-3 rounded-[3px] border border-ink-600/10 bg-paper-100/40 px-3 py-2">
