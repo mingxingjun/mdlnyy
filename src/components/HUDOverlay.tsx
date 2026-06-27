@@ -1,18 +1,8 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Rocket, Brain, NotebookPen, Headphones, Cpu, Sparkles, ChevronRight, Signal } from 'lucide-react';
-import { useNavigationStore } from '@/store/useNavigationStore';
+import { Cpu, Sparkles, Signal } from 'lucide-react';
 import { loadModelSettings } from '@/lib/models/api';
-import { useNavigate } from 'react-router-dom';
-
-const planetInfo: Record<string, { title: string; subtitle: string; color: string; icon: any; shortName: string }> = {
-  '/dashboard': { title: '学习驾驶舱', subtitle: '你的知识宇宙控制台', color: '#00c8ff', icon: Rocket, shortName: '驾驶舱' },
-  '/ai-engine': { title: 'AI 冲刺核', subtitle: '5 Agent 协同作战', color: '#b040ff', icon: Brain, shortName: 'AI核' },
-  '/my-notes': { title: '知识星图', subtitle: '上传 · 整理 · 连接知识点', color: '#44ddaa', icon: NotebookPen, shortName: '知识' },
-  '/flow-chamber': { title: '沉浸流空间', subtitle: '番茄钟 · 白噪音 · 深度专注', color: '#ff8800', icon: Headphones, shortName: '专注' },
-};
-
-const allPlanetPaths = ['/dashboard', '/ai-engine', '/my-notes', '/flow-chamber'];
+import { useAppStore } from '@/store/useAppStore';
 
 interface HUDOverlayProps {
   children: ReactNode;
@@ -84,7 +74,7 @@ function ScanLine({ color }: { color: string }) {
 }
 
 function ModelStatusIndicator() {
-  const navigate = useNavigate();
+  const setActiveView = useAppStore(s => s.setActiveView);
   const [modelSettings, setModelSettings] = useState(loadModelSettings);
 
   useEffect(() => {
@@ -111,7 +101,7 @@ function ModelStatusIndicator() {
     <motion.button
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
-      onClick={() => navigate('/ai-engine?tab=settings')}
+      onClick={() => setActiveView('ai')}
       className="flex items-center gap-2 px-3 py-2 rounded-lg"
       style={{
         background: 'rgba(5, 12, 25, 0.8)',
@@ -146,176 +136,59 @@ function ModelStatusIndicator() {
   );
 }
 
-function PlanetViewHUD({ currentPlanet }: { currentPlanet: string }) {
-  const navigate = useNavigate();
-  const info = planetInfo[currentPlanet];
+const ACCENT = '#00c8ff';
 
-  const otherPlanets = allPlanetPaths.filter(p => p !== currentPlanet);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        navigate('/dashboard');
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigate]);
-
+export default function HUDOverlay({ children }: HUDOverlayProps) {
   return (
-    <>
+    <div className="fixed inset-0 z-10 pointer-events-none">
+      {/* 左上：品牌标识 */}
       <motion.div
         initial={{ x: -30, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.3, ease: 'easeOut' }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
         className="fixed top-4 left-4 z-20 pointer-events-auto"
       >
-        <div
-          className="flex items-center gap-2 px-3 py-2 rounded-lg"
-          style={{
-            background: 'rgba(5, 12, 25, 0.85)',
-            backdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            boxShadow: `0 0 20px ${info.color}30, 0 4px 20px rgba(0,0,0,0.4)`,
-          }}
-        >
-          <div className="flex items-center gap-1.5">
-            <div
-              className="w-6 h-6 rounded flex items-center justify-center"
-              style={{
-                background: 'linear-gradient(135deg, #635BFF 0%, #00D4FF 100%)',
-                boxShadow: '0 0 12px rgba(99,91,255,0.4)',
-              }}
-            >
-              <Sparkles size={12} className="text-white" />
-            </div>
+        <div className="flex items-center gap-3">
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center"
+            style={{
+              background: 'linear-gradient(135deg, #635BFF 0%, #7C5CFF 50%, #00D4FF 100%)',
+              boxShadow: '0 8px 32px rgba(99,91,255,0.4), 0 0 60px rgba(99,91,255,0.2), inset 0 1px 0 rgba(255,255,255,0.2)',
+            }}
+          >
+            <Sparkles size={20} className="text-white" style={{ filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.5))' }} />
           </div>
           <div className="flex flex-col">
-            <span className="text-[10px] text-white/60 font-semibold tracking-wider">HUD</span>
+            <span
+              className="font-bold text-lg tracking-tight"
+              style={{
+                background: 'linear-gradient(90deg, #ffffff, #a8b4ff, #ffffff)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              UniFlow
+            </span>
             <div className="flex items-center gap-1">
               <Signal size={8} style={{ color: '#00D924' }} />
-              <span className="text-[9px] text-[#00D924] tracking-wide">信号正常</span>
+              <span className="text-[9px] text-[#00D924] tracking-wide">在线</span>
             </div>
           </div>
         </div>
       </motion.div>
 
-      <motion.div
-        initial={{ x: 50, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.2, ease: 'easeOut' }}
-        className="fixed top-4 right-4 z-20 pointer-events-auto flex items-start gap-3"
-      >
-        <div className="flex flex-col items-end">
-          <h1
-            className="text-2xl font-bold tracking-tight"
-            style={{
-              color: info.color,
-              textShadow: `0 0 20px ${info.color}80, 0 0 40px ${info.color}40`,
-            }}
-          >
-            {info.title}
-          </h1>
-          <p className="text-[12px] text-white/50 mt-0.5">{info.subtitle}</p>
-        </div>
-        <motion.button
-          whileHover={{ scale: 1.1, rotate: 90 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => navigate('/dashboard')}
-          className="w-11 h-11 rounded-xl flex items-center justify-center"
-          style={{
-            background: 'rgba(5, 12, 25, 0.85)',
-            backdropFilter: 'blur(12px)',
-            border: `1px solid ${info.color}40`,
-            boxShadow: `0 0 20px ${info.color}30, 0 4px 20px rgba(0,0,0,0.4)`,
-          }}
-        >
-          <X size={20} style={{ color: info.color }} />
-        </motion.button>
-      </motion.div>
-
+      {/* 右下：模型状态 */}
       <motion.div
         initial={{ y: 30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.4, ease: 'easeOut' }}
-        className="fixed bottom-4 left-4 z-20 pointer-events-auto"
-      >
-        <div
-          className="flex items-center gap-2 p-2 rounded-xl"
-          style={{
-            background: 'rgba(5, 12, 25, 0.85)',
-            backdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            boxShadow: '0 4px 30px rgba(0,0,0,0.4)',
-          }}
-        >
-          {otherPlanets.map((path) => {
-            const planet = planetInfo[path];
-            const PlanetIcon = planet.icon;
-            return (
-              <motion.button
-                key={path}
-                whileHover={{ scale: 1.1, y: -3 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => navigate(path)}
-                className="flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all"
-                style={{
-                  background: `linear-gradient(135deg, ${planet.color}10, transparent)`,
-                  border: `1px solid ${planet.color}30`,
-                }}
-              >
-                <PlanetIcon size={18} style={{ color: planet.color, opacity: 0.7 }} />
-                <span className="text-[9px] font-medium" style={{ color: planet.color, opacity: 0.6 }}>
-                  {planet.shortName}
-                </span>
-              </motion.button>
-            );
-          })}
-          <div
-            className="w-px h-10 mx-1"
-            style={{ background: 'rgba(255,255,255,0.1)' }}
-          />
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/dashboard')}
-            className="flex flex-col items-center gap-1 px-3 py-2 rounded-lg"
-            style={{
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.15)',
-            }}
-          >
-            <ChevronRight size={18} className="text-white/50 rotate-180" />
-            <span className="text-[9px] text-white/40 font-medium">返回</span>
-          </motion.button>
-        </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ y: 30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.5, ease: 'easeOut' }}
+        transition={{ duration: 0.6, delay: 0.5, ease: 'easeOut' }}
         className="fixed bottom-4 right-4 z-20 pointer-events-auto"
       >
         <ModelStatusIndicator />
       </motion.div>
-    </>
-  );
-}
 
-export default function HUDOverlay({ children }: HUDOverlayProps) {
-  const view = useNavigationStore((s) => s.view);
-  const targetPlanet = useNavigationStore((s) => s.targetPlanet);
-
-  const isPlanetView = view === 'planet' && targetPlanet && planetInfo[targetPlanet];
-  const currentColor = isPlanetView ? planetInfo[targetPlanet!].color : '#635BFF';
-
-  return (
-    <div className="fixed inset-0 z-10 pointer-events-none">
-      <AnimatePresence mode="wait">
-        {isPlanetView && <PlanetViewHUD key="planet" currentPlanet={targetPlanet!} />}
-      </AnimatePresence>
-
+      {/* 内容容器 */}
       <AnimatePresence>
         <motion.div
           key="content-container"
@@ -329,16 +202,14 @@ export default function HUDOverlay({ children }: HUDOverlayProps) {
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
             border: '1px solid rgba(255,255,255,0.1)',
-            boxShadow: `0 0 60px ${currentColor}20, 0 0 120px ${currentColor}10, inset 0 1px 0 rgba(255,255,255,0.05)`,
+            boxShadow: `0 0 60px ${ACCENT}20, 0 0 120px ${ACCENT}10, inset 0 1px 0 rgba(255,255,255,0.05)`,
           }}
         >
-          <CornerBracket color={currentColor} position="tl" />
-          <CornerBracket color={currentColor} position="tr" />
-          <CornerBracket color={currentColor} position="bl" />
-          <CornerBracket color={currentColor} position="br" />
-
-          <ScanLine color={currentColor} />
-
+          <CornerBracket color={ACCENT} position="tl" />
+          <CornerBracket color={ACCENT} position="tr" />
+          <CornerBracket color={ACCENT} position="bl" />
+          <CornerBracket color={ACCENT} position="br" />
+          <ScanLine color={ACCENT} />
           <div className="w-full h-full overflow-auto p-6 lg:p-8">
             {children}
           </div>

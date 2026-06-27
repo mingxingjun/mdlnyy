@@ -94,6 +94,10 @@ interface AppState {
   addAgentMessage: (sessionId: string, message: AgentMessage) => void;
   createAgentSession: (agentId: string) => string;
   clearAgentSession: (sessionId: string) => void;
+
+  /** 单页视图切换：工作台 / AI 出题 */
+  activeView: 'dashboard' | 'ai';
+  setActiveView: (view: 'dashboard' | 'ai') => void;
 }
 
 // 自习室是公共房间，不属于用户数据，保留默认值
@@ -120,6 +124,9 @@ export const useAppStore = create<AppState>()(
 
       activeWhiteNoise: [],
       joinedRooms: [],
+
+      activeView: 'dashboard',
+      setActiveView: (view) => set({ activeView: view }),
 
       // 公共数据：非用户私有
       studyRooms: defaultStudyRooms,

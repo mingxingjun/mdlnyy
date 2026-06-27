@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle2, Clock, Target, Brain, FileText, ChevronDown,
@@ -8,6 +7,7 @@ import {
   AlertCircle, ListChecks, Bell, HelpCircle,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
+import AIEngine from './AIEngine';
 
 /* ─── 动画变体 ─── */
 const fadeUp = {
@@ -646,7 +646,7 @@ function SmartPanel() {
 function QuizPractice() {
   const flashCards = useAppStore(s => s.flashCards);
   const subjects = useAppStore(s => s.subjects);
-  const navigate = useNavigate();
+  const setActiveView = useAppStore(s => s.setActiveView);
 
   const [quizIndex, setQuizIndex] = useState(0);
 
@@ -730,10 +730,10 @@ function QuizPractice() {
           <Brain size={40} className="text-[#6b7c93] mb-3" />
           <p className="text-[14px] text-[#6b7c93] mb-4">添加闪卡后开始练习</p>
           <button
-            onClick={() => navigate('/ai-engine')}
+            onClick={() => setActiveView('ai')}
             className="text-[13px] px-4 py-2 rounded-[12px] bg-[#635BFF]/10 text-[#635BFF] border border-[#635BFF]/20 hover:bg-[#635BFF]/20 transition-colors"
           >
-            前往 AI 冲刺核
+            前往 AI 出题
           </button>
         </div>
       </motion.section>
@@ -993,12 +993,12 @@ function ReviewTimeline() {
 /* ─── 6. Floating Agent Assistant ─── */
 function FloatingAssistant() {
   const [isOpen, setIsOpen] = useState(false);
-  const navigate = useNavigate();
+  const setActiveView = useAppStore(s => s.setActiveView);
 
   const commands = [
-    { icon: FileText, label: '帮我出题', color: '#4FD1C5', action: () => navigate('/ai-engine?agent=question-agent') },
-    { icon: AlertCircle, label: '分析错题', color: '#FFB800', action: () => navigate('/ai-engine?agent=diagnoser-agent') },
-    { icon: BookOpen, label: '整理重点', color: '#7C5CFF', action: () => navigate('/ai-engine?agent=content-agent') },
+    { icon: FileText, label: '帮我出题', color: '#4FD1C5', action: () => setActiveView('ai') },
+    { icon: AlertCircle, label: '分析错题', color: '#FFB800', action: () => setActiveView('ai') },
+    { icon: BookOpen, label: '整理重点', color: '#7C5CFF', action: () => setActiveView('ai') },
   ];
 
   return (
@@ -1052,35 +1052,69 @@ function FloatingAssistant() {
 
 /* ─── 主组件 ─── */
 export default function Dashboard() {
+  const activeView = useAppStore(s => s.activeView);
+  const setActiveView = useAppStore(s => s.setActiveView);
+
   return (
     <div className="space-y-0 pb-8 overflow-x-hidden">
-      {/* 1. Stats Overview */}
-      <StatsOverview />
+      {/* 顶部 Tab 切换 */}
+      <div className="flex items-center gap-2 mb-6">
+        {([
+          { id: 'dashboard' as const, label: '学习驾驶舱' },
+          { id: 'ai' as const, label: 'AI 出题' },
+        ]).map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveView(tab.id)}
+            className={`px-4 py-2 rounded-[12px] text-[14px] font-medium transition-all ${
+              activeView === tab.id
+                ? 'bg-[#635BFF] text-white shadow-[0_4px_16px_rgba(99,91,255,0.3)]'
+                : 'bg-[#0d2d4a] text-[#6b7c93] border border-white/[0.06] hover:text-white'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-      {/* 2. Agent Workflow */}
-      <AgentWorkflow />
-
-      {/* 3. Three-Column Layout */}
-      <motion.section
-        variants={fadeUp}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: '-40px' }}
-        className="mt-8 flex flex-col lg:flex-row gap-4"
-      >
-        <KnowledgeNav />
-        <KnowledgeGraph />
-        <SmartPanel />
-      </motion.section>
-
-      {/* 4. Quiz Practice */}
-      <QuizPractice />
-
-      {/* 5. Review Timeline */}
-      <ReviewTimeline />
-
-      {/* 6. Floating Agent Assistant */}
-      <FloatingAssistant />
+      <AnimatePresence mode="wait">
+        {activeView === 'dashboard' ? (
+          <motion.div
+            key="dashboard"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <StatsOverview />
+            <AgentWorkflow />
+            <motion.section
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-40px' }}
+              className="mt-8 flex flex-col lg:flex-row gap-4"
+            >
+              <KnowledgeNav />
+              <KnowledgeGraph />
+              <SmartPanel />
+            </motion.section>
+            <QuizPractice />
+            <ReviewTimeline />
+            <FloatingAssistant />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="ai"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <AIEngine />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

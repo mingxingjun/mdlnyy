@@ -1,9 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import Dashboard from '@/pages/Dashboard';
-import AIEngine from '@/pages/AIEngine';
-import MyNotes from '@/pages/MyNotes';
-import FlowChamber from '@/pages/FlowChamber';
 import { ToastContainer } from '@/components/Toast';
 
 export default function App() {
@@ -12,13 +9,9 @@ export default function App() {
       <ToastContainer />
       <Routes>
         <Route element={<Layout />}>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/ai-engine" element={<AIEngine />} />
-          <Route path="/my-notes" element={<MyNotes />} />
-          <Route path="/flow-chamber" element={<FlowChamber />} />
+          <Route path="/" element={<Dashboard />} />
         </Route>
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
