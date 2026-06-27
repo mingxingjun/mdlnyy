@@ -8,7 +8,7 @@ import { useAppStore } from '@/store/useAppStore';
 import type { StudyMaterial, KnowledgePoint } from '@/store/useAppStore';
 import type { LearningState } from '@/lib/agents/types';
 import { useToastStore } from '@/components/Toast';
-import { loadModelSettings, callModelWithCache } from '@/lib/models/api';
+import { loadModelSettings, callModelForTask, isTaskConfigured } from '@/lib/models/api';
 import { extractFileText } from '@/lib/fileParser';
 import PaperCard from '@/components/PaperCard';
 import type { PaperCardStatus } from '@/components/PaperCard';
@@ -113,14 +113,11 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/** 检查当前激活的模型 provider 是否已配置 API Key（ollama 无需 key） */
+/** 检查文档解析任务的 provider 是否已配置 API Key（ollama 无需 key） */
 function isApiKeyConfigured(): boolean {
   try {
     const settings = loadModelSettings();
-    const config = settings.providers[settings.activeProvider];
-    if (!config) return false;
-    if (config.provider === 'ollama') return true;
-    return !!config.apiKey && config.apiKey.trim().length > 0;
+    return isTaskConfigured(settings, 'doc_parse');
   } catch {
     return false;
   }
@@ -296,8 +293,9 @@ function MaterialUploadCard() {
 
 【资料内容】
 ${parsedText.slice(0, 6000)}`;
-      const { content } = await callModelWithCache(
+      const { content } = await callModelForTask(
         settings,
+        'doc_parse',
         KNOWLEDGE_EXTRACTION_SYSTEM_PROMPT,
         userPrompt,
       );
@@ -357,8 +355,9 @@ ${parsedText.slice(0, 6000)}`;
 
 【资料内容】
 ${material.parsedText.slice(0, 6000)}`;
-      const { content } = await callModelWithCache(
+      const { content } = await callModelForTask(
         settings,
+        'doc_parse',
         KNOWLEDGE_EXTRACTION_SYSTEM_PROMPT,
         userPrompt,
       );

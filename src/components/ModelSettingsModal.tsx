@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import PaperCard from './PaperCard';
 import VintageButton from './VintageButton';
 import { loadModelSettings, saveModelSettings } from '@/lib/models/api';
-import type { ModelConfig, ModelProvider, ModelSettings } from '@/lib/models/types';
+import type { ModelConfig, ModelProvider, ModelSettings, ModelTaskType } from '@/lib/models/types';
 import { DEFAULT_PROVIDERS } from '@/lib/models/types';
 import { useToastStore } from './Toast';
 
@@ -14,6 +14,7 @@ interface ModelSettingsModalProps {
 
 const PROVIDER_LABELS: Record<ModelProvider, string> = {
   deepseek: 'DeepSeek',
+  kimi: 'Kimi',
   ollama: 'Ollama本地',
   openai: 'OpenAI兼容',
   custom: '自定义',
@@ -23,10 +24,25 @@ const PROVIDER_KEYS = Object.keys(DEFAULT_PROVIDERS) as ModelProvider[];
 
 const EMPTY_SHOW: Record<ModelProvider, boolean> = {
   deepseek: false,
+  kimi: false,
   ollama: false,
   openai: false,
   custom: false,
 };
+
+/** 任务分工说明 */
+const TASK_META: Record<ModelTaskType, { label: string; desc: string }> = {
+  doc_parse: {
+    label: '文档解析',
+    desc: '上传复习资料时抽取知识点（长上下文，推荐 Kimi）',
+  },
+  chat: {
+    label: '出题 / 讲解 / 分析',
+    desc: '日常练习、错题讲解、薄弱点分析等通用任务（推荐 DeepSeek）',
+  },
+};
+
+const TASK_KEYS: ModelTaskType[] = ['doc_parse', 'chat'];
 
 const inputClass =
   'w-full bg-paper-50 border border-ink-600/20 rounded-[3px] px-3 py-2 text-sm text-ink-800 font-sans placeholder-ink-300/60 focus:outline-none focus:border-seal/40 focus:ring-1 focus:ring-seal/20 transition-colors';
@@ -69,7 +85,22 @@ export default function ModelSettingsModal({ open, onClose }: ModelSettingsModal
   };
 
   const setActive = (provider: ModelProvider) => {
-    setSettings((prev) => ({ ...prev, activeProvider: provider }));
+    setSettings((prev) => ({
+      ...prev,
+      activeProvider: provider,
+      // 切换主力 provider 时同步 chat 任务路由
+      taskRouting: { ...prev.taskRouting, chat: provider },
+    }));
+  };
+
+  /** 为指定任务类型选择负责的 provider */
+  const setTaskProvider = (task: ModelTaskType, provider: ModelProvider) => {
+    setSettings((prev) => {
+      const taskRouting = { ...prev.taskRouting, [task]: provider };
+      // chat 任务的 provider 即主力 provider，保持同步
+      const activeProvider = task === 'chat' ? provider : taskRouting.chat;
+      return { ...prev, taskRouting, activeProvider };
+    });
   };
 
   const toggleShowKey = (provider: ModelProvider) => {
@@ -111,7 +142,7 @@ export default function ModelSettingsModal({ open, onClose }: ModelSettingsModal
               <div className="flex items-start justify-between mb-1">
                 <div>
                   <h2 className="font-serif text-2xl text-ink-900 font-bold leading-tight">AI 模型配置</h2>
-                  <p className="font-serif text-sm text-ink-500 mt-1">选择当前使用的模型服务并填写凭据</p>
+                  <p className="font-serif text-sm text-ink-500 mt-1">双模型分工：Kimi 解析文档，DeepSeek 处理出题讲解</p>
                 </div>
                 <button
                   type="button"
@@ -123,40 +154,46 @@ export default function ModelSettingsModal({ open, onClose }: ModelSettingsModal
                 </button>
               </div>
 
-              {/* Active provider selector */}
-              <h3 className="font-serif text-base text-ink-800 font-semibold mb-3 mt-6">当前服务</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                {PROVIDER_KEYS.map((key) => {
-                  const isActive = settings.activeProvider === key;
-                  const config = settings.providers[key];
+              {/* 任务分工 */}
+              <h3 className="font-serif text-base text-ink-800 font-semibold mb-3 mt-6">任务分工</h3>
+              <div className="space-y-3 mb-6">
+                {TASK_KEYS.map((task) => {
+                  const meta = TASK_META[task];
+                  const current = settings.taskRouting[task];
                   return (
-                    <motion.button
-                      key={key}
-                      type="button"
-                      onClick={() => setActive(key)}
-                      whileTap={{ scale: 0.97 }}
-                      className={`relative px-3 py-3 rounded-[3px] border text-left transition-colors ${
-                        isActive
-                          ? 'bg-paper-50 border-seal/50 shadow-paper'
-                          : 'bg-paper-200/50 border-ink-600/15 hover:bg-paper-100'
-                      }`}
+                    <div
+                      key={task}
+                      className="bg-paper-100/60 border border-ink-600/15 rounded-[3px] p-3"
                     >
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`w-3 h-3 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                            isActive ? 'border-seal' : 'border-ink-600/30'
-                          }`}
-                        >
-                          {isActive && <span className="w-1.5 h-1.5 rounded-full bg-seal" />}
-                        </span>
-                        <span className="font-serif text-sm text-ink-800 font-medium leading-tight">
-                          {PROVIDER_LABELS[key]}
-                        </span>
+                      <div className="flex items-baseline justify-between mb-2">
+                        <span className="font-serif text-sm text-ink-800 font-semibold">{meta.label}</span>
+                        <span className="text-[11px] font-serif text-ink-500">{meta.desc}</span>
                       </div>
-                      <p className="text-[10px] font-serif text-ink-500 mt-1.5 truncate">
-                        {config.model || '未设置'}
-                      </p>
-                    </motion.button>
+                      <div className="flex flex-wrap gap-2">
+                        {PROVIDER_KEYS.map((key) => {
+                          const selected = current === key;
+                          const cfg = settings.providers[key];
+                          return (
+                            <motion.button
+                              key={key}
+                              type="button"
+                              onClick={() => setTaskProvider(task, key)}
+                              whileTap={{ scale: 0.96 }}
+                              className={`px-2.5 py-1.5 rounded-[2px] border text-xs font-serif transition-colors ${
+                                selected
+                                  ? 'bg-seal/10 border-seal/50 text-seal font-semibold'
+                                  : 'bg-paper-50 border-ink-600/15 text-ink-600 hover:bg-paper-200/60'
+                              }`}
+                            >
+                              {PROVIDER_LABELS[key]}
+                              {!cfg.enabled && (
+                                <span className="text-[10px] text-ink-400 ml-1">（未启用）</span>
+                              )}
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
@@ -181,9 +218,14 @@ export default function ModelSettingsModal({ open, onClose }: ModelSettingsModal
                           <h4 className="font-serif text-sm text-ink-800 font-semibold">
                             {PROVIDER_LABELS[key]}
                           </h4>
-                          {settings.activeProvider === key && (
+                          {settings.taskRouting.doc_parse === key && (
+                            <span className="text-[10px] font-serif text-gold-dark border border-gold/40 bg-gold/5 rounded-[2px] px-1.5 py-0.5">
+                              文档解析
+                            </span>
+                          )}
+                          {settings.taskRouting.chat === key && (
                             <span className="text-[10px] font-serif text-seal border border-seal/30 bg-seal/5 rounded-[2px] px-1.5 py-0.5">
-                              当前
+                              出题讲解
                             </span>
                           )}
                         </div>
