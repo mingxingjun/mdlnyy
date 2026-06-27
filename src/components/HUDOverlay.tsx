@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Rocket, Brain, NotebookPen, Headphones, Cpu, Settings, Sparkles, ChevronRight, Signal } from 'lucide-react';
+import { X, Rocket, Brain, NotebookPen, Headphones, Cpu, Sparkles, ChevronRight, Signal } from 'lucide-react';
 import { useNavigationStore } from '@/store/useNavigationStore';
 import { loadModelSettings } from '@/lib/models/api';
 import { useNavigate } from 'react-router-dom';
@@ -147,8 +147,7 @@ function ModelStatusIndicator() {
 }
 
 function PlanetViewHUD({ currentPlanet }: { currentPlanet: string }) {
-  const returnToGalaxy = useNavigationStore((s) => s.returnToGalaxy);
-  const warpTo = useNavigationStore((s) => s.warpTo);
+  const navigate = useNavigate();
   const info = planetInfo[currentPlanet];
 
   const otherPlanets = allPlanetPaths.filter(p => p !== currentPlanet);
@@ -156,12 +155,12 @@ function PlanetViewHUD({ currentPlanet }: { currentPlanet: string }) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        returnToGalaxy(true);
+        navigate('/dashboard');
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [returnToGalaxy]);
+  }, [navigate]);
 
   return (
     <>
@@ -222,7 +221,7 @@ function PlanetViewHUD({ currentPlanet }: { currentPlanet: string }) {
         <motion.button
           whileHover={{ scale: 1.1, rotate: 90 }}
           whileTap={{ scale: 0.9 }}
-          onClick={() => returnToGalaxy(true)}
+          onClick={() => navigate('/dashboard')}
           className="w-11 h-11 rounded-xl flex items-center justify-center"
           style={{
             background: 'rgba(5, 12, 25, 0.85)',
@@ -258,7 +257,7 @@ function PlanetViewHUD({ currentPlanet }: { currentPlanet: string }) {
                 key={path}
                 whileHover={{ scale: 1.1, y: -3 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => warpTo(path, true)}
+                onClick={() => navigate(path)}
                 className="flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all"
                 style={{
                   background: `linear-gradient(135deg, ${planet.color}10, transparent)`,
@@ -279,7 +278,7 @@ function PlanetViewHUD({ currentPlanet }: { currentPlanet: string }) {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => returnToGalaxy(true)}
+            onClick={() => navigate('/dashboard')}
             className="flex flex-col items-center gap-1 px-3 py-2 rounded-lg"
             style={{
               background: 'rgba(255,255,255,0.05)',
@@ -304,122 +303,6 @@ function PlanetViewHUD({ currentPlanet }: { currentPlanet: string }) {
   );
 }
 
-function GalaxyViewHUD() {
-  const navigate = useNavigate();
-
-  return (
-    <>
-      <motion.div
-        initial={{ x: -30, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ duration: 0.6, ease: 'easeOut' }}
-        className="fixed top-4 left-4 z-20 pointer-events-auto"
-      >
-        <div className="flex items-center gap-3">
-          <motion.div
-            whileHover={{ scale: 1.1, rotate: 10 }}
-            className="relative"
-          >
-            <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center"
-              style={{
-                background: 'linear-gradient(135deg, #635BFF 0%, #7C5CFF 50%, #00D4FF 100%)',
-                boxShadow: '0 8px 32px rgba(99,91,255,0.4), 0 0 60px rgba(99,91,255,0.2), inset 0 1px 0 rgba(255,255,255,0.2)',
-              }}
-            >
-              <Sparkles size={22} className="text-white" style={{ filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.5))' }} />
-            </div>
-            <motion.div
-              className="absolute inset-0 rounded-xl -z-10"
-              animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0, 0.4] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              style={{ background: 'linear-gradient(135deg, #635BFF, #00D4FF)', filter: 'blur(12px)' }}
-            />
-          </motion.div>
-          <div className="flex flex-col">
-            <span
-              className="font-bold text-xl tracking-tight"
-              style={{
-                background: 'linear-gradient(90deg, #ffffff, #a8b4ff, #ffffff)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-            >
-              UniFlow
-            </span>
-            <span className="text-[10px] text-white/40 tracking-[0.2em] uppercase font-medium">知识宇宙</span>
-          </div>
-        </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ x: 30, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ duration: 0.6, delay: 0.1, ease: 'easeOut' }}
-        className="fixed top-4 right-4 z-20 pointer-events-auto"
-      >
-        <motion.button
-          whileHover={{ scale: 1.1, rotate: 45 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => navigate('/ai-engine?tab=settings')}
-          className="w-11 h-11 rounded-xl flex items-center justify-center"
-          style={{
-            background: 'rgba(5, 12, 25, 0.8)',
-            backdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-          }}
-        >
-          <Settings size={18} className="text-white/60" />
-        </motion.button>
-      </motion.div>
-
-      <motion.div
-        initial={{ y: 30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6, delay: 0.3, ease: 'easeOut' }}
-        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-20 pointer-events-none"
-      >
-        <motion.div
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-          className="flex items-center gap-3 px-5 py-3 rounded-full"
-          style={{
-            background: 'rgba(5, 12, 25, 0.8)',
-            backdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            boxShadow: '0 0 40px rgba(99,91,255,0.2)',
-          }}
-        >
-          <motion.div
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="w-2 h-2 rounded-full"
-            style={{ background: '#00D4FF', boxShadow: '0 0 10px #00D4FF' }}
-          />
-          <span className="text-[13px] text-white/70 tracking-wide">点击任意行星开始探索</span>
-          <motion.div
-            animate={{ x: [0, 5, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
-            <ChevronRight size={14} className="text-white/40" />
-          </motion.div>
-        </motion.div>
-      </motion.div>
-
-      <motion.div
-        initial={{ y: 30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6, delay: 0.2, ease: 'easeOut' }}
-        className="fixed bottom-4 right-4 z-20 pointer-events-auto"
-      >
-        <ModelStatusIndicator />
-      </motion.div>
-    </>
-  );
-}
-
 export default function HUDOverlay({ children }: HUDOverlayProps) {
   const view = useNavigationStore((s) => s.view);
   const targetPlanet = useNavigationStore((s) => s.targetPlanet);
@@ -430,39 +313,36 @@ export default function HUDOverlay({ children }: HUDOverlayProps) {
   return (
     <div className="fixed inset-0 z-10 pointer-events-none">
       <AnimatePresence mode="wait">
-        {view === 'galaxy' && <GalaxyViewHUD key="galaxy" />}
         {isPlanetView && <PlanetViewHUD key="planet" currentPlanet={targetPlanet!} />}
       </AnimatePresence>
 
       <AnimatePresence>
-        {isPlanetView && (
-          <motion.div
-            key="content-container"
-            initial={{ opacity: 0, y: 40, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.98 }}
-            transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute top-20 right-4 bottom-20 left-4 pointer-events-auto rounded-2xl overflow-hidden"
-            style={{
-              background: 'rgba(5, 12, 25, 0.75)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              boxShadow: `0 0 60px ${currentColor}20, 0 0 120px ${currentColor}10, inset 0 1px 0 rgba(255,255,255,0.05)`,
-            }}
-          >
-            <CornerBracket color={currentColor} position="tl" />
-            <CornerBracket color={currentColor} position="tr" />
-            <CornerBracket color={currentColor} position="bl" />
-            <CornerBracket color={currentColor} position="br" />
+        <motion.div
+          key="content-container"
+          initial={{ opacity: 0, y: 40, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -20, scale: 0.98 }}
+          transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          className="absolute top-20 right-4 bottom-4 left-4 pointer-events-auto rounded-2xl overflow-hidden"
+          style={{
+            background: 'rgba(5, 12, 25, 0.75)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            boxShadow: `0 0 60px ${currentColor}20, 0 0 120px ${currentColor}10, inset 0 1px 0 rgba(255,255,255,0.05)`,
+          }}
+        >
+          <CornerBracket color={currentColor} position="tl" />
+          <CornerBracket color={currentColor} position="tr" />
+          <CornerBracket color={currentColor} position="bl" />
+          <CornerBracket color={currentColor} position="br" />
 
-            <ScanLine color={currentColor} />
+          <ScanLine color={currentColor} />
 
-            <div className="w-full h-full overflow-auto p-6 lg:p-8">
-              {children}
-            </div>
-          </motion.div>
-        )}
+          <div className="w-full h-full overflow-auto p-6 lg:p-8">
+            {children}
+          </div>
+        </motion.div>
       </AnimatePresence>
     </div>
   );
