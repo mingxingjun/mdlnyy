@@ -374,6 +374,31 @@ function coerceDifficulty(n: unknown): Question['difficulty'] {
   return 3;
 }
 
+/**
+ * 从填空题题干中剥离"答案版"答案：识别 ___答案___ / __答案__ 模式，
+ * 把夹在连续下划线之间的答案挖出，题干只保留空格 ______。
+ * 同时收集所有挖出的答案（多空填空用「；」拼接）。
+ *
+ * 场景：用户上传的是"答案版"练习册，原文如
+ *   "数字信号具有__离散__性" / "8421BCD 码是一种___有权___码"
+ * LLM 常把答案连题干一起塞进 stem 字段，导致答案直接暴露。
+ *
+ * @returns { stem: 挖空后的题干, answers: 挖出的答案数组 }
+ */
+function extractBlanksFromStem(stem: string): { stem: string; answers: string[] } {
+  if (!stem) return { stem, answers: [] };
+  const answers: string[] = [];
+  // 匹配 2 个及以上下划线 + 非下划线非换行内容（1~40 字）+ 2 个及以上下划线
+  // 注意：内容可含中文引号、字母、数字、小数点、负号等
+  const blankRe = /_{2,}([^_\n]{1,40}?)_{2,}/g;
+  const cleaned = stem.replace(blankRe, (_, content: string) => {
+    const ans = content.trim();
+    if (ans) answers.push(ans);
+    return '______'; // 统一替换为 6 个下划线作为空格占位
+  });
+  return { stem: cleaned, answers };
+}
+
 /** 从题库解析 LLM 返回中提取题目列表，严格保留原文，区分有/无标准答案 */
 function parseQuestionBankResponse(content: string, materialId: string): Question[] {
   if (!content || !content.trim()) return [];
@@ -415,19 +440,34 @@ function parseQuestionBankResponse(content: string, materialId: string): Questio
         : undefined;
       const answerStr = answer;
       const hasStd = q.hasStandardAnswer === true || q.hasStandardAnswer === 'true' || answerStr.length > 0;
+      // 后处理：从题干剥离"答案版"答案 ___答案___ → 题干留空，答案写入 answer
+      // 仅当挖出的答案非空且原 answer 为空时才覆盖（避免覆盖 LLM 已正确填写的答案）
+      const { stem: blankedStem, answers: blankAnswers } = extractBlanksFromStem(stem);
+      let finalStem = stem;
+      let finalAnswer = answerStr;
+      let finalHasStd = hasStd;
+      if (blankAnswers.length > 0) {
+        finalStem = blankedStem;
+        const blankAnsStr = blankAnswers.join('；');
+        // 原 answer 为空 → 用挖出的答案；原 answer 非空 → 优先原答案，但保留挖空后的题干
+        if (!answerStr) {
+          finalAnswer = blankAnsStr;
+          finalHasStd = true;
+        }
+      }
       return {
         id: crypto.randomUUID(),
         materialId,
         knowledgePointIds: [],
         type: coerceQType(typeStr || q.type),
         difficulty: coerceDifficulty(q.difficulty),
-        stem,
+        stem: finalStem,
         options: options && options.length > 0 ? options : undefined,
-        answer: answerStr,
+        answer: finalAnswer,
         explanation,
         source: 'bank',
         bankId: materialId,
-        aiFilled: !hasStd,
+        aiFilled: !finalHasStd,
         createdAt: Date.now() + i,
       };
     })
@@ -469,19 +509,31 @@ function extractQuestionsByRegex(content: string, materialId: string): Question[
       if (options.length === 0) options = undefined;
     }
     const hasStd = answer.length > 0;
+    // 同样剥离题干中的"答案版"答案
+    const { stem: blankedStem, answers: blankAnswers } = extractBlanksFromStem(stem);
+    let finalStem = stem;
+    let finalAnswer = answer;
+    let finalHasStd = hasStd;
+    if (blankAnswers.length > 0) {
+      finalStem = blankedStem;
+      if (!answer) {
+        finalAnswer = blankAnswers.join('；');
+        finalHasStd = true;
+      }
+    }
     questions.push({
       id: crypto.randomUUID(),
       materialId,
       knowledgePointIds: [],
       type: coerceQType(typeStr),
       difficulty: 3,
-      stem,
+      stem: finalStem,
       options,
-      answer,
+      answer: finalAnswer,
       explanation,
       source: 'bank',
       bankId: materialId,
-      aiFilled: !hasStd,
+      aiFilled: !finalHasStd,
       createdAt: Date.now() + i,
     });
   });
