@@ -290,9 +290,12 @@ export default function AIEngine() {
       const agent = getAgent(step.agentId);
       if (!agent) continue;
 
+      // 出题步骤需注入题库原文，否则 LLM 看不到用户上传的题库只能凭空生成
       const prompt = i === 0
         ? `${step.prompt}\n\n${input}`
-        : `基于上一步的分析结果：\n${outputs[i - 1].content}\n\n${step.prompt}`;
+        : step.agentId === 'question-agent' && input
+          ? `基于上一步的分析结果：\n${outputs[i - 1].content}\n\n${step.prompt}\n\n【题库原文】\n${input}`
+          : `基于上一步的分析结果：\n${outputs[i - 1].content}\n\n${step.prompt}`;
 
       const controller = new AbortController();
       abortControllersRef.current.add(controller);
