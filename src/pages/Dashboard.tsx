@@ -193,13 +193,15 @@ function pickString(obj: Record<string, unknown>, keys: string[]): string {
   return '';
 }
 
-/** 从对象数组中定位知识点列表，兼容 knowledgePoints / points / items / data 等键，以及裸数组 */
+/** 从对象数组中定位列表字段，兼容 knowledgePoints / questions / points / items / data 等键，以及裸数组 */
 function locatePointsArray(parsed: unknown): unknown[] {
   if (Array.isArray(parsed)) return parsed;
   if (typeof parsed !== 'object' || parsed === null) return [];
   const obj = parsed as Record<string, unknown>;
   const candidateKeys = [
     'knowledgePoints', 'knowledge_points', 'points', 'items', 'list', 'data', 'result', 'results',
+    'questions',  // 题库解析返回 { questions: [...] }
+    'answers',    // AI 补答返回 { answers: [...] }
   ];
   for (const k of candidateKeys) {
     const v = obj[k];
