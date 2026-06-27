@@ -5,7 +5,7 @@ import {
   AlertCircle, CheckCircle2, ArrowRight,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
-import type { StudyMaterial, KnowledgePoint } from '@/store/useAppStore';
+import type { StudyMaterial, KnowledgePoint, Question } from '@/store/useAppStore';
 import type { LearningState } from '@/lib/agents/types';
 import { useToastStore } from '@/components/Toast';
 import { loadModelSettings, callModelForTask, isTaskConfigured } from '@/lib/models/api';
@@ -66,7 +66,49 @@ const KNOWLEDGE_EXTRACTION_SYSTEM_PROMPT = `你是「知识点提取器」，从
 - 仅输出 JSON，不要任何 markdown 代码块标记、不要解释文字
 - 中文输出`;
 
-/** 活动入口卡片配置 */
+/** 题库提取系统提示词：从资料中识别并结构化题目，严格保留原题与标准答案 */
+const QUESTION_BANK_EXTRACTION_SYSTEM_PROMPT = `你是「题库解析器」，从学习资料中识别并结构化抽取所有题目。
+
+【输入】可能含题目的学习资料纯文本（含题干、选项、标准答案、解析等）
+【输出】严格 JSON，遵循以下 schema：
+{
+  "questions": [
+    {
+      "type": "choice | fill | short | calculation",
+      "difficulty": 1-5,
+      "stem": "题干原文（一字不改）",
+      "options": ["A. ...", "B. ..."],     // 仅选择题有
+      "answer": "标准答案（原文已有则原样保留；原文缺失则留空字符串）",
+      "explanation": "原文解析（无则留空字符串）",
+      "hasStandardAnswer": true | false
+    }
+  ]
+}
+
+【抽取原则】
+- 严格按原文出题，题干、选项、答案一字不改，不臆造、不补全、不简化
+- 若原文明确给出答案（如"答案：B"或参考答案区），answer 字段填标准答案，hasStandardAnswer=true
+- 若原文未给答案（仅题干），answer 填空字符串 ""，hasStandardAnswer=false（后续由 AI 补答）
+- type 推断：含 A/B/C/D 选项为 choice，含下划线/空格填空为 fill，含"计算/求解/求"为 calculation，其余为 short
+- difficulty：原文标注则用，否则按题干复杂度估 1-5
+- 识别全文所有题目，不要遗漏；若资料非题库（纯概念论述），返回 { "questions": [] }
+
+【输出约束】
+- 仅输出 JSON，不要任何 markdown 代码块标记、不要解释文字
+- 中文输出`;
+
+/** 自动识别系统提示词：判断资料是"知识点型"还是"题库型" */
+const MATERIAL_KIND_DETECTION_SYSTEM_PROMPT = `你是「资料类型识别器」，判断学习资料属于哪种类型。
+
+【输出】严格 JSON：
+{ "kind": "knowledge" | "bank", "reason": "简短理由" }
+
+【判断规则】
+- bank：资料以"题目+作答"为主体，含大量题干、选项、答案、解析（如历年真题、习题集、试卷）
+- knowledge：资料以"概念论述/知识点讲解"为主体（如教材章节、笔记、讲义）
+- 若题干占比 > 40% 判为 bank，否则 knowledge
+
+【输出约束】仅输出 JSON，不要 markdown 代码块标记`;
 interface ActivityCardConfig {
   view: 'practice' | 'wrongbook' | 'memory' | 'supervisor';
   icon: string;
@@ -229,6 +271,158 @@ function parseKnowledgePointsResponse(content: string, materialId: string): Know
   return points;
 }
 
+/* ── 题库解析 ────────────────────────────────────────── */
+
+const VALID_QTYPES = ['choice', 'fill', 'short', 'calculation'] as const;
+
+function coerceQType(t: unknown): Question['type'] {
+  if (typeof t === 'string' && (VALID_QTYPES as readonly string[]).includes(t)) {
+    return t as Question['type'];
+  }
+  return 'short';
+}
+
+function coerceDifficulty(n: unknown): Question['difficulty'] {
+  if (typeof n === 'number' && Number.isFinite(n)) {
+    const r = Math.round(n);
+    if (r >= 1 && r <= 5) return r as Question['difficulty'];
+  }
+  if (typeof n === 'string') {
+    const r = parseInt(n, 10);
+    if (r >= 1 && r <= 5) return r as Question['difficulty'];
+  }
+  return 3;
+}
+
+interface RawBankQuestion {
+  type?: unknown;
+  difficulty?: unknown;
+  stem?: unknown;
+  options?: unknown;
+  answer?: unknown;
+  explanation?: unknown;
+  hasStandardAnswer?: unknown;
+}
+
+/** 从题库解析 LLM 返回中提取题目列表，严格保留原文，区分有/无标准答案 */
+function parseQuestionBankResponse(content: string, materialId: string): Question[] {
+  if (!content || !content.trim()) return [];
+  const jsonStr = extractJson(content);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonStr);
+  } catch {
+    return [];
+  }
+  const rawQs = locatePointsArray(parsed); // 复用：兼容 questions/items/data 等键与裸数组
+  if (rawQs.length === 0) return [];
+
+  return rawQs
+    .filter((q): q is RawBankQuestion => typeof q === 'object' && q !== null)
+    .map((q, i): Question => {
+      const options = Array.isArray(q.options)
+        ? q.options.filter((o): o is string => typeof o === 'string')
+        : undefined;
+      const answerStr = String(typeof q.answer === 'string' ? q.answer : '').trim();
+      const hasStd = q.hasStandardAnswer === true || answerStr.length > 0;
+      return {
+        id: crypto.randomUUID(),
+        materialId,
+        knowledgePointIds: [],
+        type: coerceQType(q.type),
+        difficulty: coerceDifficulty(q.difficulty),
+        stem: String(typeof q.stem === 'string' ? q.stem : '').trim(),
+        options: options && options.length > 0 ? options : undefined,
+        answer: answerStr,
+        explanation: String(typeof q.explanation === 'string' ? q.explanation : '').trim(),
+        source: 'bank',
+        bankId: materialId,
+        aiFilled: !hasStd,
+        createdAt: Date.now() + i,
+      };
+    })
+    .filter((q) => q.stem.length > 0);
+}
+
+/** 解析资料类型识别结果 */
+function parseMaterialKindResponse(content: string): 'knowledge' | 'bank' {
+  if (!content || !content.trim()) return 'knowledge';
+  const jsonStr = extractJson(content);
+  try {
+    const parsed = JSON.parse(jsonStr) as { kind?: unknown };
+    return parsed.kind === 'bank' ? 'bank' : 'knowledge';
+  } catch {
+    // 兜底：正则检测
+    return /"kind"\s*:\s*"bank"/i.test(content) ? 'bank' : 'knowledge';
+  }
+}
+
+/** AI 补答系统提示词：为无标准答案的题库题补 answer + explanation */
+const AI_FILL_ANSWER_SYSTEM_PROMPT = `你是「答题补全器」，为题库中缺失标准答案的题目补答。
+
+【输入】若干题目的 JSON 数组（每题含 type/stem/options，answer 为空）
+【输出】严格 JSON：
+{
+  "answers": [
+    { "index": 0, "answer": "答案", "explanation": "简短解析（不超过 80 字）" }
+  ]
+}
+
+【原则】
+- 答案必须正确且唯一（选择题填字母如 "B"，填空/简答/计算填完整答案）
+- 解析简洁，说明关键步骤或依据
+- 仅输出 JSON，不要 markdown 代码块标记`;
+
+/** 批量调用 AI 为缺失答案的题库题补答，返回 {id → {answer, explanation}} 映射 */
+async function fillMissingAnswers(
+  settings: ReturnType<typeof loadModelSettings>,
+  questions: Question[],
+  signal?: AbortSignal,
+): Promise<Map<string, { answer: string; explanation: string }>> {
+  const result = new Map<string, { answer: string; explanation: string }>();
+  const missing = questions.filter((q) => !q.answer);
+  if (missing.length === 0) return result;
+
+  // 分批：每批最多 10 题，避免 token 溢出
+  const BATCH = 10;
+  for (let start = 0; start < missing.length; start += BATCH) {
+    if (signal?.aborted) break;
+    const batch = missing.slice(start, start + BATCH);
+    const userMsg = `请为以下 ${batch.length} 道题补答：
+
+${batch.map((q, i) => JSON.stringify({
+  index: i,
+  type: q.type,
+  stem: q.stem,
+  options: q.options,
+})).join('\n')}
+
+【输出 JSON Schema】
+{ "answers": [ { "index": 0, "answer": "...", "explanation": "..." } ] }`;
+    try {
+      const { content } = await callModelForTask(
+        settings, 'chat', AI_FILL_ANSWER_SYSTEM_PROMPT, userMsg, signal,
+      );
+      const jsonStr = extractJson(content);
+      const parsed = JSON.parse(jsonStr) as { answers?: Array<{ index?: number; answer?: string; explanation?: string }> };
+      const answers = Array.isArray(parsed.answers) ? parsed.answers : [];
+      answers.forEach((a) => {
+        const idx = typeof a.index === 'number' ? a.index : -1;
+        if (idx < 0 || idx >= batch.length) return;
+        const ans = String(a.answer ?? '').trim();
+        if (!ans) return;
+        result.set(batch[idx].id, {
+          answer: ans,
+          explanation: String(a.explanation ?? '').trim(),
+        });
+      });
+    } catch {
+      // 单批失败不影响其他批次，缺失的题保持空 answer
+    }
+  }
+  return result;
+}
+
 /* ═══════════════════════════════════════════════════════
    1. 页头
    ═══════════════════════════════════════════════════════ */
@@ -287,7 +481,8 @@ function DashboardHeader() {
 function MaterialUploadCard() {
   const {
     materials, addMaterial, updateMaterial, removeMaterial,
-    addKnowledgePoints, setLearningState, learningState,
+    addKnowledgePoints, replaceQuestionsByMaterial,
+    setLearningState, learningState,
   } = useAppStore();
   const { addToast } = useToastStore();
 
@@ -296,9 +491,11 @@ function MaterialUploadCard() {
   const [isParsing, setIsParsing] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [showPaste, setShowPaste] = useState(false);
+  /** 上传资料类型：knowledge=拆知识点 / bank=题库导入 / auto=AI 自动识别 */
+  const [materialKind, setMaterialKind] = useState<StudyMaterial['kind']>('auto');
 
-  /** 共享：调用 doc_parse 模型从文本中提取知识点，更新资料状态并写入 store */
-  const runExtraction = async (materialId: string, name: string, text: string) => {
+  /** 知识点提取流程（原有逻辑） */
+  const runKnowledgeExtraction = async (materialId: string, name: string, text: string) => {
     if (!isApiKeyConfigured()) {
       updateMaterial(materialId, { status: 'pending', parsedText: text });
       addToast('warning', '请先在设置中配置 AI 模型 API Key');
@@ -323,13 +520,11 @@ ${text.slice(0, 6000)}`;
       updateMaterial(materialId, { status: 'parsed', parsedText: text });
 
       if (points.length === 0) {
-        // 输出原始返回便于排查“未检测到知识点”
         // eslint-disable-next-line no-console
         console.warn('[知识点提取] 解析结果为空，原始返回：', content.slice(0, 500));
         addToast('info', '资料已上传，但未提取到知识点（请检查资料是否含有效正文）');
       } else {
         addKnowledgePoints(points);
-        // 仅在尚未到达 KnowledgeReady 时推进状态，避免覆盖更靠后的状态
         if (learningState === 'Onboarded' || learningState === 'MaterialReady') {
           setLearningState('KnowledgeReady');
         }
@@ -338,6 +533,115 @@ ${text.slice(0, 6000)}`;
     } catch (err) {
       updateMaterial(materialId, { status: 'pending', parsedText: text });
       addToast('error', `知识点提取失败：${err instanceof Error ? err.message : '未知错误'}`);
+    }
+  };
+
+  /** 题库导入流程：抽取题目 → AI 补答缺失答案 → 写入 store */
+  const runBankExtraction = async (materialId: string, name: string, text: string) => {
+    if (!isApiKeyConfigured()) {
+      updateMaterial(materialId, { status: 'pending', parsedText: text });
+      addToast('warning', '请先在设置中配置 AI 模型 API Key');
+      return;
+    }
+    updateMaterial(materialId, { status: 'parsing' });
+    try {
+      const settings = loadModelSettings();
+      // 1. 抽取题目（题库解析走 chat 路由，因为需要更强调度）
+      const userPrompt = `请从以下资料中识别并结构化抽取所有题目 JSON：
+
+【资料名称】${name}
+
+【资料内容】
+${text.slice(0, 8000)}`;
+      const { content } = await callModelForTask(
+        settings,
+        'chat',
+        QUESTION_BANK_EXTRACTION_SYSTEM_PROMPT,
+        userPrompt,
+      );
+      const questions = parseQuestionBankResponse(content, materialId);
+      updateMaterial(materialId, { status: 'parsed', parsedText: text });
+
+      if (questions.length === 0) {
+        // eslint-disable-next-line no-console
+        console.warn('[题库解析] 解析结果为空，原始返回：', content.slice(0, 500));
+        addToast('info', '资料已上传，但未识别到题目（若该资料实为知识点，请改用「知识点」类型重新上传）');
+        return;
+      }
+
+      // 2. 为无标准答案的题 AI 补答（分批）
+      const missingCount = questions.filter((q) => !q.answer).length;
+      if (missingCount > 0) {
+        addToast('info', `识别到 ${questions.length} 道题，其中 ${missingCount} 道无标准答案，正在 AI 补答…`);
+        const fillMap = await fillMissingAnswers(settings, questions);
+        if (fillMap.size > 0) {
+          questions.forEach((q) => {
+            const filled = fillMap.get(q.id);
+            if (filled) {
+              q.answer = filled.answer;
+              if (!q.explanation) q.explanation = filled.explanation;
+              q.aiFilled = true;
+            }
+          });
+        }
+      }
+
+      // 3. 写入 store（替换该 materialId 下旧题）
+      replaceQuestionsByMaterial(materialId, questions);
+      if (learningState === 'Onboarded' || learningState === 'MaterialReady') {
+        setLearningState('KnowledgeReady');
+      }
+      const aiFilled = questions.filter((q) => q.aiFilled).length;
+      const stdCount = questions.length - aiFilled;
+      addToast(
+        'success',
+        `成功导入 ${questions.length} 道题（标准答案 ${stdCount} 道${aiFilled > 0 ? `，AI 补答 ${aiFilled} 道` : ''}）`,
+      );
+    } catch (err) {
+      updateMaterial(materialId, { status: 'pending', parsedText: text });
+      addToast('error', `题库解析失败：${err instanceof Error ? err.message : '未知错误'}`);
+    }
+  };
+
+  /** 统一入口：按 materialKind 分流到知识点或题库流程；auto 则先 AI 识别再分流 */
+  const runExtraction = async (materialId: string, name: string, text: string, kind: StudyMaterial['kind']) => {
+    if (kind === 'knowledge') {
+      await runKnowledgeExtraction(materialId, name, text);
+      return;
+    }
+    if (kind === 'bank') {
+      await runBankExtraction(materialId, name, text);
+      return;
+    }
+    // auto：先 AI 识别类型
+    if (!isApiKeyConfigured()) {
+      updateMaterial(materialId, { status: 'pending', parsedText: text });
+      addToast('warning', '请先在设置中配置 AI 模型 API Key');
+      return;
+    }
+    updateMaterial(materialId, { status: 'parsing' });
+    try {
+      const settings = loadModelSettings();
+      const detectPrompt = `请判断以下资料属于「知识点型」还是「题库型」：
+
+【资料内容】
+${text.slice(0, 3000)}`;
+      const { content } = await callModelForTask(
+        settings, 'chat', MATERIAL_KIND_DETECTION_SYSTEM_PROMPT, detectPrompt,
+      );
+      const detected = parseMaterialKindResponse(content);
+      // 把识别结果回写到 material 的 kind 字段
+      updateMaterial(materialId, { kind: detected });
+      addToast('info', `AI 识别该资料为「${detected === 'bank' ? '题库' : '知识点'}」，开始解析…`);
+      // 递归走对应流程（此时 kind 已确定）
+      if (detected === 'bank') {
+        await runBankExtraction(materialId, name, text);
+      } else {
+        await runKnowledgeExtraction(materialId, name, text);
+      }
+    } catch (err) {
+      updateMaterial(materialId, { status: 'pending', parsedText: text });
+      addToast('error', `资料类型识别失败：${err instanceof Error ? err.message : '未知错误'}`);
     }
   };
 
@@ -350,6 +654,7 @@ ${text.slice(0, 6000)}`;
       id,
       name: file.name,
       type: detectMaterialType(file),
+      kind: materialKind,
       size: file.size,
       uploadedAt: Date.now(),
       status: 'parsing',
@@ -370,13 +675,13 @@ ${text.slice(0, 6000)}`;
 
     if (!parsedText || parsedText.trim().length < 20) {
       updateMaterial(id, { status: 'failed', parsedText });
-      addToast('warning', '文件内容过少，无法提取知识点');
+      addToast('warning', '文件内容过少，无法提取');
       setIsParsing(false);
       return;
     }
 
-    // 3. 调用 LLM 提取知识点
-    await runExtraction(id, file.name, parsedText);
+    // 3. 按类型分流解析
+    await runExtraction(id, file.name, parsedText, materialKind);
     setIsParsing(false);
   };
 
@@ -393,6 +698,7 @@ ${text.slice(0, 6000)}`;
       id,
       name: `粘贴资料 ${new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}`,
       type: 'text',
+      kind: materialKind,
       size: new Blob([text]).size,
       uploadedAt: Date.now(),
       status: 'parsing',
@@ -401,7 +707,7 @@ ${text.slice(0, 6000)}`;
     setIsParsing(true);
     setPasteText('');
     setShowPaste(false);
-    await runExtraction(id, material.name, text);
+    await runExtraction(id, material.name, text, materialKind);
     setIsParsing(false);
   };
 
@@ -426,7 +732,8 @@ ${text.slice(0, 6000)}`;
       return;
     }
     setIsParsing(true);
-    await runExtraction(material.id, material.name, material.parsedText);
+    // 重新解析时沿用资料自身的 kind（auto 会再次识别）
+    await runExtraction(material.id, material.name, material.parsedText, material.kind);
     setIsParsing(false);
   };
 
@@ -444,10 +751,43 @@ ${text.slice(0, 6000)}`;
           <span className="text-2xl">📥</span>
           <div>
             <h2 className="font-serif text-lg text-ink-900 font-bold leading-tight">资料上传</h2>
-            <p className="text-xs text-ink-500 font-sans">上传复习资料，由 Agent 提取知识点</p>
+            <p className="text-xs text-ink-500 font-sans">上传复习资料或题库，由 Agent 拆解或抽题</p>
           </div>
         </div>
         <VintageTag color="seal">进行中</VintageTag>
+      </div>
+
+      {/* 资料类型选择器：知识点 / 题库 / 自动识别 */}
+      <div className="mb-3" role="radiogroup" aria-label="选择资料处理方式">
+        <span className="block text-xs font-serif text-ink-600 mb-1.5">资料处理方式</span>
+        <div className="flex flex-wrap gap-1.5">
+          {([
+            { v: 'auto', label: '🤖 自动识别', hint: 'AI 判断' },
+            { v: 'knowledge', label: '📖 知识点', hint: '拆概念' },
+            { v: 'bank', label: '📝 题库', hint: '抽原题' },
+          ] as const).map((opt) => (
+            <button
+              key={opt.v}
+              type="button"
+              role="radio"
+              aria-checked={materialKind === opt.v}
+              onClick={() => setMaterialKind(opt.v)}
+              className={`px-2.5 py-1 rounded-[3px] text-xs font-serif border transition-colors ${
+                materialKind === opt.v
+                  ? 'bg-seal text-paper-50 border-seal'
+                  : 'bg-paper-100 text-ink-700 border-ink-600/15 hover:border-seal/50'
+              }`}
+              title={opt.hint}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-ink-500 font-sans mt-1">
+          {materialKind === 'auto' && 'AI 自动判断资料是知识点型还是题库型'}
+          {materialKind === 'knowledge' && '把资料拆成知识点，用于出题/记忆卡/督学'}
+          {materialKind === 'bank' && '严格抽取原题，有标准答案优先，无答案 AI 补答'}
+        </p>
       </div>
 
       {/* 隐藏的文件输入（作为 role=button 容器的兄弟节点，避免嵌套交互控件） */}

@@ -20,6 +20,11 @@ import VintageTag from '@/components/VintageTag';
    ═══════════════════════════════════════════════════════ */
 
 const QUESTIONS_PER_SESSION = 5;
+/** 知识点模式：每个知识点至少出 1 题，最多 2 题；单批最多 8 题防 token 溢出 */
+const KP_QUESTIONS_PER_BATCH = 8;
+const KP_MAX_PER_POINT = 2;
+/** 题库模式：单批最多 10 题，太多则分节点 */
+const BANK_QUESTIONS_PER_BATCH = 10;
 
 const QTYPE_LABEL: Record<Question['type'], string> = {
   choice: '选择题',
@@ -151,6 +156,7 @@ function parseQuestionsResponse(content: string, materialId: string): Question[]
         options: options && options.length > 0 ? options : undefined,
         answer: String(typeof q.answer === 'string' ? q.answer : '').trim(),
         explanation: String(typeof q.explanation === 'string' ? q.explanation : '').trim(),
+        source: 'ai',
         createdAt: Date.now() + i,
       };
     })
@@ -271,12 +277,12 @@ interface ExplanationPanelProps {
   onStyleChange: (s: ExplanationStyle) => void;
   loading: boolean;
   explanation: ParsedExplanation | null;
-  onAddWrongbook: () => void;
-  added: boolean;
+  onGoWrongbook: () => void;
+  autoRecorded: boolean;
 }
 
 function ExplanationPanel({
-  selectedStyle, onStyleChange, loading, explanation, onAddWrongbook, added,
+  selectedStyle, onStyleChange, loading, explanation, onGoWrongbook, autoRecorded,
 }: ExplanationPanelProps) {
   return (
     <PaperCard status="default" className="mt-3 p-4">
@@ -360,16 +366,23 @@ function ExplanationPanel({
         <p className="text-sm text-ink-500 font-serif">暂无讲解内容</p>
       )}
 
-      {/* 加入错题本 */}
-      <div className="mt-4 pt-3 border-t border-ink-600/10">
+      {/* 错题已自动收录，提供跳转错题本入口 */}
+      <div className="mt-4 pt-3 border-t border-ink-600/10 flex items-center justify-between gap-2">
+        {autoRecorded ? (
+          <span className="inline-flex items-center gap-1 text-xs font-serif text-sage-dark">
+            <Check size={13} /> 已自动收录至错题本
+          </span>
+        ) : (
+          <span className="text-xs font-serif text-ink-500">答对无需收录</span>
+        )}
         <VintageButton
-          variant={added ? 'secondary' : 'primary'}
+          variant="ghost"
           size="sm"
-          disabled={added || loading}
-          onClick={onAddWrongbook}
+          disabled={!autoRecorded}
+          onClick={onGoWrongbook}
         >
-          {added ? '已加入错题本' : '加入错题本'}
-          {!added && <BookOpen size={14} className="ml-1.5" />}
+          查看错题本
+          <BookOpen size={14} className="ml-1.5" />
         </VintageButton>
       </div>
     </PaperCard>
@@ -382,13 +395,18 @@ function ExplanationPanel({
 
 export default function Practice() {
   const knowledgePoints = useAppStore((s) => s.knowledgePoints);
+  const bankQuestions = useAppStore((s) => s.questions);          // 题库题（source='bank'）
   const addQuestions = useAppStore((s) => s.addQuestions);
   const addAnswerRecord = useAppStore((s) => s.addAnswerRecord);
   const addWrongQuestion = useAppStore((s) => s.addWrongQuestion);
+  const updateWrongQuestion = useAppStore((s) => s.updateWrongQuestion);
   const incrementQuestions = useAppStore((s) => s.incrementQuestions);
+  const studyProgress = useAppStore((s) => s.studyProgress);
   const setActiveView = useAppStore((s) => s.setActiveView);
   const { addToast } = useToastStore();
 
+  /** 出题模式：auto=自动选(有题库走题库，否则走知识点) / bank=题库 / knowledge=知识点 */
+  const [genMode, setGenMode] = useState<'auto' | 'bank' | 'knowledge'>('auto');
   const [phase, setPhase] = useState<Phase>('setup');
   const [sessionQuestions, setSessionQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -400,6 +418,10 @@ export default function Practice() {
   const [selectedStyle, setSelectedStyle] = useState<ExplanationStyle>('detailed');
   const [addedToWrongbook, setAddedToWrongbook] = useState(false);
   const [results, setResults] = useState<{ questionId: string; isCorrect: boolean }[]>([]);
+  /** 当前 session 已收录的错题 id → wrongQuestionId 映射，避免重复入库 */
+  const [wrongRecordedIds, setWrongRecordedIds] = useState<Set<string>>(new Set());
+  /** 当前题对应的错题本条目 id（用于切换讲解风格时回填） */
+  const [currentWrongQId, setCurrentWrongQId] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const questionStartRef = useRef<number>(Date.now());
@@ -420,11 +442,12 @@ export default function Practice() {
     setExplanationLoading(false);
     setAddedToWrongbook(false);
     setSelectedStyle('detailed');
+    setCurrentWrongQId(null);
     questionStartRef.current = Date.now();
   }, []);
 
   const fetchExplanation = useCallback(
-    async (style: ExplanationStyle) => {
+    async (style: ExplanationStyle, wrongQuestionId?: string) => {
       const q = sessionQuestions[currentIndex];
       if (!q) return;
       const agent = getAgent('explanation-agent');
@@ -472,17 +495,29 @@ ${optionsBlock}【学生答案】${userAnswer}
         );
         if (controller.signal.aborted) return;
         const parsed = parseExplanationResponse(content);
+        let finalExp: ParsedExplanation;
         if (parsed) {
           setExplanation(parsed);
+          finalExp = parsed;
         } else {
           addToast('warning', '讲解内容解析失败，显示原文');
-          setExplanation({
+          finalExp = {
             style,
             errorLocation: '',
             steps: [{ content: content.trim() || '（无内容）', rationale: '' }],
             pitfalls: [],
             knowledgePointIds: [],
             followupQuestions: [],
+          };
+          setExplanation(finalExp);
+        }
+        // 讲解完成后回填 stepBreakdown 到已入库的错题（错题本可立即看到结构化讲解）
+        if (wrongQuestionId) {
+          const stepBreakdown = formatStepBreakdown(finalExp);
+          updateWrongQuestion(wrongQuestionId, {
+            stepBreakdown: stepBreakdown || undefined,
+            explanation: finalExp.errorLocation || q.explanation || '',
+            explanationStyle: style,
           });
         }
       } catch (err) {
@@ -492,45 +527,66 @@ ${optionsBlock}【学生答案】${userAnswer}
         if (!controller.signal.aborted) setExplanationLoading(false);
       }
     },
-    [sessionQuestions, currentIndex, userAnswer, addToast],
+    [sessionQuestions, currentIndex, userAnswer, addToast, updateWrongQuestion],
   );
 
-  const startSession = useCallback(async () => {
-    if (knowledgePoints.length === 0) {
-      addToast('warning', '尚无知识点，请先上传资料');
-      return;
-    }
-    if (!isApiKeyConfigured()) {
-      addToast('warning', '请先配置 AI 模型 API Key');
-      return;
-    }
+  /** 题库模式：从已导入题库抽取原题，分批出完 */
+  const startBankSession = useCallback(async (controller: AbortController): Promise<Question[]> => {
+    // 过滤掉答案为空的题（极端情况：补答失败），保留所有有答案的题库题
+    const bankQs = bankQuestions.filter((q) => q.source === 'bank' && q.answer);
+    if (bankQs.length === 0) return [];
+
+    // 一次性出全部，但分批写入 sessionQuestions（前端展示）。这里先返回第一批，后续题已在 store。
+    // 实际"出完所有题"语义：sessionQuestions 取全部题库题，UI 分页展示。
+    // 但为避免单次练习过长，取 BANK_QUESTIONS_PER_BATCH 为一批，由用户做完后继续下一批。
+    const firstBatch = bankQs.slice(0, BANK_QUESTIONS_PER_BATCH);
+    return firstBatch;
+  }, [bankQuestions]);
+
+  /** 知识点模式：覆盖所有知识点出题，按 priority 分配题量，分批生成 */
+  const startKnowledgeSession = useCallback(async (controller: AbortController): Promise<Question[]> => {
+    if (knowledgePoints.length === 0) return [];
     const agent = getAgent('question-agent');
-    if (!agent) {
-      addToast('error', '出题 Agent 未就绪');
-      return;
+    if (!agent) return [];
+
+    // 按 priority 排序，优先出核心知识点；高 priority 出 2 题，低的出 1 题
+    const sorted = [...knowledgePoints].sort((a, b) => b.priority - a.priority);
+    // 单批最多 KP_QUESTIONS_PER_BATCH 题，按比例分配
+    let allocated = 0;
+    const targetCount = Math.min(KP_QUESTIONS_PER_BATCH, sorted.length * KP_MAX_PER_POINT);
+    const pointsForThisBatch: typeof sorted = [];
+    for (const kp of sorted) {
+      if (allocated >= targetCount) break;
+      pointsForThisBatch.push(kp);
+      allocated += kp.priority >= 4 ? KP_MAX_PER_POINT : 1;
     }
 
-    const materialId = knowledgePoints[0]?.materialId ?? '';
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setPhase('generating');
-    setSessionQuestions([]);
-    setCurrentIndex(0);
-    setResults([]);
+    // 薄弱点强化：若 weakPointIds 非空，把它们置顶并保证出题
+    const weakIds = new Set(studyProgress.weakPointIds);
+    const weakPoints = sorted.filter((kp) => weakIds.has(kp.id));
+    const merged = [...weakPoints, ...pointsForThisBatch.filter((kp) => !weakIds.has(kp.id))];
+    // 去重
+    const seen = new Set<string>();
+    const finalPoints = merged.filter((kp) => {
+      if (seen.has(kp.id)) return false;
+      seen.add(kp.id);
+      return true;
+    }).slice(0, KP_QUESTIONS_PER_BATCH);
 
-    const kpList = knowledgePoints
-      .map((kp, i) => `${i + 1}. ${kp.name}（优先级 ${kp.priority}）[id:${kp.id}]：${kp.description}`)
+    const materialId = finalPoints[0]?.materialId ?? knowledgePoints[0]?.materialId ?? '';
+    const kpList = finalPoints
+      .map((kp, i) => `${i + 1}. ${kp.name}（优先级 ${kp.priority}${weakIds.has(kp.id) ? '，薄弱点强化' : ''}）[id:${kp.id}]：${kp.description}`)
       .join('\n');
     const nonce = Math.floor(Math.random() * 1000000);
-    const input = `请基于以下知识点列表生成 ${QUESTIONS_PER_SESSION} 道练习题，难度梯度为 简单30% / 中等50% / 困难20%，题型混合选择/填空/简答/计算。
+    const input = `请基于以下知识点列表生成 ${finalPoints.length} 道练习题，每题覆盖一个知识点，难度梯度为 简单30% / 中等50% / 困难20%，题型混合选择/填空/简答/计算。
 
 【出题种子】${nonce}
 【知识点列表】
 ${kpList}
 
 【要求】
-- 每题必须关联至少 1 个知识点 id（从上方列表的 [id:...] 中选取）
+- 必须覆盖上述所有知识点，每题关联至少 1 个知识点 id（从 [id:...] 中选取）
+- 薄弱点强化题优先出，难度可适当提高
 - 选择题 options 形如 ["A. ...", "B. ...", "C. ...", "D. ..."]，answer 为字母（如 "B"）
 - 干扰项必须合理，答案唯一确定
 - 仅输出 JSON，不要 markdown 代码块标记
@@ -542,33 +598,73 @@ ${kpList}
   ]
 }`;
 
+    const settings = loadModelSettings();
+    const userMessage = compressPrompt(agent, input);
+    const { content } = await callModelForTask(
+      settings, 'chat', agent.systemPrompt, userMessage, controller.signal,
+      { temperature: agent.temperature, maxTokens: agent.maxTokens },
+    );
+    if (controller.signal.aborted) return [];
+    return parseQuestionsResponse(content, materialId);
+  }, [knowledgePoints, studyProgress.weakPointIds]);
+
+  const startSession = useCallback(async () => {
+    // 决定实际模式：auto 时有题库走题库，否则走知识点
+    const hasBank = bankQuestions.some((q) => q.source === 'bank' && q.answer);
+    const mode = genMode === 'auto' ? (hasBank ? 'bank' : 'knowledge') : genMode;
+
+    if (mode === 'knowledge' && knowledgePoints.length === 0) {
+      addToast('warning', '尚无知识点，请先上传资料');
+      return;
+    }
+    if (mode === 'bank' && !hasBank) {
+      addToast('warning', '尚无题库题，请先以「题库」类型上传资料');
+      return;
+    }
+    if (mode === 'knowledge' && !isApiKeyConfigured()) {
+      addToast('warning', '请先配置 AI 模型 API Key');
+      return;
+    }
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setPhase('generating');
+    setSessionQuestions([]);
+    setCurrentIndex(0);
+    setResults([]);
+    setWrongRecordedIds(new Set());
+
     try {
-      const settings = loadModelSettings();
-      const userMessage = compressPrompt(agent, input);
-      const { content } = await callModelForTask(
-        settings, 'chat', agent.systemPrompt, userMessage, controller.signal,
-        { temperature: agent.temperature, maxTokens: agent.maxTokens },
-      );
+      let qs: Question[] = [];
+      if (mode === 'bank') {
+        qs = await startBankSession(controller);
+      } else {
+        qs = await startKnowledgeSession(controller);
+      }
       if (controller.signal.aborted) return;
-      const qs = parseQuestionsResponse(content, materialId);
       if (qs.length === 0) {
-        addToast('error', '未能解析出题目，请重试');
+        addToast('error', mode === 'bank' ? '题库无可练题目（答案缺失）' : '未能解析出题目，请重试');
         setPhase('setup');
         return;
       }
       setSessionQuestions(qs);
-      addQuestions(qs);
+      // 知识点模式的题是 AI 新生成的，写入 store；题库题已在 store，不重复写
+      if (mode === 'knowledge') addQuestions(qs);
       setCurrentIndex(0);
       setResults([]);
       resetQuestionState();
       setPhase('quiz');
-      addToast('success', `已生成 ${qs.length} 道题目，开始练习`);
+      const remainHint = mode === 'bank' && bankQuestions.length > qs.length
+        ? `（本次 ${qs.length} 题，题库共 ${bankQuestions.length} 题，做完可继续）`
+        : '';
+      addToast('success', `已生成 ${qs.length} 道题目，开始练习${remainHint}`);
     } catch (err) {
       if (controller.signal.aborted) return;
       addToast('error', `出题失败：${err instanceof Error ? err.message : '未知错误'}`);
       setPhase('setup');
     }
-  }, [knowledgePoints, addQuestions, addToast, resetQuestionState]);
+  }, [genMode, bankQuestions, knowledgePoints, startBankSession, startKnowledgeSession, addQuestions, addToast, resetQuestionState]);
 
   const handleSubmit = useCallback(() => {
     const q = sessionQuestions[currentIndex];
@@ -590,44 +686,45 @@ ${kpList}
     incrementQuestions(isCorrect);
     setJudged({ isCorrect, userAnswer: ua });
     setResults((prev) => [...prev, { questionId: q.id, isCorrect }]);
+
+    // 错题自动入库：判错即写入 store，不再依赖手动按钮
     if (!isCorrect) {
-      void fetchExplanation('detailed');
+      const wqId = crypto.randomUUID();
+      const wq: WrongQuestion = {
+        id: wqId,
+        questionId: q.id,
+        stem: q.stem,
+        userAnswer: ua,
+        correctAnswer: q.answer,
+        explanation: q.explanation || '',
+        knowledgePointIds: q.knowledgePointIds,
+        tags: [q.type, q.source === 'bank' ? '题库题' : 'AI题'],
+        explanationStyle: 'detailed',
+        createdAt: Date.now(),
+        reviewCount: 0,
+        isResolved: false,
+      };
+      addWrongQuestion(wq);
+      setWrongRecordedIds((prev) => new Set(prev).add(q.id));
+      setAddedToWrongbook(true);
+      setCurrentWrongQId(wqId);
+      // 异步拉讲解，完成后回填 stepBreakdown 到已入库的错题
+      void fetchExplanation('detailed', wqId);
     }
-  }, [sessionQuestions, currentIndex, userAnswer, addAnswerRecord, incrementQuestions, addToast, fetchExplanation]);
+  }, [sessionQuestions, currentIndex, userAnswer, addAnswerRecord, incrementQuestions, addWrongQuestion, addToast, fetchExplanation]);
 
   const handleStyleChange = useCallback(
     (style: ExplanationStyle) => {
       if (style === selectedStyle) return;
-      void fetchExplanation(style);
+      void fetchExplanation(style, currentWrongQId ?? undefined);
     },
-    [selectedStyle, fetchExplanation],
+    [selectedStyle, fetchExplanation, currentWrongQId],
   );
 
-  const handleAddToWrongbook = useCallback(() => {
-    const q = sessionQuestions[currentIndex];
-    if (!q || !judged) return;
-    const exp = explanation;
-    const stepBreakdown = exp ? formatStepBreakdown(exp) : '';
-    const explanationText = exp?.errorLocation || q.explanation || '';
-    const wq: WrongQuestion = {
-      id: crypto.randomUUID(),
-      questionId: q.id,
-      stem: q.stem,
-      userAnswer: judged.userAnswer,
-      correctAnswer: q.answer,
-      explanation: explanationText,
-      knowledgePointIds: q.knowledgePointIds,
-      tags: [q.type],
-      explanationStyle: selectedStyle,
-      stepBreakdown: stepBreakdown || undefined,
-      createdAt: Date.now(),
-      reviewCount: 0,
-      isResolved: false,
-    };
-    addWrongQuestion(wq);
-    setAddedToWrongbook(true);
-    addToast('success', '已加入错题本');
-  }, [sessionQuestions, currentIndex, judged, explanation, selectedStyle, addWrongQuestion, addToast]);
+  /** 错题已自动入库，此按钮改为跳转错题本查看 */
+  const handleGoWrongbook = useCallback(() => {
+    setActiveView('wrongbook');
+  }, [setActiveView]);
 
   const handleNext = useCallback(() => {
     if (currentIndex + 1 >= sessionQuestions.length) {
@@ -700,41 +797,80 @@ ${kpList}
         <PaperCard status="active" className="p-6 md:p-8">
           <div className="text-center space-y-4">
             <span className="text-4xl">✍️</span>
-            {noKnowledgePoints ? (
+            {noKnowledgePoints && bankQuestions.filter((q) => q.source === 'bank' && q.answer).length === 0 ? (
               <>
-                <h2 className="font-serif text-xl text-ink-900 font-bold">尚无知识点</h2>
+                <h2 className="font-serif text-xl text-ink-900 font-bold">尚无练习内容</h2>
                 <p className="text-sm text-ink-600 font-sans max-w-md mx-auto">
-                  请先上传复习资料，由 Agent 提取知识点后再开始练习。
+                  请先上传复习资料（知识点）或题库，由 Agent 拆解/抽题后再开始练习。
                 </p>
                 <VintageButton variant="primary" size="lg" onClick={handleBackHome}>
                   <ArrowLeft size={16} className="mr-1.5" /> 返回首页上传资料
                 </VintageButton>
               </>
-            ) : noApiKey ? (
-              <>
-                <h2 className="font-serif text-xl text-ink-900 font-bold">未配置模型 API Key</h2>
-                <p className="text-sm text-ink-600 font-sans max-w-md mx-auto">
-                  练习需要调用 AI 出题与讲解，请先在设置中配置模型 API Key。
-                </p>
-                <VintageButton variant="primary" size="lg" onClick={handleBackHome}>
-                  <Home size={16} className="mr-1.5" /> 返回首页
-                </VintageButton>
-              </>
             ) : (
               <>
                 <h2 className="font-serif text-xl text-ink-900 font-bold">准备开始练习</h2>
-                <p className="text-sm text-ink-600 font-sans">
-                  当前共 <span className="font-serif text-seal font-bold">{knowledgePoints.length}</span> 个知识点，将生成 {QUESTIONS_PER_SESSION} 道题目。
-                </p>
-                <div className="flex flex-wrap justify-center gap-1.5 max-w-lg mx-auto">
-                  {knowledgePoints.slice(0, 6).map((kp) => (
-                    <VintageTag key={kp.id} color="gold">{kp.name}</VintageTag>
-                  ))}
-                  {knowledgePoints.length > 6 && (
-                    <VintageTag color="worn">+{knowledgePoints.length - 6}</VintageTag>
+
+                {/* 出题模式选择 */}
+                <div className="text-left max-w-md mx-auto" role="radiogroup" aria-label="选择出题模式">
+                  <span className="block text-xs font-serif text-ink-600 mb-1.5">出题模式</span>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {([
+                      { v: 'auto', label: '自动', desc: '有题库走题库' },
+                      { v: 'bank', label: '题库', desc: '原题原答' },
+                      { v: 'knowledge', label: '知识点', desc: 'AI 现场出题' },
+                    ] as const).map((opt) => {
+                      const disabled = opt.v === 'bank' && bankQuestions.filter((q) => q.source === 'bank' && q.answer).length === 0;
+                      return (
+                        <button
+                          key={opt.v}
+                          type="button"
+                          role="radio"
+                          aria-checked={genMode === opt.v}
+                          disabled={disabled}
+                          onClick={() => setGenMode(opt.v)}
+                          className={`px-2 py-2 rounded-[3px] text-xs font-serif border transition-colors text-center ${
+                            genMode === opt.v
+                              ? 'bg-seal text-paper-50 border-seal'
+                              : disabled
+                                ? 'bg-paper-100 text-ink-300 border-ink-600/10 cursor-not-allowed'
+                                : 'bg-paper-100 text-ink-700 border-ink-600/15 hover:border-seal/50'
+                          }`}
+                        >
+                          <div className="font-bold">{opt.label}</div>
+                          <div className="text-[10px] opacity-80 mt-0.5">{opt.desc}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 当前内容概览 */}
+                <div className="text-sm text-ink-600 font-sans space-y-1">
+                  {knowledgePoints.length > 0 && (
+                    <p>知识点 <span className="font-serif text-seal font-bold">{knowledgePoints.length}</span> 个
+                      {studyProgress.weakPointIds.length > 0 && (
+                        <span className="text-terracotta-dark">（含 {studyProgress.weakPointIds.length} 个薄弱点将强化出题）</span>
+                      )}
+                    </p>
+                  )}
+                  {bankQuestions.filter((q) => q.source === 'bank').length > 0 && (
+                    <p>题库题 <span className="font-serif text-seal font-bold">{bankQuestions.filter((q) => q.source === 'bank').length}</span> 道
+                      <span className="text-ink-500">（其中 AI 补答 {bankQuestions.filter((q) => q.source === 'bank' && q.aiFilled).length} 道）</span>
+                    </p>
                   )}
                 </div>
-                <VintageButton variant="primary" size="lg" onClick={() => void startSession()}>
+
+                {genMode === 'knowledge' && noApiKey && (
+                  <p className="text-xs text-terracotta-dark font-serif">知识点模式需调用 AI 出题，请先配置 API Key</p>
+                )}
+
+                <VintageButton
+                  variant="primary"
+                  size="lg"
+                  disabled={genMode === 'knowledge' && noApiKey}
+                  onClick={() => void startSession()}
+                >
                   开始练习 <ChevronRight size={16} className="ml-1.5" />
                 </VintageButton>
               </>
@@ -759,7 +895,7 @@ ${kpList}
           transition={{ duration: 0.3, ease: 'easeOut' }}
         >
           <PaperCard status="active" className="p-5 md:p-6">
-            {/* 题型 / 难度 */}
+            {/* 题型 / 难度 / 来源 */}
             <div className="flex items-center gap-2 mb-3 flex-wrap">
               <VintageTag color="ink">{QTYPE_LABEL[currentQuestion.type]}</VintageTag>
               <VintageTag
@@ -770,6 +906,11 @@ ${kpList}
               >
                 {DIFFICULTY_LABEL[currentQuestion.difficulty] ?? '中等'} · {currentQuestion.difficulty}/5
               </VintageTag>
+              {currentQuestion.source === 'bank' && (
+                <VintageTag color={currentQuestion.aiFilled ? 'worn' : 'seal'}>
+                  {currentQuestion.aiFilled ? '题库·AI补答' : '题库原题'}
+                </VintageTag>
+              )}
             </div>
 
             {/* 题干 */}
@@ -876,8 +1017,8 @@ ${kpList}
                     onStyleChange={handleStyleChange}
                     loading={explanationLoading}
                     explanation={explanation}
-                    onAddWrongbook={handleAddToWrongbook}
-                    added={addedToWrongbook}
+                    onGoWrongbook={handleGoWrongbook}
+                    autoRecorded={addedToWrongbook}
                   />
                 )}
 

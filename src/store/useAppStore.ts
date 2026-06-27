@@ -10,6 +10,8 @@ export interface StudyMaterial {
   id: string;
   name: string;
   type: 'pdf' | 'word' | 'ppt' | 'text' | 'markdown';
+  /** 资料用途：知识点拆解 / 题库导入 / 自动识别 */
+  kind: 'knowledge' | 'bank' | 'auto';
   size: number;
   uploadedAt: number;
   parsedText?: string;       // raw extracted text
@@ -38,6 +40,12 @@ export interface Question {
   options?: string[];        // for choice questions
   answer: string;
   explanation: string;
+  /** 题目来源：bank=题库原题（有标准答案），ai=AI 现场生成 */
+  source: 'bank' | 'ai';
+  /** 当 source=bank 时，关联的题库资料 id（等同 materialId，单独留存便于筛选） */
+  bankId?: string;
+  /** 该题库题是否由 AI 补答（原题无标准答案） */
+  aiFilled?: boolean;
   createdAt: number;
 }
 
@@ -135,6 +143,8 @@ interface AppState {
   questions: Question[];
   addQuestions: (qs: Question[]) => void;
   removeQuestionsByMaterial: (materialId: string) => void;
+  /** 用新题替换指定 materialId 下的所有题目（题库重新导入时使用） */
+  replaceQuestionsByMaterial: (materialId: string, qs: Question[]) => void;
 
   answerRecords: AnswerRecord[];
   addAnswerRecord: (record: AnswerRecord) => void;
@@ -204,6 +214,9 @@ export const useAppStore = create<AppState>()(
       addQuestions: (qs) => set((state) => ({ questions: [...state.questions, ...qs] })),
       removeQuestionsByMaterial: (materialId) => set((state) => ({
         questions: state.questions.filter((q) => q.materialId !== materialId),
+      })),
+      replaceQuestionsByMaterial: (materialId, qs) => set((state) => ({
+        questions: [...state.questions.filter((q) => q.materialId !== materialId), ...qs],
       })),
 
       answerRecords: [],
