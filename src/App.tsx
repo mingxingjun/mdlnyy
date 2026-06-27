@@ -1,18 +1,16 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useState } from 'react';
+import { BrowserRouter } from 'react-router-dom';
 import Layout from '@/components/Layout';
-import Dashboard from '@/pages/Dashboard';
+import IntroAnimation from '@/components/IntroAnimation';
 import { ToastContainer } from '@/components/Toast';
 
 export default function App() {
+  const [introDone, setIntroDone] = useState(false);
   return (
-    <Router basename="/mdlnyy">
+    <BrowserRouter basename="/mdlnyy">
       <ToastContainer />
-      <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<Dashboard />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
+      {!introDone && <IntroAnimation onComplete={() => setIntroDone(true)} />}
+      <Layout />
+    </BrowserRouter>
   );
 }

@@ -1,47 +1,56 @@
-@import url('https://fonts.googleapis.cn/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.cn/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=Playfair+Display:wght@400;600;700&family=Ma+Shan+Zheng:wght@400&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ═══════════════════════════════════════════════════════
-   STRIPE — Professional Gradient Design System
+   PAPER AESTHETIC — Vintage Paper-Collage Design System
+   Warm cream paper · sepia ink · seal red · antique gold
    ═══════════════════════════════════════════════════════ */
 
 :root {
-  --bg-primary: #0A2540;
-  --bg-secondary: #0d2d4a;
-  --bg-tertiary: #1a3a5c;
-  --bg-card: #0d2d4a;
-  --bg-card-hover: #1a3a5c;
-  --border-light: rgba(255,255,255,0.08);
-  --border-medium: rgba(255,255,255,0.12);
-  --border-accent: rgba(99,91,255,0.4);
-  --text-primary: #ffffff;
-  --text-secondary: #a3b5cc;
-  --text-muted: #6b7c93;
-  --accent: #635BFF;
-  --accent-secondary: #7C5CFF;
-  --accent-cyan: #00D4FF;
-  --accent-light: rgba(99,91,255,0.15);
-  --accent-hover: #7c75ff;
-  --success: #00D924;
-  --warning: #FFB800;
-  --error: #FF3D00;
-  --info: #635BFF;
-  --radius-sm: 8px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
-  --shadow-glow: 0 0 24px rgba(99,91,255,0.2);
+  /* ── Paper surfaces ─────────────────────────────── */
+  --bg-primary: #EDE4D3;   /* warm paper background */
+  --bg-secondary: #F5EDE0; /* lighter paper */
+  --bg-tertiary: #E0D4C0;  /* darker paper */
+  --bg-card: #FBF7F0;      /* paper card surface */
+  --bg-card-hover: #F5EDE0;
 
-  font-family: 'Inter', 'Noto Sans SC', sans-serif;
+  /* ── Borders (sepia ink based) ──────────────────── */
+  --border-light: rgba(92, 64, 51, 0.12);
+  --border-medium: rgba(92, 64, 51, 0.20);
+  --border-accent: rgba(139, 37, 0, 0.4);
+
+  /* ── Text (sepia ink) ───────────────────────────── */
+  --text-primary: #3D2A20;
+  --text-secondary: #5C4033;
+  --text-muted: #8B7355;
+
+  /* ── Accents ────────────────────────────────────── */
+  --accent: #8B2500;            /* seal red */
+  --accent-secondary: #B8860B;  /* gold */
+  --accent-light: rgba(139, 37, 0, 0.10);
+
+  /* ── Status ─────────────────────────────────────── */
+  --success: #6B8E23;   /* sage */
+  --warning: #B8860B;   /* gold */
+  --error: #CD5C5C;     /* terracotta */
+
+  /* ── Radius ─────────────────────────────────────── */
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+
+  /* ── Warm paper shadows ─────────────────────────── */
+  --shadow-sm: 0 1px 2px rgba(92, 64, 51, 0.06), 0 2px 8px rgba(92, 64, 51, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  --shadow-md: 0 2px 4px rgba(92, 64, 51, 0.08), 0 8px 24px rgba(92, 64, 51, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  --shadow-lg: 0 4px 8px rgba(92, 64, 51, 0.10), 0 12px 32px rgba(92, 64, 51, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+
+  font-family: 'Noto Sans SC', 'Inter', sans-serif;
   line-height: 1.6;
   font-weight: 400;
-  color-scheme: dark;
+  color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -52,13 +61,55 @@
 /* ─── Global Body ──────────────────────────────────── */
 
 body {
-  background: var(--bg-primary);
+  background: linear-gradient(135deg, #EDE4D3 0%, #E0D4C0 50%, #EDE4D3 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
   color: var(--text-primary);
   overflow-x: hidden;
 }
 
 #root {
   position: relative;
+}
+
+/* ─── Paper Texture Utility ────────────────────────── */
+
+.paper-texture {
+  background-image:
+    radial-gradient(rgba(92, 64, 51, 0.03) 1px, transparent 1px),
+    radial-gradient(rgba(92, 64, 51, 0.02) 1px, transparent 1px);
+  background-size: 4px 4px, 7px 7px;
+  background-position: 0 0, 2px 2px;
+}
+
+/* ─── Paper Card (referenced by PaperCard.tsx) ─────── */
+
+.paper-card {
+  position: relative;
+  background: #FBF7F0;
+  border: 1px solid rgba(92, 64, 51, 0.12);
+  border-radius: 3px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
+}
+
+.paper-card-active {
+  transform: translateY(-3px) scale(1.005);
+  box-shadow: var(--shadow-lg);
+}
+
+.paper-card-reward {
+  border-color: rgba(139, 37, 0, 0.3);
+  animation: rewardPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes rewardPulse {
+  0%, 100% { border-color: rgba(139, 37, 0, 0.25); }
+  50% { border-color: rgba(139, 37, 0, 0.5); }
+}
+
+.paper-card-completed {
+  opacity: 0.5;
 }
 
 /* ─── Card ─────────────────────────────────────────── */
@@ -73,7 +124,7 @@ body {
 
 .card-interactive:hover {
   border-color: var(--border-accent);
-  box-shadow: var(--shadow-glow);
+  box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
 
@@ -83,31 +134,36 @@ body {
   color: var(--accent);
 }
 
-/* ─── Accent Button ────────────────────────────────── */
+/* ─── Accent Button (seal red) ─────────────────────── */
 
 .accent-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 10px 24px;
-  background: linear-gradient(135deg, #6C7CFF, #7C5CFF);
-  color: #ffffff;
-  border: none;
+  background: linear-gradient(135deg, #A03010, #8B2500);
+  color: #FBF7F0;
+  border: 1px solid #6B1D00;
   border-radius: var(--radius-md);
   font-family: inherit;
   font-weight: 500;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(108,124,255,0.25);
+  box-shadow: 0 2px 8px rgba(139, 37, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .accent-btn:hover {
-  box-shadow: 0 4px 16px rgba(108,124,255,0.35);
+  box-shadow: 0 4px 16px rgba(139, 37, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
   transform: translateY(-1px);
 }
 
-/* ─── Ghost Button ─────────────────────────────────── */
+.accent-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(139, 37, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* ─── Ghost Button (paper) ─────────────────────────── */
 
 .ghost-btn {
   display: inline-flex;
@@ -202,16 +258,6 @@ body {
   animation: slideUp 0.3s ease forwards;
 }
 
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 8px rgba(108,124,255,0.2); }
-  50% { box-shadow: 0 0 20px rgba(108,124,255,0.4); }
-}
-
-@keyframes orbital-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }
@@ -221,7 +267,7 @@ body {
 
 .input-error {
   border-color: var(--error) !important;
-  box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.15) !important;
+  box-shadow: 0 0 0 2px rgba(205, 92, 92, 0.15) !important;
 }
 
 /* ─── Badge ────────────────────────────────────────── */
@@ -235,27 +281,49 @@ body {
   font-weight: 500;
 }
 
+/* New paper-aesthetic variants */
+.badge-seal {
+  background: rgba(139, 37, 0, 0.12);
+  color: #8B2500;
+}
+
+.badge-gold {
+  background: rgba(184, 134, 11, 0.15);
+  color: #8B6914;
+}
+
+.badge-sage {
+  background: rgba(107, 142, 35, 0.15);
+  color: #4A6315;
+}
+
+.badge-terracotta {
+  background: rgba(205, 92, 92, 0.15);
+  color: #A0434A;
+}
+
+/* Legacy aliases — rethemed to warm paper palette */
 .badge-blue {
-  background: rgba(108,124,255,0.15);
-  color: #6C7CFF;
+  background: rgba(139, 37, 0, 0.12);
+  color: #8B2500;
 }
 
 .badge-green {
-  background: rgba(52,211,153,0.15);
-  color: #34d399;
+  background: rgba(107, 142, 35, 0.15);
+  color: #4A6315;
 }
 
 .badge-yellow {
-  background: rgba(251,191,36,0.15);
-  color: #fbbf24;
+  background: rgba(184, 134, 11, 0.15);
+  color: #8B6914;
 }
 
 .badge-red {
-  background: rgba(248,113,113,0.15);
-  color: #f87171;
+  background: rgba(205, 92, 92, 0.15);
+  color: #A0434A;
 }
 
-/* ─── File Drop Zone ───────────────────────────────── */
+/* ─── File Drop Zone (paper) ───────────────────────── */
 
 .file-drop-zone {
   border: 2px dashed var(--border-medium);
@@ -318,7 +386,7 @@ body {
 select {
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b8fa3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238B7355' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
   padding-right: 36px;
@@ -338,7 +406,7 @@ select:hover {
 select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(108,124,255,0.15);
+  box-shadow: 0 0 0 2px rgba(139, 37, 0, 0.15);
 }
 
 select option {
@@ -346,7 +414,7 @@ select option {
   color: var(--text-primary);
 }
 
-/* ─── Scrollbar ────────────────────────────────────── */
+/* ─── Scrollbar (warm) ─────────────────────────────── */
 
 ::-webkit-scrollbar {
   width: 6px;
@@ -358,20 +426,20 @@ select option {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.08);
+  background: rgba(92, 64, 51, 0.15);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,255,255,0.15);
+  background: rgba(92, 64, 51, 0.25);
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.08) transparent;
+  scrollbar-color: rgba(92, 64, 51, 0.15) transparent;
 }
 
-/* ─── AI Message Styles ────────────────────────────── */
+/* ─── AI Message Styles (paper) ────────────────────── */
 
 .ai-message code {
   background: var(--bg-tertiary);
@@ -380,7 +448,7 @@ select option {
   padding: 2px 6px;
   font-size: 0.84em;
   font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
-  color: #e8eaf0;
+  color: #5C4033;
 }
 
 .ai-message pre code {
@@ -390,6 +458,7 @@ select option {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-light);
   overflow-x: auto;
+  color: #3D2A20;
 }
 
 .ai-message ul {
@@ -434,7 +503,7 @@ select option {
 .ai-message ol li::before {
   content: counter(ai-ol) '.';
   color: var(--accent);
-  font-family: 'Inter', sans-serif;
+  font-family: 'Noto Serif SC', 'Playfair Display', serif;
   font-weight: 600;
   margin-right: 4px;
 }
@@ -474,7 +543,7 @@ select option {
     border-right: none;
     border-top: 1px solid var(--border-light);
     z-index: 50;
-    background: rgba(10, 37, 64, 0.95);
+    background: rgba(237, 228, 211, 0.95);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
@@ -515,20 +584,20 @@ select option {
   }
 }
 
-/* ─── Headings ─────────────────────────────────────── */
+/* ─── Headings (vintage serif) ─────────────────────── */
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Inter', 'Noto Sans SC', sans-serif;
+  font-family: 'Noto Serif SC', 'Playfair Display', serif;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   line-height: 1.3;
   color: var(--text-primary);
 }
 
-/* ─── Focus States ─────────────────────────────────── */
+/* ─── Focus States (seal red) ──────────────────────── */
 
 :focus-visible {
-  outline: 2px solid rgba(108,124,255,0.5);
+  outline: 2px solid rgba(139, 37, 0, 0.5);
   outline-offset: 2px;
   border-radius: 2px;
 }
@@ -536,11 +605,11 @@ h1, h2, h3, h4, h5, h6 {
 /* ─── Selection ────────────────────────────────────── */
 
 ::selection {
-  background: rgba(108,124,255,0.25);
+  background: rgba(139, 37, 0, 0.20);
   color: var(--text-primary);
 }
 
 ::-moz-selection {
-  background: rgba(108,124,255,0.25);
+  background: rgba(139, 37, 0, 0.20);
   color: var(--text-primary);
 }

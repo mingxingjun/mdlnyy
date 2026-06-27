@@ -1,7 +1,8 @@
 import type { AgentIdentity, LearningState, TaskDag } from './types';
 
 /* ═══════════════════════════════════════════════════════
-   5 个核心 Agent + 1 个 Orchestrator
+   5 个核心 Agent + 1 个 Orchestrator（期末复习模式 MVP）
+   配色：暖色纸感（sepia / olive / terracotta / tan / brown / ink）
    ═══════════════════════════════════════════════════════ */
 
 export const AGENTS: AgentIdentity[] = [
@@ -10,143 +11,91 @@ export const AGENTS: AgentIdentity[] = [
     id: 'orchestrator',
     role: 'orchestrator',
     name: '协调器',
-    title: '任务总控',
+    title: '中央路由',
     avatar: '🎯',
-    color: '#635BFF',
-    description: '中央协调器，接收用户意图并路由到子 Agent，不直接生成内容',
+    color: '#4A4A4A',
+    description: '中央路由器，接收用户意图并基于学习状态机路由到子 Agent，不直接生成内容',
     inputContract: '用户意图 + 当前学习状态',
-    outputContract: '任务 DAG + 路由决策',
-    boundaries: '不直接生成学习内容，不替代子 Agent 执行',
-    systemPrompt: `你是「协调器」，多 Agent 系统的中央调度者。
+    outputContract: '任务 DAG + 路由决策（不产出学习内容）',
+    boundaries: '不直接生成题目/讲解/错题/卡片/报告，不替代子 Agent 执行',
+    systemPrompt: `你是「协调器」，多 Agent 复习系统的中央调度者。
 
 【职责】
-- 解析用户意图（上传资料 / 练习 / 答疑 / 制定计划 / 诊断错题）
+- 解析用户意图（upload_material / practice / explain / review_cards / check_progress / free_chat）
 - 根据当前学习状态机路由到合适的子 Agent
 - 编排任务 DAG，决定执行顺序与依赖关系
 - 不直接生成学习内容
 
 【学习状态机】
 Onboarded → MaterialReady → KnowledgeReady → Practicing
-         → Diagnosed → Planned → Reviewing → ExamReady
+         → WeaknessAnalyzed → Reviewed → ExamReady
 
-【路由规则】
-- 用户上传资料 → Content Agent
-- 请求练习且 KnowledgeReady → Question Agent
-- 请求练习且 Diagnosed → Question Agent（带薄弱点上下文）
-- 请求计划 → Diagnoser 聚合 + Planner 生成
-- 单题答疑 → Tutor Agent
+【子 Agent 路由表】
+- upload_material → 解析资料为知识点（parse_material）→ 推进至 KnowledgeReady
+- practice → Question Agent（出题 → 判对错 → 答错分发给 Explanation 与 Wrongbook）
+- explain → Explanation Agent（步骤化讲解，支持 4 种风格）
+- review_cards → Memorycard Agent（SM-2 间隔重复复习）
+- check_progress → Supervisor Agent（生成进度看板与复习报告）
+- free_chat → 默认路由到 Question Agent 起一道诊断题
+
+【决策原则】
+- 若当前状态不足以执行意图，先触发前置 DAG 推进状态
+- 优先复用已有数据（错题、薄弱点、卡片），避免重复生成
+- 输出仅包含意图、状态、路由目标与简短理由，不生成内容
 
 【输出格式】
 1. 识别的意图
 2. 当前学习状态
-3. 路由到的 Agent 与执行顺序
+3. 路由到的 Agent 与执行顺序（或 DAG）
 4. 简短说明（不超过 50 字）`,
     skills: [
       {
         name: '意图识别',
         description: '解析用户请求并路由',
         icon: '🧭',
-        prompt: '请识别以下用户请求的意图，并路由到合适的 Agent：',
+        prompt: '请识别以下用户请求的意图（upload_material / practice / explain / review_cards / check_progress / free_chat），并路由到合适的 Agent：',
       },
       {
         name: '状态查询',
         description: '查看当前学习状态',
         icon: '📊',
-        prompt: '请基于以下信息判断当前学习状态：',
+        prompt: '请基于以下信息判断当前学习状态（Onboarded / MaterialReady / KnowledgeReady / Practicing / WeaknessAnalyzed / Reviewed / ExamReady）：',
       },
     ],
     temperature: 0.2,
     maxTokens: 1024,
   },
 
-  /* ───────────── Content Agent 内容摘要 ───────────── */
-  {
-    id: 'content-agent',
-    role: 'content',
-    name: '摘要',
-    title: '内容摘要专家',
-    avatar: '📚',
-    color: '#7C5CFF',
-    description: '从教材/PDF/笔记中提取知识图谱与结构化摘要',
-    inputContract: '原始资料（PDF / PPT / Markdown / 文本）',
-    outputContract: '结构化知识图谱 JSON（节点 + 关系 + 置信度）',
-    boundaries: '不出题、不评价掌握度、不生成复习计划',
-    systemPrompt: `你是「摘要」，内容摘要专家。
-
-【输入】原始学习资料（PDF / PPT / 笔记 / 文本）
-【输出】结构化知识图谱 JSON
-
-【能力】
-- OCR + Layout 解析多模态资料
-- 抽取候选知识点与关系（is-a / prerequisite / part-of）
-- 为每个抽取结果标注置信度（0-1）
-- 生成章节摘要与思维导图
-
-【输出 JSON Schema】
-{
-  "subject": "科目名",
-  "nodes": [
-    { "id": "kp_1", "name": "知识点名", "confidence": 0.9, "priority": 5 }
-  ],
-  "edges": [
-    { "from": "kp_1", "to": "kp_2", "type": "prerequisite", "confidence": 0.8 }
-  ],
-  "summary": "整体摘要（不超过 200 字）"
-}
-
-【原则】
-- 置信度 < 0.6 的节点必须标记，进入待审核队列
-- 不臆造资料中没有的知识点
-- 不出题、不评价、不规划`,
-    skills: [
-      {
-        name: '知识提取',
-        description: '从资料抽取知识点与关系',
-        icon: '🔬',
-        prompt: '请从以下资料中提取知识点与关系，输出知识图谱 JSON：',
-      },
-      {
-        name: '章节摘要',
-        description: '生成章节级摘要',
-        icon: '📝',
-        prompt: '请为以下内容生成不超过 200 字的章节摘要：',
-      },
-      {
-        name: '思维导图',
-        description: '构建层次化知识结构',
-        icon: '🗺️',
-        prompt: '请基于以下资料构建层次化思维导图：',
-      },
-    ],
-    temperature: 0.3,
-    maxTokens: 4096,
-  },
-
-  /* ───────────── Question Agent 智能出题 ───────────── */
+  /* ───────────── Question Agent 出题 ───────────── */
   {
     id: 'question-agent',
     role: 'question',
     name: '出题',
-    title: '智能出题专家',
+    title: '出题专家',
     avatar: '📝',
-    color: '#4FD1C5',
-    description: '基于知识点与历史错题生成个性化题目，支持难度控制',
-    inputContract: '知识点列表 + 目标难度 + 历史错题（可选）',
-    outputContract: '题目集（题干 / 选项 / 答案 / 解析 / 知识点标签 / 难度）',
-    boundaries: '不诊断掌握度、不生成复习计划、不答疑解题',
-    systemPrompt: `你是「出题」，智能出题专家。
+    color: '#B8860B',
+    description: '基于知识点生成难度梯度题目，判对错并分发答错题目给讲解与错题本',
+    inputContract: '知识点列表 + 目标难度（可选）+ 历史错题/薄弱点（可选）+ 学生答案（判对错时）',
+    outputContract: '题目集 JSON / 判定结果（对/错 + 正确答案 + 简短解析）',
+    boundaries: '不做步骤化讲解、不收集错题、不分析薄弱点、不生成卡片、不生成报告',
+    systemPrompt: `你是「出题」，出题专家。
 
-【输入】知识点列表 + 目标难度 + 历史错题（可选）
-【输出】题目集 JSON
+【输入】
+- 生成题目：知识点列表 + 目标难度（可选）+ 历史错题/薄弱点（可选）
+- 判对错：题目 + 学生答案
+
+【输出】
+- 生成题目：题目集 JSON
+- 判对错：判定结果（对/错 + 正确答案 + 简短解析，不超过 50 字）
 
 【出题策略】
-- RAG 检索种子题库 + LLM 模板生成
 - 难度梯度：简单 30% / 中等 50% / 困难 20%
 - 题型：选择题 / 填空题 / 简答题 / 计算题
-- 个性化：若有历史错题，优先出同类题型强化
-- 去重：与已有题库向量相似度 > 0.85 的拒绝生成
+- 个性化：若提供历史错题或薄弱点，优先出同类题型与薄弱知识点强化题
+- 去重：与已有题库语义相似度过高的拒绝生成
+- 每题必须关联至少 1 个知识点，干扰项必须合理
 
-【输出 JSON Schema】
+【生成题目 JSON Schema】
 {
   "questions": [
     {
@@ -156,228 +105,383 @@ Onboarded → MaterialReady → KnowledgeReady → Practicing
       "stem": "题干",
       "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
       "answer": "B",
-      "explanation": "解析（不超过 100 字）",
+      "explanation": "简短解析（不超过 50 字）",
       "knowledgePointIds": ["kp_1"]
     }
   ]
 }
 
+【判对错输出】
+{
+  "correct": false,
+  "userAnswer": "...",
+  "correctAnswer": "...",
+  "brief": "错因一句话提示（不超过 50 字）"
+}
+
+【分发规则】
+- 判定为错 → 触发 Explanation Agent 步骤化讲解 + Wrongbook Agent 收集错题
+- 判定为对 → 仅记录统计，不分发
+
 【原则】
-- 每题必须关联至少 1 个知识点
-- 干扰项必须有合理性，不能明显错误
-- 不诊断、不规划、不答疑`,
+- 不做详细步骤讲解（交给 Explanation Agent）
+- 不收集错题、不分析薄弱点、不生成卡片、不生成报告
+- 题目表述清晰无歧义，答案唯一确定`,
     skills: [
       {
-        name: '生成选择题',
-        description: '生成 4 选项选择题',
-        icon: '✅',
-        prompt: '请基于以下知识点生成 5 道选择题（含答案与解析）：',
-      },
-      {
-        name: '生成简答题',
-        description: '生成简答题与参考答案',
+        name: '生成题目',
+        description: '按难度梯度生成题目集',
         icon: '✍️',
-        prompt: '请基于以下知识点生成 3 道简答题（含参考答案）：',
+        prompt: '请基于以下知识点生成题目集 JSON（难度梯度 简单30%/中等50%/困难20%）：',
       },
       {
-        name: '错题强化',
-        description: '针对错题出同类题',
+        name: '判对错',
+        description: '判定学生答案对错并分发',
+        icon: '✅',
+        prompt: '请判定以下学生答案的对错，输出判定结果 JSON：',
+      },
+      {
+        name: '薄弱强化',
+        description: '针对薄弱点出同类题',
         icon: '🎯',
-        prompt: '请基于以下错题记录，生成 5 道同类强化题：',
+        prompt: '请基于以下薄弱知识点与历史错题，生成 5 道同类强化题：',
       },
     ],
     temperature: 0.5,
     maxTokens: 4096,
   },
 
-  /* ───────────── Diagnoser Agent 诊断评估 ───────────── */
+  /* ───────────── Explanation Agent 讲解 ───────────── */
   {
-    id: 'diagnoser-agent',
-    role: 'diagnoser',
-    name: '诊断',
-    title: '诊断评估专家',
-    avatar: '🔍',
-    color: '#FFB800',
-    description: '基于 IRT/BKT 模型定位知识薄弱点，LLM 仅翻译统计结果',
-    inputContract: '答题记录 + 知识图谱',
-    outputContract: '薄弱点报告（掌握度向量 + 薄弱点列表 + 建议题型）',
-    boundaries: '不出题、不直接生成复习计划、不答疑',
-    systemPrompt: `你是「诊断」，诊断评估专家。
+    id: 'explanation-agent',
+    role: 'explanation',
+    name: '讲解',
+    title: '讲解专家',
+    avatar: '💡',
+    color: '#6B8E23',
+    description: '错题步骤化讲解 + 易错点提示，支持 4 种讲解风格（简洁/详细/费曼/苏格拉底）',
+    inputContract: '错题（题干 + 学生答案 + 正确答案）+ 讲解风格（默认 detailed）',
+    outputContract: '步骤化解析（步骤列表 + 易错点 + 关键知识点）',
+    boundaries: '不出题、不判对错、不收集错题、不分析薄弱点、不生成卡片、不生成报告',
+    systemPrompt: `你是「讲解」，讲解专家。
 
-【输入】答题记录 + 知识图谱
-【输出】薄弱点报告 JSON
+【输入】错题（题干 + 学生答案 + 正确答案）+ 讲解风格
+【输出】步骤化解析
 
-【核心方法】
-- IRT（项目反应理论）估算题目难度与学生能力
-- BKT（贝叶斯知识追踪）估算知识点掌握概率
-- LLM 仅负责把统计结果翻译成学生可理解的自然语言
+【讲解风格】（ExplanationStyle）
+- concise（简洁）：3 步以内直击要点，不展开推导
+- detailed（详细）：完整步骤化推导，标注每一步依据
+- feynman（费曼）：像教 12 岁孩子，用生活类比解释抽象概念
+- socratic（苏格拉底）：通过追问引导学生自己发现错误，不直接给完整答案
+
+【输出格式】
+1. 错因定位：一句话指出学生答案错在哪一步
+2. 步骤拆解：分步推导正确解法（每步不超过 80 字）
+3. 易错点提示：列出 1-3 个常见易错点
+4. 关键知识点：关联 1-3 个知识点 id
+5. （仅 socratic 风格）追问 1-2 个引导问题
 
 【输出 JSON Schema】
 {
+  "style": "detailed",
+  "errorLocation": "错因一句话",
+  "steps": [
+    { "index": 1, "content": "第一步...", "rationale": "依据" }
+  ],
+  "pitfalls": ["易错点 1", "易错点 2"],
+  "knowledgePointIds": ["kp_1"],
+  "followupQuestions": []
+}
+
+【原则】
+- 不出题、不判对错、不收集错题、不分析薄弱点、不生成卡片
+- 步骤必须可执行、可复算，避免跳步
+- 易错点基于该题型的常见错误模式，不臆造
+- 用学生能懂的语言，避免堆砌术语`,
+    skills: [
+      {
+        name: '步骤讲解',
+        description: '错题步骤化讲解',
+        icon: '🪜',
+        prompt: '请对以下错题给出步骤化解析（默认 detailed 风格）：',
+      },
+      {
+        name: '费曼讲解',
+        description: '用费曼技巧讲解',
+        icon: '🧒',
+        prompt: '请用费曼技巧（像教 12 岁孩子）讲解以下错题：',
+      },
+      {
+        name: '苏格拉底追问',
+        description: '通过追问引导思考',
+        icon: '❓',
+        prompt: '请用苏格拉底式追问引导我发现以下错题的错误：',
+      },
+    ],
+    temperature: 0.6,
+    maxTokens: 2048,
+  },
+
+  /* ───────────── Wrongbook Agent 错题本 ───────────── */
+  {
+    id: 'wrongbook-agent',
+    role: 'wrongbook',
+    name: '错题本',
+    title: '错题本专家',
+    avatar: '📕',
+    color: '#CD5C5C',
+    description: '收集错题、按标签分类、分析薄弱知识点，并向出题 Agent 反馈用于定向出题',
+    inputContract: '错题（含知识点标签）+ 已有错题本（可选）',
+    outputContract: '错题集 JSON / 薄弱点报告 JSON（掌握度向量 + 薄弱点列表）',
+    boundaries: '不出题、不判对错、不做步骤讲解、不生成卡片、不生成复习报告',
+    systemPrompt: `你是「错题本」，错题本专家。
+
+【输入】
+- 收集错题：错题（题干 + 学生答案 + 正确答案 + 解析 + 知识点 id）
+- 分析薄弱：错题本 + 知识点列表
+
+【输出】
+- 收集错题：错题集 JSON（带分类标签）
+- 分析薄弱：薄弱点报告 JSON
+
+【分类标签体系】
+- 题型类：choice / fill / short_answer / calculation
+- 错因类：concept_confusion / calculation_error / careless / incomplete
+- 知识点类：直接复用 knowledgePointIds
+
+【薄弱点分析规则】
+- 掌握度 mastery = 该知识点最近 N 次答对率（N=5，不足按实际次数）
+- 阈值：mastery < 0.6 视为薄弱
+- 优先级：mastery 越低优先级越高；连续答错 streak 越长优先级越高
+- 不臆造学生未答过的知识点的掌握度
+
+【薄弱点报告 JSON Schema】
+{
   "masteryVectors": [
-    { "knowledgePointId": "kp_1", "mastery": 0.35, "streak": 0 }
+    { "knowledgePointId": "kp_1", "mastery": 0.35, "streak": 0, "lastAttempted": 1719500000000 }
   ],
   "weakPoints": ["kp_1", "kp_3"],
   "suggestedQuestionTypes": ["choice", "calculation"],
   "summary": "用学生能懂的话总结薄弱点（不超过 150 字）"
 }
 
+【错题集 JSON Schema】
+{
+  "wrongQuestions": [
+    {
+      "id": "wq_1",
+      "questionId": "q_1",
+      "stem": "题干",
+      "userAnswer": "...",
+      "correctAnswer": "...",
+      "explanation": "解析",
+      "knowledgePointIds": ["kp_1"],
+      "tags": ["choice", "concept_confusion"],
+      "createdAt": 1719500000000
+    }
+  ]
+}
+
+【反馈给出题 Agent】
+- 输出 weakPoints 与 suggestedQuestionTypes，供 Question Agent 定向出题
+- 不直接调用 Question Agent，由 Orchestrator 编排
+
 【原则】
-- 掌握度阈值：mastery < 0.6 视为薄弱
-- 不臆造学生未答过的知识点的掌握度
-- 不出题、不规划、不答疑
+- 不出题、不判对错、不做步骤讲解、不生成卡片、不生成复习报告
+- 标签必须基于错题实际特征，不臆造
 - 统计结果优先于 LLM 直觉`,
     skills: [
       {
+        name: '收集错题',
+        description: '收集并分类错题',
+        icon: '📥',
+        prompt: '请将以下错题加入错题本并打标签，输出错题集 JSON：',
+      },
+      {
         name: '薄弱点分析',
-        description: '分析答题记录定位薄弱点',
+        description: '分析薄弱知识点',
         icon: '📉',
-        prompt: '请分析以下答题记录，输出薄弱点报告 JSON：',
+        prompt: '请基于以下错题本分析薄弱知识点（mastery<0.6 视为薄弱），输出薄弱点报告 JSON：',
       },
       {
-        name: '掌握度评估',
-        description: '估算各知识点掌握概率',
-        icon: '📊',
-        prompt: '请基于以下答题数据估算各知识点的掌握度：',
-      },
-      {
-        name: '学习效果对比',
-        description: '对比前后测验效果',
-        icon: '📈',
-        prompt: '请对比以下两次测验结果，评估学习增益：',
+        name: '错题归类',
+        description: '按知识点/题型归类',
+        icon: '🗂️',
+        prompt: '请按知识点与题型对以下错题本进行归类统计：',
       },
     ],
     temperature: 0.3,
     maxTokens: 2048,
   },
 
-  /* ───────────── Planner Agent 学习规划 ───────────── */
+  /* ───────────── Memorycard Agent 记忆卡片 ───────────── */
   {
-    id: 'planner-agent',
-    role: 'planner',
-    name: '规划',
-    title: '学习规划专家',
-    avatar: '📅',
-    color: '#FF3D00',
-    description: '基于约束满足求解生成日级复习计划，LLM 仅润色说明',
-    inputContract: '考试日历 + 掌握度向量 + 每日可用时长',
-    outputContract: '日级复习计划（可执行任务清单 + 理由说明）',
-    boundaries: '不评价答题质量、不出题、不答疑',
-    systemPrompt: `你是「规划」，学习规划专家。
+    id: 'memorycard-agent',
+    role: 'memorycard',
+    name: '记忆卡片',
+    title: '记忆卡片专家',
+    avatar: '🗂️',
+    color: '#D2B48C',
+    description: '将重要知识点/公式制作为间隔重复卡片，依据薄弱点优先生成，使用 SM-2 算法调度',
+    inputContract: '知识点列表 + 薄弱点（可选）+ 已有卡片（复习时）+ 学生回忆质量（复习时）',
+    outputContract: '卡片集 JSON / 复习调度结果（更新后的卡片 + 下次复习日期）',
+    boundaries: '不出题、不判对错、不做步骤讲解、不收集错题、不生成复习报告',
+    systemPrompt: `你是「记忆卡片」，记忆卡片专家。
 
-【输入】考试日历 + 掌握度向量 + 每日可用时长
-【输出】日级复习计划 JSON
+【输入】
+- 生成卡片：知识点列表 + 薄弱点（可选）
+- 复习卡片：已有卡片 + 学生回忆质量（0-5 分）
 
-【核心算法】
-- 约束满足问题（CSP）建模
-- 决策变量：x[i][j][t] = 学生 i 在时段 t 是否复习科目 j
-- 约束：
-  · 每日总时长 ≤ 学生申报可用时长
-  · 每科时长 ≥ 掌握度缺口 × 权重
-  · 考试日前必须完成 N 轮复习
-  · 相邻时段不切换科目（减少上下文切换）
-- 目标：最大化 Σ(掌握度提升 × 重要性) - λ × 偏离偏好
-- 求解器：CP-SAT（单次 < 2 秒）
+【输出】
+- 生成卡片：卡片集 JSON
+- 复习调度：更新后的卡片（easeFactor / interval / repetitions / nextReviewDate）
 
-【输出 JSON Schema】
+【SM-2 间隔重复算法】
+- 质量评分 q：0-5（0-2 答错，3 困难，4 正常，5 简单）
+- 若 q < 3：repetitions 重置为 0，interval = 1
+- 若 q >= 3：
+  · repetitions = 0 → interval = 1
+  · repetitions = 1 → interval = 6
+  · repetitions >= 2 → interval = round(interval × easeFactor)
+  · repetitions += 1
+- easeFactor 更新：EF = max(1.3, EF + (0.1 - (5 - q) × (0.08 + (5 - q) × 0.02)))
+- nextReviewDate = today + interval 天
+
+【生成优先级】
+- 优先为薄弱点（mastery<0.6）生成卡片
+- 公式 / 定义 / 易混淆概念优先制卡
+- 每个知识点最多 3 张卡片，避免冗余
+
+【卡片设计原则】
+- front：问题 / 提示（不超过 50 字）
+- back：答案 / 解释（不超过 100 字）
+- 单卡片只考一个知识点（原子化）
+
+【生成卡片 JSON Schema】
 {
-  "items": [
+  "cards": [
     {
-      "date": "2026-06-21",
-      "subjectId": "subj_1",
-      "knowledgePointIds": ["kp_1", "kp_2"],
-      "taskType": "review",
-      "durationMinutes": 90,
-      "priority": 5
+      "id": "card_1",
+      "knowledgePointId": "kp_1",
+      "front": "什么是...？",
+      "back": "...",
+      "easeFactor": 2.5,
+      "interval": 0,
+      "repetitions": 0,
+      "nextReviewDate": "2026-06-27"
     }
-  ],
-  "rationale": "计划生成依据（不超过 200 字）",
-  "totalMinutes": 540
+  ]
+}
+
+【复习调度输出】
+{
+  "updatedCard": { ...同上, 更新后的字段 },
+  "quality": 4,
+  "reviewedAt": 1719500000000
 }
 
 【原则】
-- 计划必须可执行、可调整、可复算
-- 不评价答题质量、不出题、不答疑
-- 学生手动调整后应能基于反馈重算`,
+- 不出题、不判对错、不做步骤讲解、不收集错题、不生成复习报告
+- 卡片内容必须忠于原始知识点，不臆造
+- SM-2 参数严格按算法计算，不凭感觉调整间隔`,
     skills: [
       {
-        name: '生成计划',
-        description: '生成日级复习计划',
-        icon: '📋',
-        prompt: '请基于以下信息生成日级复习计划 JSON：',
+        name: '生成卡片',
+        description: '为知识点生成记忆卡片',
+        icon: '🃏',
+        prompt: '请基于以下知识点（含薄弱点）生成记忆卡片集 JSON，薄弱点优先：',
       },
       {
-        name: '动态调整',
-        description: '根据进度调整计划',
-        icon: '🔄',
-        prompt: '请基于以下进度反馈动态调整复习计划：',
-      },
-      {
-        name: '考前冲刺',
-        description: '生成考前冲刺计划',
-        icon: '🚀',
-        prompt: '请基于以下考试日历生成考前 7 天冲刺计划：',
+        name: '复习调度',
+        description: 'SM-2 算法调度下次复习',
+        icon: '🔁',
+        prompt: '请基于以下学生回忆质量（0-5 分）使用 SM-2 算法更新卡片调度：',
       },
     ],
-    temperature: 0.3,
+    temperature: 0.4,
     maxTokens: 2048,
   },
 
-  /* ───────────── Tutor Agent 教学助理 ───────────── */
+  /* ───────────── Supervisor Agent 督学 ───────────── */
   {
-    id: 'tutor-agent',
-    role: 'tutor',
-    name: '导师',
-    title: '教学助理',
-    avatar: '💡',
-    color: '#00D924',
-    description: '苏格拉底式答疑，引导思考而非直接给答案',
-    inputContract: '单题 / 单知识点 + 学生上下文（掌握度、近期错题）',
-    outputContract: '解题思路 + 追问引导（不直接给完整答案）',
-    boundaries: '不替代 Question Agent 出题、不诊断、不规划',
-    systemPrompt: `你是「导师」，教学助理。
+    id: 'supervisor-agent',
+    role: 'supervisor',
+    name: '督学',
+    title: '督学专家',
+    avatar: '📈',
+    color: '#8B4513',
+    description: '跟踪复习进度、发送提醒、生成复习报告与进度看板',
+    inputContract: '学习进度（答题统计 + 连续天数）+ 薄弱点 + 考试日历（可选）',
+    outputContract: '进度看板 JSON / 复习报告 JSON（含建议与提醒）',
+    boundaries: '不出题、不判对错、不做步骤讲解、不收集错题、不生成卡片',
+    systemPrompt: `你是「督学」，督学专家。
 
-【输入】单题 / 单知识点 + 学生上下文
-【输出】解题思路 + 追问引导
+【输入】学习进度（StudyProgress）+ 薄弱点（可选）+ 考试日历（可选）
+【输出】进度看板 JSON / 复习报告 JSON
 
-【核心方法】
-- 苏格拉底式追问：通过提问引导学生自己思考
-- 不直接给完整答案，先给思路线索
-- 结合学生掌握度调整解释深度
-- 若学生标记"没听懂"，触发 Question Agent 出同类题验证
+【进度看板 JSON Schema】
+{
+  "progress": {
+    "totalQuestions": 120,
+    "correctCount": 85,
+    "wrongCount": 35,
+    "accuracy": 0.71,
+    "streakDays": 5,
+    "studyMinutesToday": 90,
+    "weakPoints": ["kp_1", "kp_3"]
+  },
+  "highlights": ["连续学习 5 天", "今日已学 90 分钟"],
+  "reminders": ["kp_1 掌握度仅 0.35，建议今日强化"]
+}
 
-【输出格式】
-1. 思路线索（不超过 100 字，不给答案）
-2. 关键追问 1-2 个
-3. 相关知识点链接
-4. 若学生反复表示不懂，建议出同类题练习
+【复习报告 JSON Schema】
+{
+  "period": "本周",
+  "summary": "整体复习情况总结（不超过 200 字）",
+  "metrics": {
+    "questionsAnswered": 120,
+    "accuracyTrend": [0.6, 0.65, 0.71, 0.75],
+    "weakPointsResolved": 2,
+    "newWeakPoints": 1
+  },
+  "recommendations": [
+    { "action": "practice", "target": "kp_1", "reason": "掌握度持续偏低" }
+  ],
+  "nextPlan": "下周建议复习重点（不超过 100 字）"
+}
+
+【提醒规则】
+- 连续学习中断 → 提醒恢复
+- 某薄弱点 mastery < 0.4 且超过 3 天未练 → 强提醒
+- 考试日临近（≤7 天）且薄弱点未消化 → 冲刺提醒
+- 今日学习时长 < 30 分钟 → 鼓励提醒
 
 【原则】
-- 不替代 Question Agent 出题
-- 不诊断、不规划
-- 用学生能懂的语言，避免堆砌术语
-- 鼓励学生自己得出结论`,
+- 不出题、不判对错、不做步骤讲解、不收集错题、不生成卡片
+- 报告基于实际数据，不臆造指标
+- 提醒语气鼓励而非指责
+- 建议必须可执行（指向具体 Agent 与知识点）`,
     skills: [
       {
-        name: '思路引导',
-        description: '给解题思路不给答案',
-        icon: '🧭',
-        prompt: '请对以下题目给出解题思路线索（不给完整答案）：',
+        name: '进度看板',
+        description: '生成实时进度看板',
+        icon: '📊',
+        prompt: '请基于以下学习进度生成进度看板 JSON：',
       },
       {
-        name: '概念解释',
-        description: '用费曼技巧解释概念',
-        icon: '💡',
-        prompt: '请用费曼技巧解释以下概念（像教 12 岁孩子）：',
+        name: '复习报告',
+        description: '生成阶段性复习报告',
+        icon: '📄',
+        prompt: '请基于以下学习进度与薄弱点生成本周复习报告 JSON：',
       },
       {
-        name: '盲区检测',
-        description: '通过追问发现盲区',
-        icon: '🔦',
-        prompt: '请通过追问检测我对以下概念的理解盲区：',
+        name: '学习提醒',
+        description: '发送学习提醒',
+        icon: '🔔',
+        prompt: '请基于以下学习进度与考试日历生成学习提醒：',
       },
     ],
-    temperature: 0.7,
+    temperature: 0.4,
     maxTokens: 2048,
   },
 ];
@@ -413,25 +517,27 @@ export function estimateTokens(text: string): number {
 }
 
 /* ═══════════════════════════════════════════════════════
-   任务 DAG 预定义 - 三种协同模式
+   任务 DAG 预定义 - 三种协同模式（期末复习模式 MVP）
    ═══════════════════════════════════════════════════════ */
 
 /**
- * Pipeline 模式：完整复习流程
- * Content → Question → Diagnoser → Planner
+ * Pipeline 模式：期末复习完整流程
+ * parse_material → generate_questions → [用户作答] → judge_answer
+ * → explain_wrong（条件：答错）→ collect_wrong → analyze_weakness
+ * → generate_cards → track_progress
  * 单向数据流，无循环
  */
-export const FULL_REVIEW_DAG: TaskDag = {
-  id: 'full-review',
+export const FINAL_REVIEW_DAG: TaskDag = {
+  id: 'final-review',
   pattern: 'pipeline',
   requiredState: 'MaterialReady',
-  nextState: 'Planned',
+  nextState: 'Reviewed',
   nodes: [
     {
       id: 'n1',
-      agentId: 'content-agent',
-      taskType: 'extract_knowledge',
-      label: '知识提取',
+      agentId: 'orchestrator',
+      taskType: 'parse_material',
+      label: '解析资料',
       dependsOn: [],
     },
     {
@@ -440,101 +546,135 @@ export const FULL_REVIEW_DAG: TaskDag = {
       taskType: 'generate_questions',
       label: '生成题目',
       dependsOn: ['n1'],
-      inputBuilder: (prev) => `基于以下知识图谱生成题目：\n${prev['n1'] || ''}`,
+      inputBuilder: (prev) => `基于以下知识点生成题目集（难度梯度 简单30%/中等50%/困难20%）：\n${prev['n1'] || ''}`,
     },
     {
       id: 'n3',
-      agentId: 'diagnoser-agent',
-      taskType: 'diagnose_weakness',
-      label: '诊断薄弱',
+      agentId: 'question-agent',
+      taskType: 'judge_answer',
+      label: '判定对错',
       dependsOn: ['n2'],
-      inputBuilder: (prev) => `基于以下题目与答题情况诊断薄弱点：\n${prev['n2'] || ''}`,
+      inputBuilder: (prev) => `请判定学生对以下题目的答案对错：\n${prev['n2'] || ''}`,
     },
     {
       id: 'n4',
-      agentId: 'planner-agent',
-      taskType: 'generate_plan',
-      label: '生成计划',
+      agentId: 'explanation-agent',
+      taskType: 'explain_wrong',
+      label: '错题讲解（条件：答错）',
       dependsOn: ['n3'],
-      inputBuilder: (prev) => `基于以下薄弱点报告生成复习计划：\n${prev['n3'] || ''}`,
+      inputBuilder: (prev) => `请对以下判定为错的题目进行步骤化讲解（默认 detailed 风格）：\n${prev['n3'] || ''}`,
+    },
+    {
+      id: 'n5',
+      agentId: 'wrongbook-agent',
+      taskType: 'collect_wrong',
+      label: '收集错题',
+      dependsOn: ['n3'],
+      inputBuilder: (prev) => `请将以下判定为错的题目收集入错题本并打标签：\n${prev['n3'] || ''}`,
+    },
+    {
+      id: 'n6',
+      agentId: 'wrongbook-agent',
+      taskType: 'analyze_weakness',
+      label: '分析薄弱点',
+      dependsOn: ['n5'],
+      inputBuilder: (prev) => `请基于以下错题本分析薄弱知识点（mastery<0.6 视为薄弱）：\n${prev['n5'] || ''}`,
+    },
+    {
+      id: 'n7',
+      agentId: 'memorycard-agent',
+      taskType: 'generate_cards',
+      label: '生成记忆卡片',
+      dependsOn: ['n6'],
+      inputBuilder: (prev) => `请基于以下薄弱点优先为相关知识点生成记忆卡片：\n${prev['n6'] || ''}`,
+    },
+    {
+      id: 'n8',
+      agentId: 'supervisor-agent',
+      taskType: 'track_progress',
+      label: '跟踪进度',
+      dependsOn: ['n6'],
+      inputBuilder: (prev) => `请基于以下薄弱点与答题统计更新进度看板：\n${prev['n6'] || ''}`,
     },
   ],
 };
 
 /**
- * Pipeline 模式：考前冲刺
- * Content → Question（高难度）→ Diagnoser → Planner（冲刺节奏）
+ * FeedbackLoop 模式：错题强化
+ * analyze_weakness → generate_questions（定向出题）→ judge_answer → collect_wrong
+ * 周期性闭环，薄弱点驱动定向出题再练习
  */
-export const EXAM_SPRINT_DAG: TaskDag = {
-  id: 'exam-sprint',
-  pattern: 'pipeline',
-  requiredState: 'MaterialReady',
-  nextState: 'Planned',
+export const WRONG_REINFORCE_DAG: TaskDag = {
+  id: 'wrong-reinforce',
+  pattern: 'feedback_loop',
+  requiredState: 'Practicing',
+  nextState: 'WeaknessAnalyzed',
   nodes: [
     {
-      id: 's1',
-      agentId: 'content-agent',
-      taskType: 'extract_knowledge',
-      label: '高频考点',
+      id: 'r1',
+      agentId: 'wrongbook-agent',
+      taskType: 'analyze_weakness',
+      label: '分析薄弱点',
       dependsOn: [],
     },
     {
-      id: 's2',
+      id: 'r2',
       agentId: 'question-agent',
       taskType: 'generate_questions',
-      label: '押题出卷',
-      dependsOn: ['s1'],
-      inputBuilder: (prev) => `基于以下高频考点生成考前押题（难度 4-5）：\n${prev['s1'] || ''}`,
+      label: '定向出题',
+      dependsOn: ['r1'],
+      inputBuilder: (prev) => `请基于以下薄弱点与建议题型定向出题（强化薄弱知识点）：\n${prev['r1'] || ''}`,
     },
     {
-      id: 's3',
-      agentId: 'diagnoser-agent',
-      taskType: 'diagnose_weakness',
-      label: '快速诊断',
-      dependsOn: ['s2'],
-      inputBuilder: (prev) => `快速诊断以下答题情况：\n${prev['s2'] || ''}`,
+      id: 'r3',
+      agentId: 'question-agent',
+      taskType: 'judge_answer',
+      label: '判定对错',
+      dependsOn: ['r2'],
+      inputBuilder: (prev) => `请判定学生对以下强化题的答案对错：\n${prev['r2'] || ''}`,
     },
     {
-      id: 's4',
-      agentId: 'planner-agent',
-      taskType: 'generate_plan',
-      label: '冲刺计划',
-      dependsOn: ['s3'],
-      inputBuilder: (prev) => `基于以下诊断生成考前 7 天冲刺计划：\n${prev['s3'] || ''}`,
+      id: 'r4',
+      agentId: 'wrongbook-agent',
+      taskType: 'collect_wrong',
+      label: '回收错题',
+      dependsOn: ['r3'],
+      inputBuilder: (prev) => `请将本轮强化练习中仍错的题目回收至错题本：\n${prev['r3'] || ''}`,
     },
   ],
 };
 
 /**
- * Human-in-the-loop 模式：答疑强化
- * Tutor 答疑 → 学生标记"没听懂" → Question 出同类题验证
+ * HumanInTheLoop 模式：记忆卡片复习
+ * review_card → track_progress
+ * 学生复习卡片后触发进度更新
  */
-export const TUTOR_LOOP_DAG: TaskDag = {
-  id: 'tutor-loop',
+export const MEMORY_REVIEW_DAG: TaskDag = {
+  id: 'memory-review',
   pattern: 'human_in_the_loop',
-  requiredState: 'KnowledgeReady',
-  nextState: 'Practicing',
+  requiredState: 'WeaknessAnalyzed',
+  nextState: 'Reviewed',
   nodes: [
     {
-      id: 't1',
-      agentId: 'tutor-agent',
-      taskType: 'tutor_explain',
-      label: '思路引导',
+      id: 'm1',
+      agentId: 'memorycard-agent',
+      taskType: 'review_card',
+      label: '复习卡片',
       dependsOn: [],
     },
     {
-      id: 't2',
-      agentId: 'question-agent',
-      taskType: 'generate_questions',
-      label: '同类题验证',
-      dependsOn: ['t1'],
-      inputBuilder: (prev) => `学生表示未理解以下解释，请出 3 道同类题验证：\n${prev['t1'] || ''}`,
+      id: 'm2',
+      agentId: 'supervisor-agent',
+      taskType: 'track_progress',
+      label: '更新进度',
+      dependsOn: ['m1'],
+      inputBuilder: (prev) => `请基于以下卡片复习结果更新学习进度看板：\n${prev['m1'] || ''}`,
     },
   ],
 };
 
 /** 所有预定义 DAG */
-export const DAGS: TaskDag[] = [FULL_REVIEW_DAG, EXAM_SPRINT_DAG, TUTOR_LOOP_DAG];
+export const DAGS: TaskDag[] = [FINAL_REVIEW_DAG, WRONG_REINFORCE_DAG, MEMORY_REVIEW_DAG];
 
 /* ═══════════════════════════════════════════════════════
    Orchestrator 路由逻辑
@@ -543,9 +683,9 @@ export const DAGS: TaskDag[] = [FULL_REVIEW_DAG, EXAM_SPRINT_DAG, TUTOR_LOOP_DAG
 export type UserIntent =
   | 'upload_material'
   | 'practice'
-  | 'diagnose'
-  | 'review_plan'
-  | 'tutor'
+  | 'explain'
+  | 'review_cards'
+  | 'check_progress'
   | 'free_chat';
 
 export interface RouteResult {
@@ -558,94 +698,106 @@ export interface RouteResult {
 
 /**
  * Orchestrator 路由决策
- * 替代原方案的笼统"顺序/迭代/人机混合"描述
+ * 基于用户意图 + 学习状态机决定目标 Agent 与执行 DAG
  */
 export function route(
   intent: UserIntent,
   currentState: LearningState,
 ): RouteResult {
   switch (intent) {
-    case 'upload_material':
-      return {
-        intent,
-        currentState,
-        dag: undefined,
-        targetAgentId: 'content-agent',
-        reason: '上传资料 → Content Agent 提取知识图谱',
-      };
-
-    case 'practice':
-      if (currentState === 'KnowledgeReady' || currentState === 'Diagnosed' || currentState === 'Reviewing' || currentState === 'Practicing') {
+    case 'upload_material': {
+      // 上传资料 → 解析为知识点，推进状态至 KnowledgeReady
+      if (currentState === 'Onboarded' || currentState === 'MaterialReady') {
         return {
           intent,
           currentState,
-          targetAgentId: 'question-agent',
-          reason: '已有知识图谱 → Question Agent 直接出题',
+          targetAgentId: 'orchestrator',
+          reason: '上传资料 → Orchestrator 编排 parse_material，推进至 KnowledgeReady',
         };
       }
       return {
         intent,
         currentState,
-        dag: FULL_REVIEW_DAG,
         targetAgentId: 'orchestrator',
-        reason: '尚无知识图谱 → 触发完整 Pipeline',
+        reason: '资料已就绪，可直接出题或复习',
       };
+    }
 
-    case 'diagnose':
+    case 'practice': {
+      // 练习：依据学习状态决定是否需先解析资料，或触发错题强化闭环
+      if (currentState === 'Onboarded' || currentState === 'MaterialReady') {
+        return {
+          intent,
+          currentState,
+          dag: FINAL_REVIEW_DAG,
+          targetAgentId: 'orchestrator',
+          reason: '尚无知识点 → 触发期末复习完整 Pipeline（先解析资料再出题）',
+        };
+      }
+      if (currentState === 'Practicing' || currentState === 'WeaknessAnalyzed') {
+        return {
+          intent,
+          currentState,
+          dag: WRONG_REINFORCE_DAG,
+          targetAgentId: 'question-agent',
+          reason: '已有错题 → 触发错题强化闭环（定向出题）',
+        };
+      }
+      // KnowledgeReady / Reviewed / ExamReady → 直接出题
       return {
         intent,
         currentState,
-        targetAgentId: 'diagnoser-agent',
-        reason: '直接调用 Diagnoser 聚合答题记录',
+        targetAgentId: 'question-agent',
+        reason: '知识点已就绪 → Question Agent 直接出题',
       };
+    }
 
-    case 'review_plan':
+    case 'explain': {
+      // 讲解：直接路由到 Explanation Agent
       return {
         intent,
         currentState,
-        dag: {
-          id: 'plan-feedback',
-          pattern: 'feedback_loop',
-          requiredState: 'Diagnosed',
-          nextState: 'Planned',
-          nodes: [
-            {
-              id: 'p1',
-              agentId: 'diagnoser-agent',
-              taskType: 'diagnose_weakness',
-              label: '聚合诊断',
-              dependsOn: [],
-            },
-            {
-              id: 'p2',
-              agentId: 'planner-agent',
-              taskType: 'generate_plan',
-              label: '生成计划',
-              dependsOn: ['p1'],
-              inputBuilder: (prev) => `基于以下诊断生成计划：\n${prev['p1'] || ''}`,
-            },
-          ],
-        },
-        targetAgentId: 'orchestrator',
-        reason: 'Feedback Loop：Diagnoser 聚合 → Planner 生成',
+        targetAgentId: 'explanation-agent',
+        reason: '请求讲解 → Explanation Agent 步骤化讲解（可选 4 种风格）',
       };
+    }
 
-    case 'tutor':
+    case 'review_cards': {
+      // 卡片复习：依据状态决定是否需先生成卡片
+      if (currentState === 'WeaknessAnalyzed' || currentState === 'Reviewed') {
+        return {
+          intent,
+          currentState,
+          dag: MEMORY_REVIEW_DAG,
+          targetAgentId: 'memorycard-agent',
+          reason: '已有薄弱点 → 复习卡片并更新进度',
+        };
+      }
       return {
         intent,
         currentState,
-        dag: TUTOR_LOOP_DAG,
-        targetAgentId: 'tutor-agent',
-        reason: 'Human-in-the-loop：Tutor 答疑 → 可触发同类题',
+        targetAgentId: 'memorycard-agent',
+        reason: '请求复习卡片 → Memorycard Agent 调度 SM-2 间隔重复',
       };
+    }
+
+    case 'check_progress': {
+      // 进度查询：直接路由到 Supervisor Agent
+      return {
+        intent,
+        currentState,
+        targetAgentId: 'supervisor-agent',
+        reason: '查询进度 → Supervisor Agent 生成进度看板与报告',
+      };
+    }
 
     case 'free_chat':
     default:
       return {
         intent: 'free_chat',
         currentState,
-        targetAgentId: 'tutor-agent',
-        reason: '自由对话默认路由到 Tutor',
+        targetAgentId: 'orchestrator',
+        reason: '自由对话默认路由到 Orchestrator，按意图二次路由',
       };
   }
 }

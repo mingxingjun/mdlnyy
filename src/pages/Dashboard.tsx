@@ -1,1120 +1,729 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { motion } from 'framer-motion';
 import {
-  CheckCircle2, Clock, Target, Brain, FileText, ChevronDown,
-  ArrowRight, Sparkles, Star, Bookmark,
-  Send, X, BookOpen, Lightbulb, RotateCcw,
-  AlertCircle, ListChecks, Bell, HelpCircle,
+  Upload, Trash2, Loader2, Clock, RefreshCw,
+  AlertCircle, CheckCircle2, ArrowRight,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
-import AIEngine from './AIEngine';
+import type { StudyMaterial, KnowledgePoint } from '@/store/useAppStore';
+import type { LearningState } from '@/lib/agents/types';
+import { useToastStore } from '@/components/Toast';
+import { loadModelSettings, callModelWithCache } from '@/lib/models/api';
+import { extractFileText } from '@/lib/fileParser';
+import PaperCard from '@/components/PaperCard';
+import type { PaperCardStatus } from '@/components/PaperCard';
+import VintageTag from '@/components/VintageTag';
+import StickyNote from '@/components/StickyNote';
 
-/* ─── 动画变体 ─── */
-const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+/* ═══════════════════════════════════════════════════════
+   常量与映射
+   ═══════════════════════════════════════════════════════ */
+
+const LEARNING_STATE_LABEL: Record<LearningState, string> = {
+  Onboarded: '已注册',
+  MaterialReady: '资料已上传',
+  KnowledgeReady: '知识点就绪',
+  Practicing: '练习中',
+  WeaknessAnalyzed: '薄弱已分析',
+  Reviewed: '复习完成',
+  ExamReady: '备考就绪',
 };
 
-const staggerContainer = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.08 } },
+const LEARNING_STATE_TAG_COLOR: Record<LearningState, 'worn' | 'ink' | 'gold' | 'seal' | 'green'> = {
+  Onboarded: 'worn',
+  MaterialReady: 'ink',
+  KnowledgeReady: 'gold',
+  Practicing: 'seal',
+  WeaknessAnalyzed: 'seal',
+  Reviewed: 'green',
+  ExamReady: 'green',
 };
 
-/* ─── 工具函数 ─── */
-function getCountdown(examDate: string) {
-  const now = new Date();
-  const target = new Date(examDate + 'T00:00:00');
-  const diff = target.getTime() - now.getTime();
-  if (diff <= 0) return { days: 0, passed: true };
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  return { days, passed: false };
+/** 知识点提取系统提示词（内联，用于解析上传资料） */
+const KNOWLEDGE_EXTRACTION_SYSTEM_PROMPT = `你是「知识点提取器」，从学习资料中提取结构化知识点。
+
+【输入】学习资料的纯文本（可能含杂乱字符）
+【输出】严格 JSON，遵循以下 schema：
+{
+  "knowledgePoints": [
+    {
+      "name": "知识点名称（不超过 20 字）",
+      "description": "知识点描述（不超过 100 字）",
+      "priority": 3,
+      "tags": ["标签1", "标签2"]
+    }
+  ]
 }
 
-/* ─── 静态标签 ─── */
-const tags = ['重点', '易错', '公式', '证明', '计算'];
+【提取原则】
+- 每个知识点原子化，只表达一个概念或公式
+- priority：5 = 核心公式 / 高频考点；3 = 重要概念；1 = 辅助了解
+- tags：从题型、章节、难度等维度打标签，不超过 4 个
+- 不臆造资料中没有的内容
+- 若资料为乱码或无意义文本，返回 { "knowledgePoints": [] }
 
-/* ─── 1. Stats Overview ─── */
-function StatsOverview() {
-  const { subjects, flashCards } = useAppStore();
+【输出约束】
+- 仅输出 JSON，不要任何 markdown 代码块标记、不要解释文字
+- 中文输出`;
 
-  const todayRate = useMemo(() => {
-    if (subjects.length === 0) return 0;
-    const total = subjects.reduce((s, sub) => s + sub.progress, 0);
-    return Math.round(total / subjects.length);
-  }, [subjects]);
+/** 活动入口卡片配置 */
+interface ActivityCardConfig {
+  view: 'practice' | 'wrongbook' | 'memory' | 'supervisor';
+  icon: string;
+  title: string;
+  description: string;
+}
 
-  const nearestDays = useMemo(() => {
-    if (subjects.length === 0) return null;
-    const sorted = [...subjects].sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime());
-    const cd = getCountdown(sorted[0].examDate);
-    return cd.passed ? 0 : cd.days;
-  }, [subjects]);
+const ACTIVITY_CARDS: ActivityCardConfig[] = [
+  { view: 'practice', icon: '✍️', title: '开始练习', description: '基于知识点出题，即时判定对错并讲解。' },
+  { view: 'wrongbook', icon: '📕', title: '错题本', description: '回顾错题、步骤化讲解与薄弱点分析。' },
+  { view: 'memory', icon: '🃏', title: '记忆卡片', description: 'SM-2 间隔重复，巩固长期记忆。' },
+  { view: 'supervisor', icon: '📊', title: '学习报告', description: '进度看板、薄弱点与复习建议。' },
+];
 
-  const avgMastery = useMemo(() => {
-    if (subjects.length === 0) return 0;
-    const total = subjects.reduce((s, sub) => s + sub.progress, 0);
-    return Math.round(total / subjects.length);
-  }, [subjects]);
+/* ═══════════════════════════════════════════════════════
+   工具函数
+   ═══════════════════════════════════════════════════════ */
 
-  const totalQuizzes = flashCards.length;
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
-  const stats = [
-    {
-      label: '今日完成率',
-      value: subjects.length > 0 ? `${todayRate}%` : '--',
-      icon: CheckCircle2,
-      iconBg: 'bg-[#00D924]/10',
-      iconColor: 'text-[#00D924]',
-      trend: subjects.length > 0 ? `${todayRate}%` : '添加科目',
-      trendUp: todayRate > 0,
-      ring: subjects.length > 0,
-      ringValue: todayRate,
-    },
-    {
-      label: '距期末',
-      value: nearestDays !== null ? `${nearestDays}` : '--',
-      valueSuffix: nearestDays !== null ? '天' : '',
-      icon: Clock,
-      iconBg: 'bg-[#635BFF]/10',
-      iconColor: 'text-[#635BFF]',
-      trend: subjects.length > 0 ? '最近考试' : '添加科目',
-      trendUp: false,
-      ring: false,
-    },
-    {
-      label: '掌握度',
-      value: subjects.length > 0 ? `${avgMastery}%` : '--',
-      icon: Target,
-      iconBg: 'bg-[#FFB800]/10',
-      iconColor: 'text-[#FFB800]',
-      trend: subjects.length > 0 ? `${avgMastery}%` : '添加科目',
-      trendUp: avgMastery > 0,
-      bar: subjects.length > 0,
-      barValue: avgMastery,
-    },
-    {
-      label: '已出题',
-      value: `${totalQuizzes}`,
-      valueSuffix: '道',
-      icon: FileText,
-      iconBg: 'bg-[#7C5CFF]/10',
-      iconColor: 'text-[#7C5CFF]',
-      trend: totalQuizzes > 0 ? `共 ${totalQuizzes} 题` : '添加闪卡',
-      trendUp: totalQuizzes > 0,
-    },
-  ];
+function getExamCountdown(examDate?: string): { days: number; passed: boolean; label: string } {
+  if (!examDate) return { days: 0, passed: false, label: '未设置考试日期' };
+  const target = new Date(`${examDate}T00:00:00`);
+  if (Number.isNaN(target.getTime())) return { days: 0, passed: false, label: '未设置考试日期' };
+  const diff = target.getTime() - Date.now();
+  if (diff <= 0) return { days: 0, passed: true, label: '考试已过' };
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  return { days, passed: false, label: `距考试 ${days} 天` };
+}
+
+function detectMaterialType(file: File): StudyMaterial['type'] {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.pdf')) return 'pdf';
+  if (name.endsWith('.docx') || name.endsWith('.doc')) return 'word';
+  if (name.endsWith('.md') || name.endsWith('.markdown')) return 'markdown';
+  return 'text';
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** 检查当前激活的模型 provider 是否已配置 API Key（ollama 无需 key） */
+function isApiKeyConfigured(): boolean {
+  try {
+    const settings = loadModelSettings();
+    const config = settings.providers[settings.activeProvider];
+    if (!config) return false;
+    if (config.provider === 'ollama') return true;
+    return !!config.apiKey && config.apiKey.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
+interface RawKnowledgePoint {
+  name?: unknown;
+  description?: unknown;
+  priority?: unknown;
+  tags?: unknown;
+}
+
+/** 从 LLM 返回内容中解析知识点 JSON，容错处理代码块与多余文本 */
+function parseKnowledgePointsResponse(content: string, materialId: string): KnowledgePoint[] {
+  let cleaned = content.trim();
+  const fence = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fence) {
+    cleaned = fence[1].trim();
+  } else if (!cleaned.startsWith('{')) {
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      cleaned = cleaned.slice(start, end + 1);
+    }
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    return [];
+  }
+  if (typeof parsed !== 'object' || parsed === null) return [];
+  const rawPoints = (parsed as { knowledgePoints?: unknown }).knowledgePoints;
+  if (!Array.isArray(rawPoints)) return [];
+
+  return rawPoints
+    .filter((p): p is RawKnowledgePoint => typeof p === 'object' && p !== null)
+    .map((p) => {
+      const priorityRaw = typeof p.priority === 'number' ? p.priority : 3;
+      const priority = Math.max(1, Math.min(5, Math.round(priorityRaw)));
+      const tagsRaw = Array.isArray(p.tags)
+        ? p.tags.filter((t) => typeof t === 'string' || typeof t === 'number')
+        : [];
+      return {
+        id: crypto.randomUUID(),
+        materialId,
+        name: String(typeof p.name === 'string' ? p.name : '未命名知识点').slice(0, 60),
+        description: String(typeof p.description === 'string' ? p.description : '').slice(0, 240),
+        priority,
+        mastery: 0,
+        relatedIds: [],
+        tags: tagsRaw.map((t) => String(t)).slice(0, 4),
+        createdAt: Date.now(),
+      } satisfies KnowledgePoint;
+    });
+}
+
+/* ═══════════════════════════════════════════════════════
+   1. 页头
+   ═══════════════════════════════════════════════════════ */
+
+function DashboardHeader() {
+  const learningState = useAppStore((s) => s.learningState);
+  const reviewPlan = useAppStore((s) => s.reviewPlan);
+  const currentUser = useAppStore((s) => s.currentUser);
+
+  const countdown = useMemo(() => getExamCountdown(reviewPlan?.examDate), [reviewPlan?.examDate]);
 
   return (
-    <motion.div
-      variants={staggerContainer}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, margin: '-40px' }}
-      className="grid grid-cols-2 lg:grid-cols-4 gap-4"
-    >
-      {stats.map((stat) => (
-        <motion.div
-          key={stat.label}
-          variants={fadeUp}
-          whileHover={{ y: -2, transition: { duration: 0.2 } }}
-          className="bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-5 transition-all hover:border-[#635BFF]/30 hover:shadow-[0_0_20px_rgba(99,91,255,0.08)]"
+    <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
+      <div className="flex items-center gap-3">
+        <div
+          className="w-12 h-12 rounded-full bg-ink-800 text-paper-50 flex items-center justify-center font-serif text-xl shadow-paper border-2 border-ink-700"
+          style={{ backgroundImage: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.12), transparent)' }}
         >
-          <div className="flex items-center justify-between mb-3">
-            <div className={`w-9 h-9 rounded-[12px] flex items-center justify-center ${stat.iconBg}`}>
-              <stat.icon size={18} className={stat.iconColor} />
-            </div>
-            <span className={`text-[11px] font-medium ${stat.trendUp ? 'text-[#00D924]' : 'text-[#a3b5cc]'}`}>
-              {stat.trend}
-            </span>
-          </div>
+          优
+        </div>
+        <div>
+          <p className="font-handwritten text-sm text-ink-500 leading-none">
+            {currentUser ? `${currentUser} 的` : '优流手账 ·'}
+          </p>
+          <h1 className="font-serif text-2xl md:text-3xl text-ink-900 font-bold tracking-wide leading-tight">
+            期末复习手册
+          </h1>
+        </div>
+      </div>
 
-          <p className="text-[12px] text-[#a3b5cc] mb-1">{stat.label}</p>
-
-          <div className="flex items-baseline gap-1">
-            <span className="text-[28px] font-bold text-[#ffffff] leading-none tabular-nums">{stat.value}</span>
-            {stat.valueSuffix && (
-              <span className="text-[13px] text-[#6b7c93]">{stat.valueSuffix}</span>
-            )}
-          </div>
-
-          {/* Ring progress */}
-          {stat.ring && (
-            <div className="mt-3 flex justify-center">
-              <svg width="56" height="56" viewBox="0 0 56 56">
-                <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="4" />
-                <circle
-                  cx="28" cy="28" r="22" fill="none"
-                  stroke="#00D924" strokeWidth="4" strokeLinecap="round"
-                  strokeDasharray={`${(stat.ringValue! / 100) * 138.2} 138.2`}
-                  transform="rotate(-90 28 28)"
-                  className="transition-all duration-700"
-                />
-              </svg>
-            </div>
-          )}
-
-          {/* Bar progress */}
-          {stat.bar && (
-            <div className="mt-3 h-2 rounded-full bg-white/[0.06] overflow-hidden">
-              <motion.div
-                className="h-full rounded-full"
-                style={{ background: 'linear-gradient(90deg, #FFB800, #f97316)' }}
-                initial={{ width: 0 }}
-                whileInView={{ width: `${stat.barValue}%` }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.8, ease: 'easeOut' }}
-              />
-            </div>
-          )}
-        </motion.div>
-      ))}
-    </motion.div>
+      <div className="flex flex-wrap items-center gap-2">
+        <VintageTag color={LEARNING_STATE_TAG_COLOR[learningState]} className="text-sm">
+          {LEARNING_STATE_LABEL[learningState]}
+        </VintageTag>
+        <div
+          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-[3px] border font-serif text-sm ${
+            countdown.passed
+              ? 'bg-ink-500/10 text-ink-600 border-ink-500/15'
+              : reviewPlan?.examDate
+                ? 'bg-seal/10 text-seal border-seal/20'
+                : 'bg-paper-200 text-ink-500 border-ink-600/15'
+          }`}
+        >
+          <Clock size={14} />
+          <span>{countdown.label}</span>
+        </div>
+      </div>
+    </header>
   );
 }
 
-/* ─── 2. Agent Workflow ─── */
-function AgentWorkflow() {
-  const agentSessions = useAppStore(s => s.agentSessions);
+/* ═══════════════════════════════════════════════════════
+   2. 资料上传卡片
+   ═══════════════════════════════════════════════════════ */
 
-  const agentWorkflow = useMemo(() => {
-    // 5 个核心 Agent + 1 个 Orchestrator 协调器
-    const agentDefs = [
-      { name: '协调器', agentId: 'orchestrator', color: '#635BFF', output: '', isOrchestrator: true },
-      { name: '内容摘要', agentId: 'content-agent', color: '#7C5CFF', output: '' },
-      { name: '智能出题', agentId: 'question-agent', color: '#4FD1C5', output: '' },
-      { name: '诊断评估', agentId: 'diagnoser-agent', color: '#FFB800', output: '' },
-      { name: '学习规划', agentId: 'planner-agent', color: '#FF3D00', output: '' },
-      { name: '教学助理', agentId: 'tutor-agent', color: '#00D924', output: '' },
-    ];
+function MaterialUploadCard() {
+  const {
+    materials, addMaterial, updateMaterial, removeMaterial,
+    addKnowledgePoints, setLearningState, learningState,
+  } = useAppStore();
+  const { addToast } = useToastStore();
 
-    return agentDefs.map((def) => {
-      const session = agentSessions.find(s => s.agentId === def.agentId);
-      let status: 'completed' | 'active' | 'pending' = 'pending';
-      let output = '';
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
 
-      if (session) {
-        if (session.messages.length > 0) {
-          status = 'completed';
-          const lastAssistant = [...session.messages].reverse().find(m => m.role === 'assistant');
-          if (lastAssistant) {
-            output = lastAssistant.content.slice(0, 30) + (lastAssistant.content.length > 30 ? '...' : '');
-          }
-        } else {
-          status = 'active';
+  const handleFile = async (file: File) => {
+    if (isParsing) return;
+
+    // 1. 创建资料条目，状态置为 parsing
+    const id = crypto.randomUUID();
+    const material: StudyMaterial = {
+      id,
+      name: file.name,
+      type: detectMaterialType(file),
+      size: file.size,
+      uploadedAt: Date.now(),
+      status: 'parsing',
+    };
+    addMaterial(material);
+    setIsParsing(true);
+
+    // 2. 提取文本
+    let parsedText: string;
+    try {
+      parsedText = await extractFileText(file);
+    } catch (err) {
+      updateMaterial(id, { status: 'failed' });
+      addToast('error', `文件解析失败：${err instanceof Error ? err.message : '未知错误'}`);
+      setIsParsing(false);
+      return;
+    }
+
+    if (!parsedText || parsedText.trim().length < 20) {
+      updateMaterial(id, { status: 'failed', parsedText });
+      addToast('warning', '文件内容过少，无法提取知识点');
+      setIsParsing(false);
+      return;
+    }
+
+    // 3. 检查 API Key 是否已配置
+    if (!isApiKeyConfigured()) {
+      updateMaterial(id, { status: 'pending', parsedText });
+      addToast('warning', '请先在设置中配置 AI 模型 API Key');
+      setIsParsing(false);
+      return;
+    }
+
+    // 4. 调用 LLM 提取知识点
+    try {
+      const settings = loadModelSettings();
+      const userPrompt = `请从以下学习资料中提取知识点 JSON：
+
+【资料名称】${file.name}
+
+【资料内容】
+${parsedText.slice(0, 6000)}`;
+      const { content } = await callModelWithCache(
+        settings,
+        KNOWLEDGE_EXTRACTION_SYSTEM_PROMPT,
+        userPrompt,
+      );
+      const points = parseKnowledgePointsResponse(content, id);
+
+      updateMaterial(id, { status: 'parsed', parsedText });
+
+      if (points.length === 0) {
+        addToast('info', '资料已上传，但未提取到知识点');
+      } else {
+        addKnowledgePoints(points);
+        // 仅在尚未到达 KnowledgeReady 时推进状态，避免覆盖更靠后的状态
+        if (learningState === 'Onboarded' || learningState === 'MaterialReady') {
+          setLearningState('KnowledgeReady');
         }
+        addToast('success', `成功提取 ${points.length} 个知识点`);
       }
-
-      // Orchestrator 始终视为活跃（任务总控）
-      if (def.isOrchestrator && status === 'pending') {
-        status = 'active';
-      }
-
-      return { ...def, status, output };
-    });
-  }, [agentSessions]);
-
-  const statusBadge = (status: 'completed' | 'active' | 'pending') => {
-    switch (status) {
-      case 'completed':
-        return <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#00D924]/10 text-[#00D924]">已完成</span>;
-      case 'active':
-        return <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#635BFF]/10 text-[#635BFF]">进行中</span>;
-      case 'pending':
-        return <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/[0.06] text-[#6b7c93]">待执行</span>;
+    } catch (err) {
+      updateMaterial(id, { status: 'pending', parsedText });
+      addToast('error', `知识点提取失败：${err instanceof Error ? err.message : '未知错误'}`);
+    } finally {
+      setIsParsing(false);
     }
   };
 
-  return (
-    <motion.section
-      variants={fadeUp}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, margin: '-40px' }}
-      className="mt-8"
-    >
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-[16px] font-semibold text-[#ffffff]">Agent 协作工作流</h2>
-        <span className="text-[11px] text-[#6b7c93]">5 Agent + 1 协调器 · 状态机驱动 DAG 调度</span>
-      </div>
-      <div className="flex overflow-x-auto gap-4 pb-2 lg:grid lg:grid-cols-6 lg:overflow-visible">
-        {agentWorkflow.map((agent, i) => (
-          <div key={agent.name} className="flex items-center gap-2 flex-shrink-0 lg:flex-shrink">
-            <motion.div
-              whileHover={{ y: -2, transition: { duration: 0.2 } }}
-              className={`bg-[#0d2d4a] border rounded-[20px] p-4 min-w-[150px] lg:min-w-0 transition-all hover:shadow-[0_0_20px_rgba(99,91,255,0.08)] ${
-                agent.isOrchestrator
-                  ? 'border-[#635BFF]/40 shadow-[0_0_16px_rgba(99,91,255,0.08)]'
-                  : 'border-white/[0.06] hover:border-[#635BFF]/30'
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: agent.color }} />
-                <span className="text-[13px] font-medium text-[#ffffff]">{agent.name}</span>
-                {agent.isOrchestrator && (
-                  <span className="text-[8px] px-1 py-0.5 rounded bg-[#635BFF]/15 text-[#635BFF]">CORE</span>
-                )}
-              </div>
-              <div className="mb-2">{statusBadge(agent.status)}</div>
-              {agent.output && (
-                <p className="text-[11px] text-[#6b7c93] leading-relaxed">{agent.output}</p>
-              )}
-            </motion.div>
-            {i < agentWorkflow.length - 1 && (
-              <ArrowRight size={14} className="text-[#6b7c93] flex-shrink-0 hidden lg:block" />
-            )}
-          </div>
-        ))}
-      </div>
-    </motion.section>
-  );
-}
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) void handleFile(file);
+    // 重置 value 以允许重复选择同一文件
+    e.target.value = '';
+  };
 
-/* ─── 3. Three-Column Layout ─── */
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) void handleFile(file);
+  };
 
-/** Left: Knowledge Navigation */
-function KnowledgeNav() {
-  const subjects = useAppStore(s => s.subjects);
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
-  const [activeTag, setActiveTag] = useState<string | null>(null);
-
-  // Set initial selected subject
-  useEffect(() => {
-    if (subjects.length > 0 && !selectedSubjectId) {
-      setSelectedSubjectId(subjects[0].id);
+  const handleReparse = async (material: StudyMaterial) => {
+    if (isParsing) return;
+    if (!material.parsedText) {
+      addToast('warning', '该资料无可解析文本');
+      return;
     }
-  }, [subjects, selectedSubjectId]);
+    if (!isApiKeyConfigured()) {
+      addToast('warning', '请先在设置中配置 AI 模型 API Key');
+      return;
+    }
+    setIsParsing(true);
+    updateMaterial(material.id, { status: 'parsing' });
+    try {
+      const settings = loadModelSettings();
+      const userPrompt = `请从以下学习资料中提取知识点 JSON：
 
-  // Get selected subject data
-  const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
+【资料名称】${material.name}
+
+【资料内容】
+${material.parsedText.slice(0, 6000)}`;
+      const { content } = await callModelWithCache(
+        settings,
+        KNOWLEDGE_EXTRACTION_SYSTEM_PROMPT,
+        userPrompt,
+      );
+      const points = parseKnowledgePointsResponse(content, material.id);
+      updateMaterial(material.id, { status: 'parsed' });
+      if (points.length === 0) {
+        addToast('info', '资料已解析，但未提取到知识点');
+      } else {
+        addKnowledgePoints(points);
+        if (learningState === 'Onboarded' || learningState === 'MaterialReady') {
+          setLearningState('KnowledgeReady');
+        }
+        addToast('success', `成功提取 ${points.length} 个知识点`);
+      }
+    } catch (err) {
+      updateMaterial(material.id, { status: 'failed' });
+      addToast('error', `知识点提取失败：${err instanceof Error ? err.message : '未知错误'}`);
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+  const handleRemove = (material: StudyMaterial) => {
+    removeMaterial(material.id);
+    addToast('info', `已移除资料「${material.name}」`);
+  };
+
+  const hasMaterials = materials.length > 0;
 
   return (
-    <div className="w-full lg:w-[220px] flex-shrink-0 min-w-0 bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-5">
-      <h3 className="text-[13px] font-semibold text-[#ffffff] mb-3">知识导航</h3>
-
-      {/* Course selector */}
-      <div className="relative mb-4">
-        {subjects.length > 0 ? (
-          <>
-            <select
-              value={selectedSubjectId}
-              onChange={(e) => setSelectedSubjectId(e.target.value)}
-              className="w-full appearance-none bg-[#1a3a5c] border border-white/[0.06] rounded-[12px] px-3 py-2 text-[12px] text-[#ffffff] outline-none focus:border-[#635BFF]/30 transition-colors"
-            >
-              {subjects.map((sub) => (
-                <option key={sub.id} value={sub.id}>{sub.name}</option>
-              ))}
-            </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7c93] pointer-events-none" />
-          </>
-        ) : (
-          <div className="w-full bg-[#1a3a5c] border border-white/[0.06] rounded-[12px] px-3 py-2 text-[12px] text-[#6b7c93]">
-            添加科目后显示章节目录
-          </div>
-        )}
-      </div>
-
-      {/* Chapter list - show knowledge points for selected subject */}
-      {subjects.length > 0 && selectedSubject ? (
-        <div className="space-y-1 mb-4 max-h-[200px] overflow-y-auto scrollbar-hide">
-          <div className="text-[11px] text-[#6b7c93] px-2 py-1">
-            通过 AI 冲刺核添加知识点
+    <PaperCard status="active" className="p-5 md:p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">📥</span>
+          <div>
+            <h2 className="font-serif text-lg text-ink-900 font-bold leading-tight">资料上传</h2>
+            <p className="text-xs text-ink-500 font-sans">上传复习资料，由 Agent 提取知识点</p>
           </div>
         </div>
-      ) : (
-        <div className="mb-4 py-6 text-center text-[12px] text-[#6b7c93]">
-          添加科目后显示章节目录
+        <VintageTag color="seal">进行中</VintageTag>
+      </div>
+
+      {/* 拖拽 / 点击上传区 */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => fileInputRef.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            fileInputRef.current?.click();
+          }
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragOver(true);
+        }}
+        onDragLeave={() => setIsDragOver(false)}
+        onDrop={handleDrop}
+        className={`relative cursor-pointer rounded-[4px] border-2 border-dashed transition-colors px-4 py-6 text-center ${
+          isDragOver
+            ? 'border-seal bg-seal/10'
+            : 'border-ink-600/25 bg-paper-100/60 hover:border-seal/50 hover:bg-seal/5'
+        }`}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".txt,.md,.markdown,.pdf,.docx,.doc"
+          className="hidden"
+          onChange={handleInputChange}
+        />
+        <motion.div
+          animate={isDragOver ? { y: -2 } : { y: 0 }}
+          className="flex flex-col items-center gap-1.5"
+        >
+          <Upload size={22} className="text-ink-600" />
+          <p className="font-serif text-sm text-ink-800">
+            拖拽文件到此处，或<span className="text-seal font-semibold">点击选择</span>
+          </p>
+          <p className="text-xs text-ink-500 font-sans">支持 TXT / MD / PDF / DOCX（PDF 与 Word 暂仅支持纯文本提取）</p>
+        </motion.div>
+      </div>
+
+      {/* 空状态引导（手账便签） */}
+      {!hasMaterials && (
+        <div className="mt-4 max-w-sm">
+          <StickyNote color="yellow" rotation={-1.5}>
+            <p className="font-handwritten text-base leading-relaxed">
+              上传你的复习资料，让 Agent 帮你拆解成知识点 →
+            </p>
+          </StickyNote>
         </div>
       )}
 
-      {/* Tags */}
-      <div className="flex flex-wrap gap-1.5">
-        {tags.map((tag) => (
-          <button
-            key={tag}
-            onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-            className={`text-[10px] px-2.5 py-1 rounded-full transition-colors ${
-              activeTag === tag
-                ? 'bg-[#635BFF]/10 text-[#635BFF] border border-[#635BFF]/30'
-                : 'bg-white/[0.04] text-[#6b7c93] border border-white/[0.06] hover:text-[#a3b5cc]'
-            }`}
-          >
-            {tag}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** Center: Knowledge Graph */
-function KnowledgeGraph() {
-  const knowledgePoints = useAppStore(s => s.knowledgePoints);
-  const subjects = useAppStore(s => s.subjects);
-  const [selectedNode, setSelectedNode] = useState<string | null>(null);
-
-  // Build graph from knowledgePoints
-  const graphData = useMemo(() => {
-    if (knowledgePoints.length === 0) return null;
-
-    // Group by subject
-    const bySubject = new Map<string, typeof knowledgePoints>();
-    knowledgePoints.forEach(kp => {
-      if (!bySubject.has(kp.subjectId)) bySubject.set(kp.subjectId, []);
-      bySubject.get(kp.subjectId)!.push(kp);
-    });
-
-    // Create nodes with positions (simple radial layout)
-    const nodes: Array<{
-      id: string;
-      label: string;
-      x: number;
-      y: number;
-      size: 'lg' | 'md' | 'sm';
-      color: string;
-      mastery: number;
-    }> = [];
-
-    const colors = ['#635BFF', '#7C5CFF', '#4FD1C5', '#FFB800', '#FF3D00', '#00D924'];
-    let subjectIdx = 0;
-
-    bySubject.forEach((points, subjectId) => {
-      const subject = subjects.find(s => s.id === subjectId);
-      const color = colors[subjectIdx % colors.length];
-      subjectIdx++;
-
-      // Center node for subject
-      const centerX = 20 + (subjectIdx * 60) % 60;
-      const centerY = 50;
-      nodes.push({
-        id: `subject-${subjectId}`,
-        label: subject?.name || '科目',
-        x: centerX,
-        y: centerY,
-        size: 'lg',
-        color,
-        mastery: Math.round(points.reduce((sum, p) => sum + p.mastery, 0) / points.length),
-      });
-
-      // Child nodes in circle around center
-      const radius = 25;
-      points.slice(0, 6).forEach((kp, i) => {
-        const angle = (i / Math.min(points.length, 6)) * 2 * Math.PI - Math.PI / 2;
-        const x = centerX + radius * Math.cos(angle);
-        const y = centerY + radius * Math.sin(angle);
-        nodes.push({
-          id: kp.id,
-          label: kp.name.length > 4 ? kp.name.slice(0, 4) : kp.name,
-          x: Math.max(5, Math.min(95, x)),
-          y: Math.max(5, Math.min(95, y)),
-          size: kp.mastery >= 80 ? 'md' : 'sm',
-          color,
-          mastery: kp.mastery,
-        });
-      });
-    });
-
-    return { nodes, bySubject };
-  }, [knowledgePoints, subjects]);
-
-  if (!graphData || graphData.nodes.length === 0) {
-    return (
-      <div className="w-full lg:flex-1 min-w-0 bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-5 flex flex-col items-center justify-center">
-        <h3 className="text-[13px] font-semibold text-[#ffffff] mb-3">知识图谱</h3>
-        <div className="flex flex-col items-center justify-center py-8">
-          <Brain size={32} className="text-[#6b7c93] mb-3" />
-          <p className="text-[13px] text-[#6b7c93] text-center">
-            通过 AI 冲刺核添加知识点后<br />知识图谱将自动生成
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const nodeSize = (size: string) => {
-    switch (size) {
-      case 'lg': return 'w-16 h-16 text-[12px]';
-      case 'md': return 'w-12 h-12 text-[10px]';
-      default: return 'w-9 h-9 text-[9px]';
-    }
-  };
-
-  return (
-    <div className="w-full lg:flex-1 min-w-0 bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-5 relative overflow-hidden">
-      <h3 className="text-[13px] font-semibold text-[#ffffff] mb-3">知识图谱</h3>
-      <div className="relative w-full" style={{ paddingBottom: '80%' }}>
-        {/* Nodes */}
-        {graphData.nodes.map((node) => (
-          <motion.button
-            key={node.id}
-            onClick={() => setSelectedNode(selectedNode === node.id ? null : node.id)}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            className={`absolute rounded-full flex items-center justify-center font-medium transition-all duration-300 cursor-pointer ${nodeSize(node.size)} ${
-              selectedNode === node.id
-                ? 'ring-2 ring-offset-1 ring-offset-[#0d2d4a]'
-                : ''
-            }`}
-            style={{
-              left: `${node.x}%`,
-              top: `${node.y}%`,
-              transform: 'translate(-50%, -50%)',
-              background: selectedNode === node.id ? `${node.color}20` : `${node.color}10`,
-              border: `1px solid ${selectedNode === node.id ? node.color : `${node.color}30`}`,
-              color: node.color,
-              ...(selectedNode === node.id ? { boxShadow: `0 0 20px ${node.color}20` } : {}),
-            }}
-            title={`${node.label} - 掌握度 ${node.mastery}%`}
-          >
-            {node.label}
-          </motion.button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** Right: Smart Panel */
-function SmartPanel() {
-  const flashCards = useAppStore(s => s.flashCards);
-  const subjects = useAppStore(s => s.subjects);
-  const [quickQuestion, setQuickQuestion] = useState('');
-
-  // Generate todos from unmastered flashCards
-  const todos = useMemo(() => {
-    const unmastered = flashCards.filter(c => !c.mastered).slice(0, 4);
-    if (unmastered.length === 0) return [];
-    return unmastered.map(c => ({ id: c.id, text: `复习: ${c.front.slice(0, 20)}...`, done: false }));
-  }, [flashCards]);
-
-  const [todoItems, setTodoItems] = useState(todos);
-
-  // Sync with computed todos
-  useEffect(() => {
-    setTodoItems(todos);
-  }, [todos]);
-
-  const toggleTodo = (id: string) => {
-    setTodoItems((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
-  };
-
-  // AI suggestion based on real data
-  const aiSuggestion = useMemo(() => {
-    if (flashCards.length === 0) return null;
-    const unmastered = flashCards.filter(c => !c.mastered);
-    if (unmastered.length === 0) return { text: '所有闪卡已掌握！继续保持复习节奏。', highlight: null };
-    const subject = subjects.find(s => s.id === unmastered[0].subjectId);
-    return {
-      text: `建议优先复习「${subject?.name || '未分类'}」，有 ${unmastered.length} 张闪卡未掌握。`,
-      highlight: subject?.name || null,
-    };
-  }, [flashCards, subjects]);
-
-  // Exam reminders from subjects sorted by examDate
-  const examReminders = useMemo(() => {
-    return [...subjects]
-      .filter(s => s.examDate)
-      .sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime())
-      .map(s => {
-        const cd = getCountdown(s.examDate);
-        const dateStr = new Date(s.examDate + 'T00:00:00');
-        const monthDay = `${dateStr.getMonth() + 1}月${dateStr.getDate()}日`;
-        let urgencyColor = 'text-[#6b7c93]';
-        if (cd.passed) {
-          urgencyColor = 'text-[#6b7c93]';
-        } else if (cd.days <= 3) {
-          urgencyColor = 'text-[#FF3D00]';
-        } else if (cd.days <= 7) {
-          urgencyColor = 'text-[#FFB800]';
-        } else {
-          urgencyColor = 'text-[#00D924]';
-        }
-        return { name: s.name, date: monthDay, urgencyColor, days: cd.days };
-      });
-  }, [subjects]);
-
-  return (
-    <div className="w-full lg:w-[280px] flex-shrink-0 min-w-0 space-y-4">
-      {/* AI 复习建议 */}
-      <div className="bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-[10px] flex items-center justify-center bg-[#635BFF]/10">
-            <Sparkles size={14} className="text-[#635BFF]" />
-          </div>
-          <h3 className="text-[13px] font-semibold text-[#ffffff]">AI 复习建议</h3>
-        </div>
-        {aiSuggestion ? (
-          <p className="text-[12px] text-[#a3b5cc] leading-relaxed">
-            {aiSuggestion.highlight ? (
-              <>建议优先复习<strong className="text-[#FFB800]">{aiSuggestion.highlight}</strong>，{aiSuggestion.text.split('，')[1]}</>
-            ) : (
-              aiSuggestion.text
-            )}
-          </p>
-        ) : (
-          <p className="text-[12px] text-[#6b7c93] leading-relaxed">
-            添加闪卡后生成个性化复习建议
-          </p>
-        )}
-      </div>
-
-      {/* 今日待办 */}
-      <div className="bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-[10px] flex items-center justify-center bg-[#4FD1C5]/10">
-            <ListChecks size={14} className="text-[#4FD1C5]" />
-          </div>
-          <h3 className="text-[13px] font-semibold text-[#ffffff]">今日待办</h3>
-        </div>
-        {todoItems.length > 0 ? (
-          <div className="space-y-2">
-            {todoItems.map((todo) => (
-              <label
-                key={todo.id}
-                className="flex items-center gap-2.5 cursor-pointer group"
-              >
-                <button
-                  onClick={() => toggleTodo(todo.id)}
-                  className={`w-4 h-4 rounded-[4px] flex items-center justify-center flex-shrink-0 transition-all ${
-                    todo.done
-                      ? 'bg-[#00D924] border-[#00D924]'
-                      : 'border border-white/[0.12] group-hover:border-[#635BFF]/40'
-                  }`}
-                >
-                  {todo.done && <CheckCircle2 size={10} className="text-white" />}
-                </button>
-                <span className={`text-[12px] transition-colors ${
-                  todo.done ? 'text-[#6b7c93] line-through' : 'text-[#a3b5cc] group-hover:text-[#ffffff]'
-                }`}>
-                  {todo.text}
-                </span>
-              </label>
+      {/* 已上传资料列表 */}
+      {hasMaterials && (
+        <div className="mt-5">
+          <h3 className="font-serif text-sm text-ink-700 mb-2 flex items-center gap-2">
+            已上传资料
+            <span className="text-xs text-ink-500 font-sans">({materials.length})</span>
+          </h3>
+          <ul className="space-y-2">
+            {materials.map((m) => (
+              <MaterialRow
+                key={m.id}
+                material={m}
+                isParsing={isParsing}
+                onReparse={() => void handleReparse(m)}
+                onRemove={() => handleRemove(m)}
+              />
             ))}
-          </div>
-        ) : (
-          <p className="text-[12px] text-[#6b7c93]">暂无待办事项</p>
-        )}
-      </div>
-
-      {/* 考试提醒 */}
-      <div className="bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-[10px] flex items-center justify-center bg-[#FF3D00]/10">
-            <Bell size={14} className="text-[#FF3D00]" />
-          </div>
-          <h3 className="text-[13px] font-semibold text-[#ffffff]">考试提醒</h3>
+          </ul>
         </div>
-        {examReminders.length > 0 ? (
-          <div className="space-y-2">
-            {examReminders.map((r) => (
-              <div key={r.name} className="flex items-center justify-between">
-                <span className="text-[12px] text-[#a3b5cc]">{r.name}</span>
-                <span className={`text-[11px] font-medium ${r.urgencyColor}`}>{r.date}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-[12px] text-[#6b7c93]">暂无考试安排</p>
-        )}
-      </div>
-
-      {/* 快速提问 */}
-      <div className="bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-[10px] flex items-center justify-center bg-[#7C5CFF]/10">
-            <HelpCircle size={14} className="text-[#7C5CFF]" />
-          </div>
-          <h3 className="text-[13px] font-semibold text-[#ffffff]">快速提问</h3>
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={quickQuestion}
-            onChange={(e) => setQuickQuestion(e.target.value)}
-            placeholder="输入你的问题..."
-            className="flex-1 bg-[#1a3a5c] border border-white/[0.06] rounded-[12px] px-3 py-2 text-[12px] text-[#ffffff] placeholder-[#6b7c93] outline-none focus:border-[#635BFF]/30 transition-colors"
-          />
-          <button className="w-8 h-8 rounded-[10px] bg-[#635BFF]/10 flex items-center justify-center hover:bg-[#635BFF]/20 transition-colors">
-            <Send size={14} className="text-[#635BFF]" />
-          </button>
-        </div>
-      </div>
-    </div>
+      )}
+    </PaperCard>
   );
 }
 
-/* ─── 4. Quiz Practice ─── */
-function QuizPractice() {
-  const flashCards = useAppStore(s => s.flashCards);
-  const subjects = useAppStore(s => s.subjects);
-  const setActiveView = useAppStore(s => s.setActiveView);
+function MaterialRow({
+  material, isParsing, onReparse, onRemove,
+}: {
+  material: StudyMaterial;
+  isParsing: boolean;
+  onReparse: () => void;
+  onRemove: () => void;
+}) {
+  const typeIcon = material.type === 'pdf' ? '📄' : material.type === 'word' ? '📝' : material.type === 'markdown' ? '📑' : '📃';
 
-  const [quizIndex, setQuizIndex] = useState(0);
+  return (
+    <li className="flex items-center gap-3 rounded-[3px] border border-ink-600/10 bg-paper-100/40 px-3 py-2">
+      <span className="text-lg flex-shrink-0">{typeIcon}</span>
+      <div className="min-w-0 flex-1">
+        <p className="font-serif text-sm text-ink-800 truncate">{material.name}</p>
+        <p className="text-xs text-ink-500 font-sans">
+          {formatFileSize(material.size)} · {new Date(material.uploadedAt).toLocaleDateString('zh-CN')}
+        </p>
+      </div>
 
-  // Generate quiz data from flashCards
-  const quizState = useMemo(() => {
-    if (flashCards.length === 0) return null;
+      <MaterialStatusBadge material={material} />
 
-    // Pick a card (cycle through based on quizIndex)
-    const cardIndex = quizIndex % flashCards.length;
-    const card = flashCards[cardIndex];
-
-    // Get other cards' backs for wrong options
-    const otherCards = flashCards.filter((_, i) => i !== cardIndex);
-    const wrongOptions = otherCards.length >= 3
-      ? otherCards.slice(0, 3).map(c => c.back)
-      : [
-          ...otherCards.map(c => c.back),
-          ...Array(3 - otherCards.length).fill('').map(() => `选项 ${String.fromCharCode(68)}`),
-        ];
-
-    // Shuffle options with correct answer
-    const allOptions = [card.back, ...wrongOptions.slice(0, 3)];
-    const shuffled = allOptions.map((opt) => ({ opt, sort: Math.random() }));
-    shuffled.sort((a, b) => a.sort - b.sort);
-
-    const correctIndex = shuffled.findIndex(s => s.opt === card.back);
-
-    const subject = subjects.find(s => s.id === card.subjectId);
-
-    return {
-      question: card.front,
-      options: shuffled.map((s, i) => `${String.fromCharCode(65 + i)}. ${s.opt}`),
-      correctIndex,
-      explanation: card.back,
-      subjectName: subject?.name || '未知科目',
-    };
-  }, [flashCards, subjects, quizIndex]);
-
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
-  const [showExplanation, setShowExplanation] = useState(false);
-  const [isStarred, setIsStarred] = useState(false);
-  const [isBookmarked, setIsBookmarked] = useState(false);
-  const explanationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (explanationTimerRef.current) clearTimeout(explanationTimerRef.current);
-    };
-  }, []);
-
-  const isAnswered = selectedOption !== null;
-  const isCorrect = quizState ? selectedOption === quizState.correctIndex : false;
-
-  const handleSelect = (idx: number) => {
-    if (isAnswered) return;
-    setSelectedOption(idx);
-    if (explanationTimerRef.current) clearTimeout(explanationTimerRef.current);
-    explanationTimerRef.current = setTimeout(() => setShowExplanation(true), 400);
-  };
-
-  const handleReset = () => {
-    if (explanationTimerRef.current) clearTimeout(explanationTimerRef.current);
-    setSelectedOption(null);
-    setShowExplanation(false);
-    setIsStarred(false);
-    setIsBookmarked(false);
-    setQuizIndex((prev) => prev + 1);
-  };
-
-  if (!quizState) {
-    return (
-      <motion.section
-        variants={fadeUp}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: '-40px' }}
-        className="mt-8"
-      >
-        <h2 className="text-[16px] font-semibold text-[#ffffff] mb-4">智能出题练习</h2>
-        <div className="bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-6 flex flex-col items-center justify-center py-12">
-          <Brain size={40} className="text-[#6b7c93] mb-3" />
-          <p className="text-[14px] text-[#6b7c93] mb-4">添加闪卡后开始练习</p>
+      <div className="flex items-center gap-1 flex-shrink-0">
+        {(material.status === 'pending' || material.status === 'failed') && (
           <button
-            onClick={() => setActiveView('ai')}
-            className="text-[13px] px-4 py-2 rounded-[12px] bg-[#635BFF]/10 text-[#635BFF] border border-[#635BFF]/20 hover:bg-[#635BFF]/20 transition-colors"
+            type="button"
+            onClick={onReparse}
+            disabled={isParsing}
+            title="重新解析"
+            className="p-1.5 rounded-[3px] text-ink-600 hover:bg-seal/10 hover:text-seal transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            前往 AI 出题
+            <RefreshCw size={14} className={isParsing ? 'animate-spin' : ''} />
           </button>
-        </div>
-      </motion.section>
-    );
-  }
-
-  return (
-    <motion.section
-      variants={fadeUp}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, margin: '-40px' }}
-      className="mt-8"
-    >
-      <h2 className="text-[16px] font-semibold text-[#ffffff] mb-4">智能出题练习</h2>
-      <div className="bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-[#635BFF]/10 text-[#635BFF]">{quizState.subjectName}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsStarred(!isStarred)}
-              className="p-1.5 rounded-[8px] hover:bg-white/[0.04] transition-colors"
-            >
-              <Star size={16} className={isStarred ? 'text-[#FFB800] fill-[#FFB800]' : 'text-[#6b7c93]'} />
-            </button>
-            <button
-              onClick={() => setIsBookmarked(!isBookmarked)}
-              className="p-1.5 rounded-[8px] hover:bg-white/[0.04] transition-colors"
-            >
-              <Bookmark size={16} className={isBookmarked ? 'text-[#635BFF] fill-[#635BFF]' : 'text-[#6b7c93]'} />
-            </button>
-          </div>
-        </div>
-
-        {/* Progress */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
-            <div className="h-full rounded-full bg-gradient-to-r from-[#635BFF] to-[#7C5CFF]" style={{ width: `${((quizIndex % flashCards.length) + 1) / flashCards.length * 100}%` }} />
-          </div>
-          <span className="text-[11px] text-[#6b7c93] tabular-nums">{(quizIndex % flashCards.length) + 1}/{flashCards.length}</span>
-        </div>
-
-        {/* Question */}
-        <p className="text-[14px] text-[#ffffff] leading-relaxed mb-5">{quizState.question}</p>
-
-        {/* Options */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-          {quizState.options.map((opt, idx) => {
-            let optClass = 'border border-white/[0.08] rounded-[12px] p-3 text-[13px] text-[#a3b5cc] cursor-pointer transition-all hover:border-[#635BFF]/30 hover:text-[#ffffff]';
-            if (isAnswered) {
-              if (idx === quizState.correctIndex) {
-                optClass = 'border border-[#00D924] bg-[#00D924]/10 rounded-[12px] p-3 text-[13px] text-[#00D924] cursor-default';
-              } else if (idx === selectedOption && !isCorrect) {
-                optClass = 'border border-[#FF3D00] bg-[#FF3D00]/10 rounded-[12px] p-3 text-[13px] text-[#FF3D00] cursor-default';
-              } else {
-                optClass = 'border border-white/[0.04] rounded-[12px] p-3 text-[13px] text-[#6b7c93] cursor-default opacity-50';
-              }
-            }
-            return (
-              <motion.button
-                key={idx}
-                onClick={() => handleSelect(idx)}
-                whileTap={!isAnswered ? { scale: 0.98 } : undefined}
-                className={optClass}
-              >
-                {opt}
-              </motion.button>
-            );
-          })}
-        </div>
-
-        {/* AI Explanation */}
-        <AnimatePresence>
-          {showExplanation && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="overflow-hidden"
-            >
-              <div className="bg-[#1a3a5c] border border-white/[0.06] rounded-[16px] p-4 mt-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <Lightbulb size={14} className="text-[#FFB800]" />
-                  <span className="text-[12px] font-semibold text-[#ffffff]">AI 解析</span>
-                  {isCorrect ? (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#00D924]/10 text-[#00D924]">回答正确</span>
-                  ) : (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#FF3D00]/10 text-[#FF3D00]">回答错误</span>
-                  )}
-                </div>
-                <p className="text-[12px] text-[#a3b5cc] leading-relaxed">{quizState.explanation}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Bottom actions */}
-        {isAnswered && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center justify-between mt-4 pt-4 border-t border-white/[0.06]"
-          >
-            <div className="flex items-center gap-4">
-              <button className="text-[12px] text-[#635BFF] hover:text-[#7C5CFF] transition-colors flex items-center gap-1">
-                <Sparkles size={12} />
-                逐步提示
-              </button>
-              <button className="text-[12px] text-[#4FD1C5] hover:text-[#00D924] transition-colors flex items-center gap-1">
-                <RotateCcw size={12} />
-                生成同类题
-              </button>
-            </div>
-            <button
-              onClick={handleReset}
-              className="text-[12px] text-[#a3b5cc] hover:text-[#ffffff] transition-colors flex items-center gap-1"
-            >
-              <RotateCcw size={12} />
-              下一题
-            </button>
-          </motion.div>
         )}
-      </div>
-    </motion.section>
-  );
-}
-
-/* ─── 5. Review Timeline ─── */
-function ReviewTimeline() {
-  const subjects = useAppStore(s => s.subjects);
-
-  const timelineData = useMemo(() => {
-    const subjectsWithExam = subjects.filter(s => s.examDate);
-    if (subjectsWithExam.length === 0) return [];
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    return subjectsWithExam
-      .map(s => {
-        const examDate = new Date(s.examDate + 'T00:00:00');
-        examDate.setHours(0, 0, 0, 0);
-        const diffTime = examDate.getTime() - today.getTime();
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-        let status: 'completed' | 'today' | 'future' = 'future';
-        if (diffDays < 0) status = 'completed';
-        else if (diffDays === 0) status = 'today';
-
-        const monthDay = `${examDate.getMonth() + 1}月${examDate.getDate()}日`;
-
-        return {
-          date: monthDay,
-          task: `${s.name} 复习`,
-          duration: `${Math.max(1, Math.round(s.progress / 30))}h`,
-          status,
-          sortKey: examDate.getTime(),
-        };
-      })
-      .sort((a, b) => a.sortKey - b.sortKey);
-  }, [subjects]);
-
-  return (
-    <motion.section
-      variants={fadeUp}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, margin: '-40px' }}
-      className="mt-8"
-    >
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-[16px] font-semibold text-[#ffffff]">复习计划时间线</h2>
-        <button className="text-[12px] text-[#635BFF] hover:text-[#7C5CFF] transition-colors flex items-center gap-1 px-3 py-1.5 rounded-[10px] border border-[#635BFF]/20 hover:border-[#635BFF]/40">
-          <Sparkles size={12} />
-          智能调整计划
+        <button
+          type="button"
+          onClick={onRemove}
+          title="移除"
+          className="p-1.5 rounded-[3px] text-ink-600 hover:bg-terracotta/10 hover:text-terracotta-dark transition-colors"
+        >
+          <Trash2 size={14} />
         </button>
       </div>
+    </li>
+  );
+}
 
-      <div className="bg-[#0d2d4a] border border-white/[0.06] rounded-[24px] p-6 overflow-x-auto">
-        {timelineData.length > 0 ? (
-          <div className="relative">
-            {timelineData.map((item, idx) => {
-              const isLast = idx === timelineData.length - 1;
-              return (
-                <div key={item.date + item.task} className="flex gap-4">
-                  {/* Timeline line + dot */}
-                  <div className="flex flex-col items-center">
-                    <div className="relative">
-                      {item.status === 'completed' && (
-                        <div className="w-3 h-3 rounded-full bg-[#00D924] flex items-center justify-center">
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#0d2d4a]" />
-                        </div>
-                      )}
-                      {item.status === 'today' && (
-                        <motion.div
-                          className="w-3.5 h-3.5 rounded-full bg-gradient-to-br from-[#635BFF] to-[#7C5CFF]"
-                          animate={{ boxShadow: ['0 0 0 0 rgba(99,91,255,0.4)', '0 0 0 6px rgba(99,91,255,0)', '0 0 0 0 rgba(99,91,255,0.4)'] }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                        />
-                      )}
-                      {item.status === 'future' && (
-                        <div className="w-3 h-3 rounded-full bg-[#6b7c93]/40" />
-                      )}
-                    </div>
-                    {!isLast && (
-                      <div className={`w-px flex-1 min-h-[40px] ${
-                        item.status === 'completed' ? 'bg-[#00D924]/30' : 'bg-white/[0.06]'
-                      }`} />
+function MaterialStatusBadge({ material }: { material: StudyMaterial }) {
+  switch (material.status) {
+    case 'parsing':
+      return (
+        <span className="inline-flex items-center gap-1 text-xs text-gold-dark font-serif flex-shrink-0">
+          <Loader2 size={12} className="animate-spin" />
+          解析中
+        </span>
+      );
+    case 'parsed':
+      return (
+        <span className="inline-flex items-center gap-1 text-xs text-sage-dark font-serif flex-shrink-0">
+          <CheckCircle2 size={12} />
+          已解析
+        </span>
+      );
+    case 'failed':
+      return (
+        <span className="inline-flex items-center gap-1 text-xs text-terracotta-dark font-serif flex-shrink-0">
+          <AlertCircle size={12} />
+          解析失败
+        </span>
+      );
+    case 'pending':
+    default:
+      return (
+        <span className="inline-flex items-center gap-1 text-xs text-ink-500 font-serif flex-shrink-0">
+          <Clock size={12} />
+          待解析
+        </span>
+      );
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   3. 活动入口卡片列表
+   ═══════════════════════════════════════════════════════ */
+
+function ActivityCardList() {
+  const {
+    learningState, wrongQuestions, memoryCards, questions,
+    setActiveView,
+  } = useAppStore();
+
+  const today = useMemo(() => todayISO(), []);
+  const dueCardsCount = useMemo(
+    () => memoryCards.filter((c) => c.nextReviewDate <= today).length,
+    [memoryCards, today],
+  );
+
+  const practiceReady =
+    learningState === 'KnowledgeReady' ||
+    learningState === 'Practicing' ||
+    learningState === 'WeaknessAnalyzed' ||
+    learningState === 'Reviewed' ||
+    learningState === 'ExamReady';
+
+  // 每张卡片的状态 / 数量 / 状态文案
+  const cardMeta: Record<ActivityCardConfig['view'], {
+    status: PaperCardStatus;
+    count: number | null;
+    countLabel: string;
+    tagText: string;
+    tagColor: 'seal' | 'ink' | 'gold' | 'green' | 'worn';
+  }> = {
+    practice: {
+      status: practiceReady ? 'active' : 'inactive',
+      count: questions.length,
+      countLabel: '题目',
+      tagText: practiceReady ? '可练习' : '待上传资料',
+      tagColor: practiceReady ? 'seal' : 'worn',
+    },
+    wrongbook: {
+      status: wrongQuestions.length > 0 ? 'has-reward' : 'inactive',
+      count: wrongQuestions.length,
+      countLabel: '待复习',
+      tagText: wrongQuestions.length > 0 ? '待复习' : '暂无错题',
+      tagColor: wrongQuestions.length > 0 ? 'seal' : 'worn',
+    },
+    memory: {
+      status: dueCardsCount > 0 ? 'active' : 'inactive',
+      count: dueCardsCount,
+      countLabel: '今日待复习',
+      tagText: dueCardsCount > 0 ? '今日待复习' : (memoryCards.length > 0 ? '暂无到期' : '暂无卡片'),
+      tagColor: dueCardsCount > 0 ? 'gold' : 'worn',
+    },
+    supervisor: {
+      status: 'default',
+      count: null,
+      countLabel: '',
+      tagText: '查看进度',
+      tagColor: 'ink',
+    },
+  };
+
+  return (
+    <section>
+      <div className="flex items-baseline justify-between mb-3">
+        <h2 className="font-serif text-lg text-ink-900 font-bold">复习活动</h2>
+        <span className="text-xs text-ink-500 font-sans">选择一项开始</span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {ACTIVITY_CARDS.map((card, idx) => {
+          const meta = cardMeta[card.view];
+          return (
+            <motion.div
+              key={card.view}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: idx * 0.06, ease: 'easeOut' }}
+            >
+              <PaperCard
+                status={meta.status}
+                rotation={idx % 2 === 0 ? -0.6 : 0.8}
+                onClick={() => setActiveView(card.view)}
+                className="h-full"
+              >
+                <div className="p-4 flex flex-col h-full min-h-[150px]">
+                  <div className="flex items-start justify-between mb-2">
+                    <span className="text-3xl leading-none">{card.icon}</span>
+                    {meta.count !== null && meta.count > 0 && (
+                      <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-seal text-paper-50 text-xs font-serif shadow-stamp">
+                        {meta.count}
+                      </span>
                     )}
                   </div>
 
-                  {/* Content */}
-                  <div className={`pb-6 ${isLast ? 'pb-0' : ''}`}>
-                    <div className="flex items-center gap-3 mb-1">
-                      <span className={`text-[11px] font-medium tabular-nums ${
-                        item.status === 'completed' ? 'text-[#00D924]' :
-                        item.status === 'today' ? 'text-[#635BFF]' :
-                        'text-[#6b7c93]'
-                      }`}>
-                        {item.date}
-                      </span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                        item.status === 'completed' ? 'bg-[#00D924]/10 text-[#00D924]' :
-                        item.status === 'today' ? 'bg-[#635BFF]/10 text-[#635BFF]' :
-                        'bg-white/[0.04] text-[#6b7c93]'
-                      }`}>
-                        {item.duration}
-                      </span>
-                    </div>
-                    <p className={`text-[13px] ${
-                      item.status === 'completed' ? 'text-[#a3b5cc]' :
-                      item.status === 'today' ? 'text-[#ffffff] font-medium' :
-                      'text-[#6b7c93]'
-                    }`}>
-                      {item.task}
-                    </p>
+                  <h3 className="font-serif text-base text-ink-900 font-bold leading-tight mb-1">
+                    {card.title}
+                  </h3>
+                  <p className="text-xs text-ink-500 font-sans leading-relaxed mb-3 flex-1">
+                    {card.description}
+                  </p>
+
+                  <div className="flex items-center justify-between">
+                    <VintageTag color={meta.tagColor}>{meta.tagText}</VintageTag>
+                    <ArrowRight size={14} className="text-ink-400" />
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-8">
-            <Clock size={32} className="text-[#6b7c93] mb-3" />
-            <p className="text-[13px] text-[#6b7c93]">添加科目后生成复习计划</p>
-          </div>
-        )}
+              </PaperCard>
+            </motion.div>
+          );
+        })}
       </div>
-    </motion.section>
+    </section>
   );
 }
 
-/* ─── 6. Floating Agent Assistant ─── */
-function FloatingAssistant() {
-  const [isOpen, setIsOpen] = useState(false);
-  const setActiveView = useAppStore(s => s.setActiveView);
+/* ═══════════════════════════════════════════════════════
+   4. 学习进度概览
+   ═══════════════════════════════════════════════════════ */
 
-  const commands = [
-    { icon: FileText, label: '帮我出题', color: '#4FD1C5', action: () => setActiveView('ai') },
-    { icon: AlertCircle, label: '分析错题', color: '#FFB800', action: () => setActiveView('ai') },
-    { icon: BookOpen, label: '整理重点', color: '#7C5CFF', action: () => setActiveView('ai') },
+function ProgressOverview() {
+  const studyProgress = useAppStore((s) => s.studyProgress);
+
+  const stats = [
+    { label: '累计答题', value: studyProgress.totalQuestions, suffix: '道', color: 'text-ink-800' },
+    { label: '答对', value: studyProgress.correctCount, suffix: '道', color: 'text-sage-dark' },
+    { label: '答错', value: studyProgress.wrongCount, suffix: '道', color: 'text-terracotta-dark' },
+    { label: '连续学习', value: studyProgress.streakDays, suffix: '天', color: 'text-gold-dark' },
   ];
 
   return (
-    <div className="fixed bottom-24 lg:bottom-6 right-4 z-50">
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 12, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.9 }}
-            transition={{ duration: 0.2 }}
-            className="absolute bottom-16 right-0 bg-[#0d2d4a] border border-white/[0.06] rounded-[20px] p-4 w-[200px] shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[12px] font-semibold text-[#ffffff]">Agent 助手</span>
-              <button onClick={() => setIsOpen(false)} className="p-1 rounded-[6px] hover:bg-white/[0.04]">
-                <X size={12} className="text-[#6b7c93]" />
-              </button>
+    <section>
+      <div className="flex items-baseline justify-between mb-3">
+        <h2 className="font-serif text-lg text-ink-900 font-bold">学习进度</h2>
+        <span className="text-xs text-ink-500 font-sans">督学 Agent 跟踪</span>
+      </div>
+      <PaperCard status="default" className="p-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              className="rounded-[3px] border border-ink-600/10 bg-paper-100/50 px-3 py-2.5 text-center"
+            >
+              <p className="text-xs text-ink-500 font-sans mb-1">{stat.label}</p>
+              <p className={`font-serif text-2xl font-bold leading-none ${stat.color}`}>
+                {stat.value}
+                <span className="text-sm font-sans font-normal ml-0.5 text-ink-500">{stat.suffix}</span>
+              </p>
             </div>
-            <div className="space-y-1.5">
-              {commands.map((cmd) => (
-                <button
-                  key={cmd.label}
-                  onClick={() => { cmd.action(); setIsOpen(false); }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[12px] text-[12px] text-[#a3b5cc] hover:bg-white/[0.04] hover:text-[#ffffff] transition-colors"
-                >
-                  <cmd.icon size={14} style={{ color: cmd.color }} />
-                  {cmd.label}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-12 h-12 rounded-full bg-gradient-to-br from-[#635BFF] to-[#7C5CFF] flex items-center justify-center shadow-[0_4px_16px_rgba(99,91,255,0.3)]"
-      >
-        {isOpen ? (
-          <X size={20} className="text-white" />
-        ) : (
-          <Brain size={20} className="text-white" />
-        )}
-      </motion.button>
-    </div>
+          ))}
+        </div>
+      </PaperCard>
+    </section>
   );
 }
 
-/* ─── 主组件 ─── */
+/* ═══════════════════════════════════════════════════════
+   主组件
+   ═══════════════════════════════════════════════════════ */
+
 export default function Dashboard() {
-  const activeView = useAppStore(s => s.activeView);
-  const setActiveView = useAppStore(s => s.setActiveView);
-
   return (
-    <div className="space-y-0 pb-8 overflow-x-hidden">
-      {/* 顶部 Tab 切换 */}
-      <div className="flex items-center gap-2 mb-6">
-        {([
-          { id: 'dashboard' as const, label: '学习驾驶舱' },
-          { id: 'ai' as const, label: 'AI 出题' },
-        ]).map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveView(tab.id)}
-            className={`px-4 py-2 rounded-[12px] text-[14px] font-medium transition-all ${
-              activeView === tab.id
-                ? 'bg-[#635BFF] text-white shadow-[0_4px_16px_rgba(99,91,255,0.3)]'
-                : 'bg-[#0d2d4a] text-[#6b7c93] border border-white/[0.06] hover:text-white'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <AnimatePresence mode="wait">
-        {activeView === 'dashboard' ? (
-          <motion.div
-            key="dashboard"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
-            <StatsOverview />
-            <AgentWorkflow />
-            <motion.section
-              variants={fadeUp}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: '-40px' }}
-              className="mt-8 flex flex-col lg:flex-row gap-4"
-            >
-              <KnowledgeNav />
-              <KnowledgeGraph />
-              <SmartPanel />
-            </motion.section>
-            <QuizPractice />
-            <ReviewTimeline />
-            <FloatingAssistant />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="ai"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
-            <AIEngine />
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 space-y-6">
+      <DashboardHeader />
+      <MaterialUploadCard />
+      <ActivityCardList />
+      <ProgressOverview />
     </div>
   );
 }

@@ -1,11 +1,12 @@
-import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useAppStore } from '@/store/useAppStore';
+
+type ViewKey = 'dashboard' | 'practice' | 'wrongbook' | 'memory' | 'supervisor';
 
 interface NavItem {
-  path: string;
+  view: ViewKey;
   label: string;
   icon: string;
-  primary: boolean;
 }
 
 interface VintageNavProps {
@@ -13,20 +14,19 @@ interface VintageNavProps {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { path: '/dashboard', label: '首页', icon: '🏠', primary: true },
-  { path: '/ai-engine', label: '开始刷题', icon: '✏️', primary: true },
-  { path: '/my-notes', label: '错题本', icon: '📕', primary: true },
-  { path: '/flashcards', label: '记忆闪卡', icon: '🃏', primary: true },
-  { path: '/supervisor', label: '学习报告', icon: '📊', primary: true },
-  { path: '/flow-chamber', label: '番茄钟', icon: '⏱️', primary: false },
+  { view: 'dashboard', label: '首页', icon: '🏠' },
+  { view: 'practice', label: '开始练习', icon: '✏️' },
+  { view: 'wrongbook', label: '错题本', icon: '📕' },
+  { view: 'memory', label: '记忆卡片', icon: '🃏' },
+  { view: 'supervisor', label: '学习报告', icon: '📊' },
 ];
 
 export default function VintageNav({ onSettingsClick }: VintageNavProps) {
-  const location = useLocation();
-  const navigate = useNavigate();
+  const activeView = useAppStore((s) => s.activeView);
+  const setActiveView = useAppStore((s) => s.setActiveView);
 
-  const handleNavClick = (path: string) => {
-    navigate(path);
+  const handleNavClick = (view: ViewKey) => {
+    setActiveView(view);
   };
 
   return (
@@ -59,12 +59,12 @@ export default function VintageNav({ onSettingsClick }: VintageNavProps) {
         </div>
 
         <div className="flex items-end gap-1 md:gap-2">
-          {NAV_ITEMS.filter((item) => item.primary).map((item) => {
-            const isActive = location.pathname === item.path;
+          {NAV_ITEMS.map((item) => {
+            const isActive = activeView === item.view;
             return (
               <motion.button
-                key={item.path}
-                onClick={() => handleNavClick(item.path)}
+                key={item.view}
+                onClick={() => handleNavClick(item.view)}
                 className={`relative px-3 md:px-4 py-2 rounded-b-md border-b-2 border-l border-r transition-colors flex items-center gap-1.5 md:gap-2 text-sm md:text-base ${
                   isActive
                     ? 'bg-paper-50 border-ink-600/30 text-ink-900 font-bold shadow-md'
@@ -104,46 +104,6 @@ export default function VintageNav({ onSettingsClick }: VintageNavProps) {
             );
           })}
 
-          {NAV_ITEMS.filter((item) => !item.primary).map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <motion.button
-                key={item.path}
-                onClick={() => handleNavClick(item.path)}
-                className={`relative ml-2 md:ml-4 px-2 md:px-3 py-1.5 rounded-b-md border-b border-l border-r transition-colors flex items-center gap-1 text-xs md:text-sm opacity-80 ${
-                  isActive
-                    ? 'bg-paper-100 border-ink-600/20 text-ink-800 font-semibold shadow-sm'
-                    : 'bg-paper-200/40 border-ink-600/10 text-ink-600 hover:bg-paper-100/60 hover:opacity-100'
-                }`}
-                initial={false}
-                animate={{
-                  y: isActive ? 2 : 0,
-                }}
-                whileHover={{
-                  y: isActive ? 2 : 1,
-                }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ duration: 0.2, ease: 'easeOut' }}
-                style={{
-                  marginTop: -2,
-                  borderTopLeftRadius: '2px',
-                  borderTopRightRadius: '2px',
-                }}
-              >
-                <span className="text-sm">{item.icon}</span>
-                <span className="whitespace-nowrap font-serif">{item.label}</span>
-                {isActive && (
-                  <motion.div
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-ink-700"
-                    initial={{ width: 0 }}
-                    animate={{ width: '100%' }}
-                    transition={{ duration: 0.3 }}
-                  />
-                )}
-              </motion.button>
-            );
-          })}
-
           {onSettingsClick && (
             <motion.button
               onClick={onSettingsClick}
@@ -157,8 +117,6 @@ export default function VintageNav({ onSettingsClick }: VintageNavProps) {
             </motion.button>
           )}
         </div>
-
-
       </nav>
 
       <div className="h-px bg-ink-800/10 mx-4 md:mx-6 mt-0" />

@@ -1,13 +1,13 @@
 /**
  * 多 Agent 协同复习平台 - 类型定义
  *
- * 架构：5 个核心 Agent + 1 个 Orchestrator 协调器
- * - Orchestrator：任务总控，不直接生成内容
- * - Content Agent：内容摘要（输入：原始资料 → 输出：知识图谱）
- * - Question Agent：智能出题（输入：知识点+难度+错题 → 输出：题目集）
- * - Diagnoser Agent：诊断评估（输入：答题记录+图谱 → 输出：薄弱点报告）
- * - Planner Agent：学习规划（输入：考试日历+掌握度 → 输出：日级计划）
- * - Tutor Agent：教学助理（输入：单题/知识点 → 输出：解题思路+追问）
+ * 架构：5 个核心 Agent + 1 个 Orchestrator 协调器（期末复习模式 MVP）
+ * - Orchestrator：中央路由，不直接生成内容
+ * - Question Agent（出题）：按难度梯度出题、判对错并分发
+ * - Explanation Agent（讲解）：错题步骤化讲解，支持 4 种讲解风格
+ * - Wrongbook Agent（错题本）：收集错题、分类标签、分析薄弱知识点
+ * - Memorycard Agent（记忆卡片）：SM-2 间隔重复，依据薄弱点优先生成卡片
+ * - Supervisor Agent（督学）：跟踪复习进度、生成报告与进度看板
  *
  * 每个 Agent 有严格的输入/输出契约和不可越界的职责。
  */
@@ -18,11 +18,11 @@
 
 export type AgentRole =
   | 'orchestrator'
-  | 'content'
   | 'question'
-  | 'diagnoser'
-  | 'planner'
-  | 'tutor';
+  | 'explanation'
+  | 'wrongbook'
+  | 'memorycard'
+  | 'supervisor';
 
 export interface AgentIdentity {
   id: string;
@@ -65,14 +65,16 @@ export interface AgentMessage {
 }
 
 export type TaskType =
-  | 'extract_knowledge'
-  | 'build_graph'
+  | 'parse_material'
   | 'generate_questions'
-  | 'diagnose_weakness'
-  | 'generate_plan'
-  | 'adjust_plan'
-  | 'tutor_explain'
-  | 'tutor_followup'
+  | 'judge_answer'
+  | 'explain_wrong'
+  | 'collect_wrong'
+  | 'analyze_weakness'
+  | 'generate_cards'
+  | 'review_card'
+  | 'track_progress'
+  | 'generate_report'
   | 'route'
   | 'summarize';
 
@@ -95,7 +97,7 @@ export interface AgentSession {
 }
 
 /* ═══════════════════════════════════════════════════════
-   学习状态机
+   学习状态机（期末复习模式）
    ═══════════════════════════════════════════════════════ */
 
 /**
@@ -103,27 +105,26 @@ export interface AgentSession {
  *
  * 状态转移图：
  *   Onboarded → MaterialReady → KnowledgeReady → Practicing
- *            → Diagnosed → Planned → Reviewing → ExamReady
+ *            → WeaknessAnalyzed → Reviewed → ExamReady
  */
 export type LearningState =
-  | 'Onboarded'        // 已登录，未上传资料
-  | 'MaterialReady'    // 已上传资料，未提取知识
-  | 'KnowledgeReady'   // 知识图谱已构建，可出题
-  | 'Practicing'       // 正在答题练习
-  | 'Diagnosed'        // 已诊断薄弱点
-  | 'Planned'          // 已生成复习计划
-  | 'Reviewing'        // 正在按计划复习
-  | 'ExamReady';       // 复习完成，准备考试
+  | 'Onboarded'          // 已登录，未上传资料
+  | 'MaterialReady'      // 已上传资料，未解析
+  | 'KnowledgeReady'     // 资料已解析为知识点，可出题
+  | 'Practicing'         // 正在答题练习
+  | 'WeaknessAnalyzed'   // 已分析薄弱知识点
+  | 'Reviewed'           // 已完成复习（含卡片复习）
+  | 'ExamReady';         // 复习完成，准备考试
 
 /* ═══════════════════════════════════════════════════════
    协同模式与 DAG
    ═══════════════════════════════════════════════════════ */
 
 /**
- * 三种协同模式（替代原方案的笼统"顺序/迭代/人机混合"）
- * - Pipeline：单向数据流，无循环（Content→Question→Diagnoser）
- * - FeedbackLoop：周期性闭环（Planner→执行→Diagnoser→Planner）
- * - HumanInTheLoop：学生反馈触发新任务（Tutor→"没听懂"→Question）
+ * 三种协同模式
+ * - Pipeline：单向数据流，无循环（期末复习完整流程）
+ * - FeedbackLoop：周期性闭环（错题强化 → 出题 → 再错题）
+ * - HumanInTheLoop：学生反馈触发新任务（卡片复习触发进度更新）
  */
 export type CollaborationPattern =
   | 'pipeline'
@@ -154,13 +155,26 @@ export interface TaskDag {
 }
 
 /* ═══════════════════════════════════════════════════════
+   讲解风格
+   ═══════════════════════════════════════════════════════ */
+
+/**
+ * 讲解风格 - Explanation Agent 支持 4 种风格
+ * - concise：简洁，直击要点
+ * - detailed：详细，逐步推导
+ * - feynman：费曼技巧，像教 12 岁孩子
+ * - socratic：苏格拉底式，追问引导
+ */
+export type ExplanationStyle = 'concise' | 'detailed' | 'feynman' | 'socratic';
+
+/* ═══════════════════════════════════════════════════════
    诊断与规划输出结构（用于 Agent 间数据传递）
    ═══════════════════════════════════════════════════════ */
 
-/** 知识点掌握度向量（Diagnoser 输出） */
+/** 知识点掌握度向量（Wrongbook Agent 输出） */
 export interface MasteryVector {
   knowledgePointId: string;
-  /** 0-1 的掌握概率，基于 BKT/IRT 估算 */
+  /** 0-1 的掌握概率，基于答题正确率估算 */
   mastery: number;
   /** 最近一次答题时间戳 */
   lastAttempted?: number;
@@ -168,7 +182,7 @@ export interface MasteryVector {
   streak?: number;
 }
 
-/** 薄弱点报告（Diagnoser 输出） */
+/** 薄弱点报告（Wrongbook Agent 输出） */
 export interface WeaknessReport {
   masteryVectors: MasteryVector[];
   /** 掌握度低于阈值的知识点 id */
@@ -179,7 +193,7 @@ export interface WeaknessReport {
   summary: string;
 }
 
-/** 日级复习计划项（Planner 输出） */
+/** 日级复习计划项（Supervisor Agent 输出） */
 export interface PlanItem {
   date: string;
   subjectId: string;
@@ -191,11 +205,77 @@ export interface PlanItem {
   priority: number;
 }
 
-/** 日级复习计划（Planner 输出） */
+/** 日级复习计划（Supervisor Agent 输出） */
 export interface ReviewPlan {
   items: PlanItem[];
   /** 计划生成依据的自然语言说明 */
   rationale: string;
   /** 总复习时长（分钟） */
   totalMinutes: number;
+}
+
+/* ═══════════════════════════════════════════════════════
+   新增领域结构（错题 / 记忆卡片 / 督学进度）
+   ═══════════════════════════════════════════════════════ */
+
+/** 错题（Wrongbook Agent 收集与持久化） */
+export interface WrongQuestion {
+  id: string;
+  /** 关联的题目 id */
+  questionId: string;
+  /** 题干（便于离线展示） */
+  stem: string;
+  /** 学生作答 */
+  userAnswer: string;
+  /** 正确答案 */
+  correctAnswer: string;
+  /** 解析（由 Explanation Agent 提供） */
+  explanation: string;
+  /** 关联知识点 id 列表 */
+  knowledgePointIds: string[];
+  /** 分类标签（如：易错点 / 计算题 / 概念混淆） */
+  tags: string[];
+  /** 首次入错题本时间戳 */
+  createdAt: number;
+  /** 最近复习时间戳（未复习为 undefined） */
+  reviewedAt?: number;
+}
+
+/** 记忆卡片（Memorycard Agent 使用 SM-2 算法调度） */
+export interface MemoryCard {
+  id: string;
+  /** 关联知识点 id */
+  knowledgePointId: string;
+  /** 卡片正面（问题 / 提示） */
+  front: string;
+  /** 卡片背面（答案 / 解释） */
+  back: string;
+  /** SM-2 易度因子（默认 2.5，最低 1.3） */
+  easeFactor: number;
+  /** 当前间隔天数 */
+  interval: number;
+  /** 连续答对次数（用于阶段判定） */
+  repetitions: number;
+  /** 下次复习日期（ISO 字符串） */
+  nextReviewDate: string;
+  /** 最近一次复习时间戳 */
+  lastReviewedAt?: number;
+}
+
+/** 督学进度（Supervisor Agent 跟踪） */
+export interface StudyProgress {
+  /** 累计作答题目数 */
+  totalQuestions: number;
+  /** 累计答对数 */
+  correctCount: number;
+  /** 累计答错数 */
+  wrongCount: number;
+  /** 连续学习天数 */
+  streakDays: number;
+  /** 最近学习日期（ISO 字符串） */
+  lastStudyDate: string;
+  /** 今日已学习分钟数 */
+  studyMinutesToday: number;
+  /** 当前薄弱知识点 id 列表（来自 Wrongbook） */
+  weakPoints: string[];
 }
