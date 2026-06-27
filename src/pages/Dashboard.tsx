@@ -186,23 +186,29 @@ function extractJson(content: string): string {
       cleaned = cleaned.slice(start);
     }
   }
-  // 容错 1：中文引号 → 英文引号
-  cleaned = cleaned
-    .replace(/[\u201c\u201d]/g, '"')
-    .replace(/[\u2018\u2019]/g, "'");
-  // 容错 2：尾随逗号（] 或 } 前的逗号）
+  // 容错 1：尾随逗号（] 或 } 前的逗号）
   cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
-  // 容错 3：控制字符（保留 \n \t）
+  // 容错 2：控制字符（保留 \n \t）
   cleaned = cleaned.replace(/[\x00-\x1f]/g, (m) => (m === '\n' || m === '\t' ? m : ' '));
-  // 容错 4：尝试解析，失败则修复字符串值内的未转义双引号
+
+  // 策略：中文引号（U+201C/201D）在 JSON 字符串值内部是合法字符，不应无脑转成英文双引号，
+  // 否则会把题干里原本合法的 "有权" 破坏成会断 JSON 的 "有权"。
+  // 因此先尝试「不转换中文引号」直接解析；失败再转换 + 状态机修复。
   try {
     JSON.parse(cleaned);
     return cleaned;
   } catch {
-    // 修复：把字符串值内部的未转义 " 转义为 \"
-    // 策略：逐字符遍历，跟踪是否在字符串内部，遇到字符串内的 " 前面没有 \ 时补 \
-    cleaned = escapeUnescapedQuotesInStrings(cleaned);
-    return cleaned;
+    // 失败：可能是 LLM 用中文引号作 JSON 结构字符，转成英文引号再试
+    let converted = cleaned
+      .replace(/[\u201c\u201d]/g, '"')
+      .replace(/[\u2018\u2019]/g, "'");
+    try {
+      JSON.parse(converted);
+      return converted;
+    } catch {
+      // 仍失败：修复字符串值内部的未转义双引号
+      return escapeUnescapedQuotesInStrings(converted);
+    }
   }
 }
 
