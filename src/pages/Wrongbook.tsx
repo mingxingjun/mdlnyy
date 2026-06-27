@@ -663,6 +663,8 @@ ${kpList}
               <select
                 value={kpFilter ?? ''}
                 onChange={(e) => setKpFilter(e.target.value || null)}
+                aria-label="按知识点筛选错题"
+                title="按知识点筛选"
                 className="bg-paper-50 border border-ink-600/20 rounded-paper px-2.5 py-1 font-serif text-sm text-ink-800 focus:outline-none focus:border-seal focus:ring-1 focus:ring-seal/30 max-w-[180px]"
               >
                 <option value="">全部知识点</option>

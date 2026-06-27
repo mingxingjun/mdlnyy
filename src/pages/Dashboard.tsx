@@ -123,57 +123,109 @@ function isApiKeyConfigured(): boolean {
   }
 }
 
-interface RawKnowledgePoint {
-  name?: unknown;
-  description?: unknown;
-  priority?: unknown;
-  tags?: unknown;
-}
-
-/** 从 LLM 返回内容中解析知识点 JSON，容错处理代码块与多余文本 */
-function parseKnowledgePointsResponse(content: string, materialId: string): KnowledgePoint[] {
+/** 提取首个完整 JSON 片段（对象或数组），剥离 markdown 代码围栏与多余文本 */
+function extractJson(content: string): string {
   let cleaned = content.trim();
   const fence = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fence) {
-    cleaned = fence[1].trim();
-  } else if (!cleaned.startsWith('{')) {
-    const start = cleaned.indexOf('{');
-    const end = cleaned.lastIndexOf('}');
-    if (start >= 0 && end > start) {
-      cleaned = cleaned.slice(start, end + 1);
+  if (fence) return fence[1].trim();
+  // 优先尝试整体解析
+  const startObj = cleaned.indexOf('{');
+  const startArr = cleaned.indexOf('[');
+  const start = startObj === -1 ? startArr : (startArr === -1 ? startObj : Math.min(startObj, startArr));
+  if (start < 0) return cleaned;
+  // 按起始括号类型寻找匹配的结束括号
+  const openCh = cleaned[start];
+  const closeCh = openCh === '[' ? ']' : '}';
+  const end = cleaned.lastIndexOf(closeCh);
+  if (end > start) return cleaned.slice(start, end + 1);
+  return cleaned.slice(start);
+}
+
+/** 兼容多种字段名读取字符串 */
+function pickString(obj: Record<string, unknown>, keys: string[]): string {
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === 'string' && v.trim().length > 0) return v.trim();
+  }
+  return '';
+}
+
+/** 从对象数组中定位知识点列表，兼容 knowledgePoints / points / items / data 等键，以及裸数组 */
+function locatePointsArray(parsed: unknown): unknown[] {
+  if (Array.isArray(parsed)) return parsed;
+  if (typeof parsed !== 'object' || parsed === null) return [];
+  const obj = parsed as Record<string, unknown>;
+  const candidateKeys = [
+    'knowledgePoints', 'knowledge_points', 'points', 'items', 'list', 'data', 'result', 'results',
+  ];
+  for (const k of candidateKeys) {
+    const v = obj[k];
+    if (Array.isArray(v)) return v;
+  }
+  // 嵌套：{ data: { points: [...] } }
+  for (const k of Object.keys(obj)) {
+    const v = obj[k];
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      const nested = locatePointsArray(v);
+      if (nested.length > 0) return nested;
     }
   }
+  return [];
+}
 
+function normalizePoint(p: unknown, materialId: string): KnowledgePoint | null {
+  // 裸字符串 → 仅名称
+  if (typeof p === 'string') {
+    const name = p.trim();
+    if (!name) return null;
+    return {
+      id: crypto.randomUUID(), materialId,
+      name: name.slice(0, 60), description: '',
+      priority: 3, mastery: 0, relatedIds: [], tags: [],
+      createdAt: Date.now(),
+    };
+  }
+  if (typeof p !== 'object' || p === null) return null;
+  const o = p as Record<string, unknown>;
+  const name = pickString(o, ['name', 'title', 'point', 'topic', 'concept', 'label', 'keyword']);
+  if (!name) return null;
+  const description = pickString(o, ['description', 'desc', 'detail', 'details', 'content', 'summary', 'explain', 'explanation']);
+  const priorityRaw = typeof o.priority === 'number'
+    ? o.priority
+    : (typeof o.importance === 'number' ? o.importance : (typeof o.level === 'number' ? o.level : 3));
+  const priority = Math.max(1, Math.min(5, Math.round(priorityRaw)));
+  const tagsRaw = Array.isArray(o.tags)
+    ? o.tags
+    : (Array.isArray(o.labels) ? o.labels : []);
+  return {
+    id: crypto.randomUUID(), materialId,
+    name: name.slice(0, 60),
+    description: description.slice(0, 240),
+    priority, mastery: 0, relatedIds: [],
+    tags: tagsRaw.filter((t) => typeof t === 'string' || typeof t === 'number').map((t) => String(t)).slice(0, 4),
+    createdAt: Date.now(),
+  } satisfies KnowledgePoint;
+}
+
+/** 从 LLM 返回内容中解析知识点 JSON，容错处理代码块、裸数组、嵌套结构与字段名差异 */
+function parseKnowledgePointsResponse(content: string, materialId: string): KnowledgePoint[] {
+  if (!content || !content.trim()) return [];
+  const jsonStr = extractJson(content);
   let parsed: unknown;
   try {
-    parsed = JSON.parse(cleaned);
+    parsed = JSON.parse(jsonStr);
   } catch {
+    // 退化：尝试从文本中正则提取 name 字段（兜底，避免完全静默失败）
     return [];
   }
-  if (typeof parsed !== 'object' || parsed === null) return [];
-  const rawPoints = (parsed as { knowledgePoints?: unknown }).knowledgePoints;
-  if (!Array.isArray(rawPoints)) return [];
-
-  return rawPoints
-    .filter((p): p is RawKnowledgePoint => typeof p === 'object' && p !== null)
-    .map((p) => {
-      const priorityRaw = typeof p.priority === 'number' ? p.priority : 3;
-      const priority = Math.max(1, Math.min(5, Math.round(priorityRaw)));
-      const tagsRaw = Array.isArray(p.tags)
-        ? p.tags.filter((t) => typeof t === 'string' || typeof t === 'number')
-        : [];
-      return {
-        id: crypto.randomUUID(),
-        materialId,
-        name: String(typeof p.name === 'string' ? p.name : '未命名知识点').slice(0, 60),
-        description: String(typeof p.description === 'string' ? p.description : '').slice(0, 240),
-        priority,
-        mastery: 0,
-        relatedIds: [],
-        tags: tagsRaw.map((t) => String(t)).slice(0, 4),
-        createdAt: Date.now(),
-      } satisfies KnowledgePoint;
-    });
+  const rawPoints = locatePointsArray(parsed);
+  if (rawPoints.length === 0) return [];
+  const points: KnowledgePoint[] = [];
+  for (const p of rawPoints) {
+    const np = normalizePoint(p, materialId);
+    if (np) points.push(np);
+  }
+  return points;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -241,6 +293,52 @@ function MaterialUploadCard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [showPaste, setShowPaste] = useState(false);
+
+  /** 共享：调用 doc_parse 模型从文本中提取知识点，更新资料状态并写入 store */
+  const runExtraction = async (materialId: string, name: string, text: string) => {
+    if (!isApiKeyConfigured()) {
+      updateMaterial(materialId, { status: 'pending', parsedText: text });
+      addToast('warning', '请先在设置中配置 AI 模型 API Key');
+      return;
+    }
+    updateMaterial(materialId, { status: 'parsing' });
+    try {
+      const settings = loadModelSettings();
+      const userPrompt = `请从以下学习资料中提取知识点 JSON：
+
+【资料名称】${name}
+
+【资料内容】
+${text.slice(0, 6000)}`;
+      const { content } = await callModelForTask(
+        settings,
+        'doc_parse',
+        KNOWLEDGE_EXTRACTION_SYSTEM_PROMPT,
+        userPrompt,
+      );
+      const points = parseKnowledgePointsResponse(content, materialId);
+      updateMaterial(materialId, { status: 'parsed', parsedText: text });
+
+      if (points.length === 0) {
+        // 输出原始返回便于排查“未检测到知识点”
+        // eslint-disable-next-line no-console
+        console.warn('[知识点提取] 解析结果为空，原始返回：', content.slice(0, 500));
+        addToast('info', '资料已上传，但未提取到知识点（请检查资料是否含有效正文）');
+      } else {
+        addKnowledgePoints(points);
+        // 仅在尚未到达 KnowledgeReady 时推进状态，避免覆盖更靠后的状态
+        if (learningState === 'Onboarded' || learningState === 'MaterialReady') {
+          setLearningState('KnowledgeReady');
+        }
+        addToast('success', `成功提取 ${points.length} 个知识点`);
+      }
+    } catch (err) {
+      updateMaterial(materialId, { status: 'pending', parsedText: text });
+      addToast('error', `知识点提取失败：${err instanceof Error ? err.message : '未知错误'}`);
+    }
+  };
 
   const handleFile = async (file: File) => {
     if (isParsing) return;
@@ -276,49 +374,34 @@ function MaterialUploadCard() {
       return;
     }
 
-    // 3. 检查 API Key 是否已配置
-    if (!isApiKeyConfigured()) {
-      updateMaterial(id, { status: 'pending', parsedText });
-      addToast('warning', '请先在设置中配置 AI 模型 API Key');
-      setIsParsing(false);
+    // 3. 调用 LLM 提取知识点
+    await runExtraction(id, file.name, parsedText);
+    setIsParsing(false);
+  };
+
+  /** 粘贴文本提取：作为 PDF/Word 等不支持格式的替代入口 */
+  const handlePasteExtract = async () => {
+    if (isParsing) return;
+    const text = pasteText.trim();
+    if (text.length < 20) {
+      addToast('warning', '粘贴的内容过少，请粘贴至少 20 字的复习资料');
       return;
     }
-
-    // 4. 调用 LLM 提取知识点
-    try {
-      const settings = loadModelSettings();
-      const userPrompt = `请从以下学习资料中提取知识点 JSON：
-
-【资料名称】${file.name}
-
-【资料内容】
-${parsedText.slice(0, 6000)}`;
-      const { content } = await callModelForTask(
-        settings,
-        'doc_parse',
-        KNOWLEDGE_EXTRACTION_SYSTEM_PROMPT,
-        userPrompt,
-      );
-      const points = parseKnowledgePointsResponse(content, id);
-
-      updateMaterial(id, { status: 'parsed', parsedText });
-
-      if (points.length === 0) {
-        addToast('info', '资料已上传，但未提取到知识点');
-      } else {
-        addKnowledgePoints(points);
-        // 仅在尚未到达 KnowledgeReady 时推进状态，避免覆盖更靠后的状态
-        if (learningState === 'Onboarded' || learningState === 'MaterialReady') {
-          setLearningState('KnowledgeReady');
-        }
-        addToast('success', `成功提取 ${points.length} 个知识点`);
-      }
-    } catch (err) {
-      updateMaterial(id, { status: 'pending', parsedText });
-      addToast('error', `知识点提取失败：${err instanceof Error ? err.message : '未知错误'}`);
-    } finally {
-      setIsParsing(false);
-    }
+    const id = crypto.randomUUID();
+    const material: StudyMaterial = {
+      id,
+      name: `粘贴资料 ${new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}`,
+      type: 'text',
+      size: new Blob([text]).size,
+      uploadedAt: Date.now(),
+      status: 'parsing',
+    };
+    addMaterial(material);
+    setIsParsing(true);
+    setPasteText('');
+    setShowPaste(false);
+    await runExtraction(id, material.name, text);
+    setIsParsing(false);
   };
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -341,43 +424,9 @@ ${parsedText.slice(0, 6000)}`;
       addToast('warning', '该资料无可解析文本');
       return;
     }
-    if (!isApiKeyConfigured()) {
-      addToast('warning', '请先在设置中配置 AI 模型 API Key');
-      return;
-    }
     setIsParsing(true);
-    updateMaterial(material.id, { status: 'parsing' });
-    try {
-      const settings = loadModelSettings();
-      const userPrompt = `请从以下学习资料中提取知识点 JSON：
-
-【资料名称】${material.name}
-
-【资料内容】
-${material.parsedText.slice(0, 6000)}`;
-      const { content } = await callModelForTask(
-        settings,
-        'doc_parse',
-        KNOWLEDGE_EXTRACTION_SYSTEM_PROMPT,
-        userPrompt,
-      );
-      const points = parseKnowledgePointsResponse(content, material.id);
-      updateMaterial(material.id, { status: 'parsed' });
-      if (points.length === 0) {
-        addToast('info', '资料已解析，但未提取到知识点');
-      } else {
-        addKnowledgePoints(points);
-        if (learningState === 'Onboarded' || learningState === 'MaterialReady') {
-          setLearningState('KnowledgeReady');
-        }
-        addToast('success', `成功提取 ${points.length} 个知识点`);
-      }
-    } catch (err) {
-      updateMaterial(material.id, { status: 'failed' });
-      addToast('error', `知识点提取失败：${err instanceof Error ? err.message : '未知错误'}`);
-    } finally {
-      setIsParsing(false);
-    }
+    await runExtraction(material.id, material.name, material.parsedText);
+    setIsParsing(false);
   };
 
   const handleRemove = (material: StudyMaterial) => {
@@ -400,10 +449,22 @@ ${material.parsedText.slice(0, 6000)}`;
         <VintageTag color="seal">进行中</VintageTag>
       </div>
 
+      {/* 隐藏的文件输入（作为 role=button 容器的兄弟节点，避免嵌套交互控件） */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".txt,.md,.markdown,.csv,.log,.pdf,.docx,.doc"
+        aria-label="选择复习资料文件"
+        title="选择复习资料文件"
+        className="hidden"
+        onChange={handleInputChange}
+      />
+
       {/* 拖拽 / 点击上传区 */}
       <div
         role="button"
         tabIndex={0}
+        aria-label="点击或拖拽上传复习资料文件"
         onClick={() => fileInputRef.current?.click()}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -423,23 +484,64 @@ ${material.parsedText.slice(0, 6000)}`;
             : 'border-ink-600/25 bg-paper-100/60 hover:border-seal/50 hover:bg-seal/5'
         }`}
       >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".txt,.md,.markdown,.pdf,.docx,.doc"
-          className="hidden"
-          onChange={handleInputChange}
-        />
         <motion.div
           animate={isDragOver ? { y: -2 } : { y: 0 }}
           className="flex flex-col items-center gap-1.5"
         >
-          <Upload size={22} className="text-ink-600" />
+          <Upload size={22} className="text-ink-600" aria-hidden="true" />
           <p className="font-serif text-sm text-ink-800">
             拖拽文件到此处，或<span className="text-seal font-semibold">点击选择</span>
           </p>
-          <p className="text-xs text-ink-500 font-sans">支持 TXT / MD / PDF / DOCX（PDF 与 Word 暂仅支持纯文本提取）</p>
+          <p className="text-xs text-ink-500 font-sans">支持 TXT / MD / CSV / LOG；PDF 与 Word 请改用下方「粘贴文本」</p>
         </motion.div>
+      </div>
+
+      {/* 粘贴文本入口：PDF / Word 等不支持格式的替代方案 */}
+      <div className="mt-3">
+        {!showPaste ? (
+          <button
+            type="button"
+            onClick={() => setShowPaste(true)}
+            className="text-xs font-serif text-seal hover:underline"
+          >
+            或直接粘贴文本内容 →
+          </button>
+        ) : (
+          <div className="rounded-[4px] border border-ink-600/15 bg-paper-100/50 p-3">
+            <label htmlFor="paste-text-input" className="block text-xs font-serif text-ink-600 mb-1.5">
+              粘贴复习资料正文（适用于 PDF / Word 复制出来的内容）
+            </label>
+            <textarea
+              id="paste-text-input"
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              placeholder="在此粘贴资料正文，至少 20 字…"
+              rows={5}
+              aria-label="粘贴复习资料文本"
+              className="w-full bg-paper-50 border border-ink-600/20 rounded-[3px] px-3 py-2 font-sans text-sm text-ink-800 focus:outline-none focus:border-seal focus:ring-1 focus:ring-seal/30 resize-y"
+            />
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-[11px] text-ink-500 font-sans">{pasteText.trim().length} 字</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setPasteText(''); setShowPaste(false); }}
+                  className="text-xs font-serif text-ink-500 hover:text-ink-800 px-2 py-1"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handlePasteExtract()}
+                  disabled={isParsing || pasteText.trim().length < 20}
+                  className="text-xs font-serif text-paper-50 bg-seal/80 hover:bg-seal px-3 py-1 rounded-[3px] disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {isParsing ? '解析中…' : '提取知识点'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 空状态引导（手账便签） */}

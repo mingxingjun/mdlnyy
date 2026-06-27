@@ -817,6 +817,8 @@ ${kpList}
                 onChange={(e) => setUserAnswer(e.target.value)}
                 disabled={judged != null}
                 placeholder="请输入你的答案..."
+                aria-label="输入你的答案"
+                title="输入你的答案"
                 rows={currentQuestion.type === 'short' || currentQuestion.type === 'calculation' ? 3 : 2}
                 className="w-full bg-paper-50 border border-ink-600/20 rounded-paper px-3 py-2 font-serif text-ink-800 text-sm focus:outline-none focus:border-seal focus:ring-1 focus:ring-seal/30 resize-none disabled:opacity-70"
               />

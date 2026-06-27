@@ -137,7 +137,7 @@ export default function ModelSettingsModal({ open, onClose }: ModelSettingsModal
             transition={{ duration: 0.25, ease: 'easeOut' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <PaperCard className="p-5 md:p-7 flex flex-col max-h-full overflow-hidden" rotation={0}>
+            <PaperCard className="p-5 md:p-7 flex flex-col max-h-full min-h-0 overflow-hidden" rotation={0}>
               {/* Header */}
               <div className="flex items-start justify-between mb-1">
                 <div>
@@ -155,7 +155,7 @@ export default function ModelSettingsModal({ open, onClose }: ModelSettingsModal
               </div>
 
               {/* 可滚动主体区 */}
-              <div className="overflow-y-auto -mx-1 px-1 pb-1 mt-1 max-h-[calc(100vh-16rem)]">
+              <div className="overflow-y-auto -mx-1 px-1 pb-1 mt-1 min-h-0 max-h-[calc(100vh-16rem)]">
               {/* 任务分工 */}
               <h3 className="font-serif text-base text-ink-800 font-semibold mb-3 mt-5">任务分工</h3>
               <div className="space-y-3 mb-5">
@@ -252,42 +252,50 @@ export default function ModelSettingsModal({ open, onClose }: ModelSettingsModal
 
                       {/* Model name */}
                       <div className="mb-3">
-                        <label className="block text-xs font-serif text-ink-600 mb-1">模型名称</label>
+                        <label htmlFor={`cfg-model-${key}`} className="block text-xs font-serif text-ink-600 mb-1">模型名称</label>
                         <input
+                          id={`cfg-model-${key}`}
                           type="text"
                           value={config.model}
                           onChange={(e) => updateProvider(key, 'model', e.target.value)}
                           placeholder="模型名称"
+                          aria-label={`${PROVIDER_LABELS[key]} 模型名称`}
                           className={inputClass}
                         />
                       </div>
 
                       {/* Base URL */}
                       <div className="mb-3">
-                        <label className="block text-xs font-serif text-ink-600 mb-1">Base URL</label>
+                        <label htmlFor={`cfg-baseurl-${key}`} className="block text-xs font-serif text-ink-600 mb-1">Base URL</label>
                         <input
+                          id={`cfg-baseurl-${key}`}
                           type="text"
                           value={config.baseUrl}
                           onChange={(e) => updateProvider(key, 'baseUrl', e.target.value)}
                           placeholder="API 端点地址"
+                          aria-label={`${PROVIDER_LABELS[key]} Base URL`}
                           className={inputClass}
                         />
                       </div>
 
                       {/* API Key with show/hide */}
                       <div>
-                        <label className="block text-xs font-serif text-ink-600 mb-1">API Key</label>
+                        <label htmlFor={`cfg-apikey-${key}`} className="block text-xs font-serif text-ink-600 mb-1">API Key</label>
                         <div className="relative">
                           <input
+                            id={`cfg-apikey-${key}`}
                             type={showKeys[key] ? 'text' : 'password'}
                             value={config.apiKey}
                             onChange={(e) => updateProvider(key, 'apiKey', e.target.value)}
                             placeholder="输入 API Key"
+                            aria-label={`${PROVIDER_LABELS[key]} API Key`}
                             className={`${inputClass} pr-14`}
                           />
                           <button
                             type="button"
                             onClick={() => toggleShowKey(key)}
+                            aria-label={showKeys[key] ? `隐藏 ${PROVIDER_LABELS[key]} API Key` : `显示 ${PROVIDER_LABELS[key]} API Key`}
+                            title={showKeys[key] ? '隐藏 API Key' : '显示 API Key'}
                             className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-serif text-ink-500 hover:text-ink-800 px-1 transition-colors"
                           >
                             {showKeys[key] ? '隐藏' : '显示'}

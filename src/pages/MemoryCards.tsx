@@ -154,6 +154,7 @@ function FlashCardView({ card, kpName, index }: FlashCardViewProps) {
             onClick={handleFlip}
             role="button"
             tabIndex={0}
+            aria-label={`记忆卡片：${card.front.slice(0, 30)}，点击翻面查看答案`}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
