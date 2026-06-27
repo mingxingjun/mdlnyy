@@ -28,6 +28,8 @@ export default function CursorGlow() {
   useEffect(() => {
     const isMobile = window.matchMedia('(pointer: coarse)').matches;
     if (isMobile) return;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -216,17 +218,19 @@ export default function CursorGlow() {
   }, []);
 
   const isMobile = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
-  if (isMobile) return null;
+  const reduceMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (isMobile || reduceMotion) return null;
 
   return (
     <>
       <style>{`
-        @media (pointer: fine) {
-          * { cursor: none !important; }
+        @media (pointer: fine) and (prefers-reduced-motion: no-preference) {
+          body { cursor: none; }
         }
       `}</style>
       <canvas
         ref={canvasRef}
+        aria-hidden="true"
         className="fixed inset-0 pointer-events-none z-[9999] mix-blend-screen"
       />
     </>

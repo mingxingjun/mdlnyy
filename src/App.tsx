@@ -2,11 +2,13 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Layout from '@/components/Layout';
 import Dashboard from '@/pages/Dashboard';
 import AIEngine from '@/pages/AIEngine';
-import WrongNotebook from '@/pages/WrongNotebook';
-import FlashcardsPage from '@/pages/FlashcardsPage';
-import SupervisorPage from '@/pages/SupervisorPage';
+import MyNotes from '@/pages/MyNotes';
 import FlowChamber from '@/pages/FlowChamber';
 import { ToastContainer } from '@/components/Toast';
+
+function GalaxyView() {
+  return null;
+}
 
 export default function App() {
   return (
@@ -14,15 +16,13 @@ export default function App() {
       <ToastContainer />
       <Routes>
         <Route element={<Layout />}>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<GalaxyView />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/ai-engine" element={<AIEngine />} />
-          <Route path="/my-notes" element={<WrongNotebook />} />
-          <Route path="/flashcards" element={<FlashcardsPage />} />
-          <Route path="/supervisor" element={<SupervisorPage />} />
+          <Route path="/my-notes" element={<MyNotes />} />
           <Route path="/flow-chamber" element={<FlowChamber />} />
         </Route>
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );

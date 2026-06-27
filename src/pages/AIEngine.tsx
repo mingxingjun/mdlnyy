@@ -1,777 +1,1584 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowRight, BookMarked, CheckCircle2, XCircle, Lightbulb } from 'lucide-react';
+import {
+  Send,
+  Bot,
+  User,
+  Trash2,
+  Settings,
+  Upload,
+  FileText,
+  Check,
+  AlertCircle,
+  ChevronDown,
+  ChevronRight,
+  Zap,
+  Play,
+  RotateCcw,
+  ArrowRight,
+  Cpu,
+} from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { useToastStore } from '@/components/Toast';
-import PaperCard from '@/components/PaperCard';
-import VintageButton from '@/components/VintageButton';
-import VintageTag from '@/components/VintageTag';
-import StickyNote from '@/components/StickyNote';
-import QuizResultPage from '@/components/QuizResultPage';
+import { SUB_AGENTS, getAgent, compressPrompt, getAgentSkillPrompt } from '@/lib/agents/definitions';
+import type { CollaborationPattern } from '@/lib/agents/types';
+import { loadModelSettings, saveModelSettings, callModelWithCache, clearCache as clearModelCache } from '@/lib/models/api';
+import type { AgentIdentity } from '@/lib/agents/types';
+import type { ModelProvider, ModelConfig, ModelSettings } from '@/lib/models/types';
+import { DEFAULT_PROVIDERS } from '@/lib/models/types';
 
-const SUBJECT_FILTERS = [
-  { id: null, name: '全部', icon: '📝' },
-  { id: 'math', name: '高数', icon: '📐' },
-  { id: 'english', name: '英语', icon: '📖' },
-  { id: 'linear', name: '线代', icon: '📊' },
-  { id: 'programming', name: '编程', icon: '💻' },
-  { id: 'physics', name: '物理', icon: '⚛️' },
+/* ================================================================== */
+/*  Types                                                              */
+/* ================================================================== */
+
+type TabId = 'agent' | 'model';
+type WorkflowId = 'free-chat' | 'full-review' | 'exam-sprint' | 'tutor-loop';
+
+interface AgentMessage {
+  id: string;
+  agentId: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: number;
+  tokens?: number;
+}
+
+interface UploadedFile {
+  name: string;
+  size: number;
+  content: string;
+  type: string;
+}
+
+interface WorkflowStep {
+  agentId: string;
+  label: string;
+  prompt: string;
+}
+
+interface Workflow {
+  id: WorkflowId;
+  name: string;
+  icon: string;
+  /** 协同模式：Pipeline / FeedbackLoop / HumanInTheLoop */
+  pattern: CollaborationPattern;
+  /** 模式中文标签 */
+  patternLabel: string;
+  steps: WorkflowStep[];
+}
+
+interface StepOutput {
+  agentId: string;
+  content: string;
+  tokens: number;
+  collapsed: boolean;
+}
+
+/* ================================================================== */
+/*  Workflow Definitions - 三种协同模式                                 */
+/* ================================================================== */
+
+const WORKFLOWS: Workflow[] = [
+  {
+    id: 'free-chat',
+    name: '自由对话',
+    icon: '💬',
+    pattern: 'pipeline',
+    patternLabel: '单 Agent',
+    steps: [],
+  },
+  {
+    id: 'full-review',
+    name: '完整复习流程',
+    icon: '📚',
+    pattern: 'pipeline',
+    patternLabel: 'Pipeline 模式',
+    steps: [
+      { agentId: 'content-agent', label: '知识提取', prompt: '请从以下材料中提取知识点与关系，输出知识图谱 JSON：' },
+      { agentId: 'question-agent', label: '生成题目', prompt: '请基于以下知识图谱生成 5 道选择题：' },
+      { agentId: 'diagnoser-agent', label: '诊断薄弱', prompt: '请基于以下答题情况诊断薄弱点，输出薄弱点报告 JSON：' },
+      { agentId: 'planner-agent', label: '生成计划', prompt: '请基于以下薄弱点报告生成日级复习计划 JSON：' },
+    ],
+  },
+  {
+    id: 'exam-sprint',
+    name: '考前冲刺',
+    icon: '🚀',
+    pattern: 'pipeline',
+    patternLabel: 'Pipeline 模式',
+    steps: [
+      { agentId: 'content-agent', label: '高频考点', prompt: '请从以下材料中提取高频考点（priority ≥ 4）：' },
+      { agentId: 'question-agent', label: '押题出卷', prompt: '请基于以下高频考点生成考前押题（难度 4-5）：' },
+      { agentId: 'diagnoser-agent', label: '快速诊断', prompt: '请快速诊断以下答题情况，定位最薄弱的 3 个知识点：' },
+      { agentId: 'planner-agent', label: '冲刺计划', prompt: '请基于以下诊断生成考前 7 天冲刺计划 JSON：' },
+    ],
+  },
+  {
+    id: 'tutor-loop',
+    name: '答疑强化',
+    icon: '💡',
+    pattern: 'human_in_the_loop',
+    patternLabel: 'Human-in-the-loop',
+    steps: [
+      { agentId: 'tutor-agent', label: '思路引导', prompt: '请对以下题目给出解题思路线索（不给完整答案）：' },
+      { agentId: 'question-agent', label: '同类题验证', prompt: '学生表示未理解以下解释，请出 3 道同类题验证：' },
+    ],
+  },
 ];
 
-const DIFFICULTY_LABEL = {
-  easy: { label: '易', color: 'green' as const },
-  medium: { label: '中', color: 'gold' as const },
-  hard: { label: '难', color: 'seal' as const },
-};
-
-const OPTION_LABELS = ['A', 'B', 'C', 'D'];
-const CHINESE_NUMERALS = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十',
-  '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十',
-  '廿一', '廿二', '廿三', '廿四', '廿五'];
-const CIRCLED_NUMERALS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
-
-type ExplanationStyle = 'detailed' | 'concise' | 'socratic';
-
-const EXPLANATION_STYLES: { id: ExplanationStyle; label: string; icon: string }[] = [
-  { id: 'detailed', label: '详细讲解', icon: '📝' },
-  { id: 'concise', label: '简洁提示', icon: '💡' },
-  { id: 'socratic', label: '引导思考', icon: '🤔' },
-];
-
-const SOCRATIC_QUESTIONS = [
-  '先想想这道题考的是什么知识点？',
-  '回忆一下相关的公式、定理或定义是什么？',
-  '如果给你一个类似的题，你会怎么入手分析？',
-];
+/* ================================================================== */
+/*  Main Component                                                     */
+/* ================================================================== */
 
 export default function AIEngine() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { addToast } = useToastStore();
   const {
-    quizQuestions,
-    subjects,
-    wrongAnswers,
-    currentSubjectFilter,
-    setCurrentSubjectFilter,
-    currentSession,
-    startQuizSession,
-    submitAnswerInSession,
-    advanceSession,
-    endQuizSession,
-    markWrongAsReviewedByQuestion,
+    agentSessions,
+    createAgentSession,
+    addAgentMessage,
+    clearAgentSession,
   } = useAppStore();
 
-  const mode = useMemo(
-    () => (searchParams.get('mode') as 'practice' | 'wrong-review') || 'practice',
-    [searchParams]
-  );
+  /* ─── Tab State ─── */
+  const [activeTab, setActiveTab] = useState<TabId>('agent');
 
-  const wrongIdsKey = useMemo(
-    () => searchParams.get('ids') || '',
-    [searchParams]
-  );
+  /* ─── Workflow State ─── */
+  const [activeWorkflowId, setActiveWorkflowId] = useState<WorkflowId>('free-chat');
+  const activeWorkflow = WORKFLOWS.find((w) => w.id === activeWorkflowId)!;
 
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [showExplanation, setShowExplanation] = useState(true);
-  const [explanationStyle, setExplanationStyle] = useState<ExplanationStyle>('detailed');
-  const [showResult, setShowResult] = useState(false);
-  const initRef = useRef(false);
+  /* ─── Agent State (Free Chat) ─── */
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('content-agent');
+  const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
+  const [chatInput, setChatInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const questionMap = useMemo(() => {
-    const map = new Map<string, typeof quizQuestions[0]>();
-    quizQuestions.forEach((q) => map.set(q.id, q));
-    return map;
-  }, [quizQuestions]);
+  /* ─── Workflow Execution State ─── */
+  const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [workflowRunning, setWorkflowRunning] = useState(false);
+  const [currentStep, setCurrentStep] = useState(-1);
+  const [stepOutputs, setStepOutputs] = useState<StepOutput[]>([]);
+  const [workflowComplete, setWorkflowComplete] = useState(false);
+  const [workflowChatInput, setWorkflowChatInput] = useState('');
+  const [workflowChatAgent, setWorkflowChatAgent] = useState<string>('content-agent');
+  const [workflowChatMessages, setWorkflowChatMessages] = useState<AgentMessage[]>([]);
+  const [workflowChatTyping, setWorkflowChatTyping] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const workflowChatEndRef = useRef<HTMLDivElement>(null);
+  const abortControllersRef = useRef<Set<AbortController>>(new Set());
 
-  const subjectMap = useMemo(() => {
-    const map = new Map<string, { name: string; icon: string; color: string }>();
-    subjects.forEach((s) => map.set(s.id, { name: s.name, icon: s.icon, color: s.color }));
-    return map;
-  }, [subjects]);
-
+  /* ─── Abort in-flight requests on unmount ─── */
   useEffect(() => {
-    if (mode === 'wrong-review' && wrongIdsKey) {
-      const ids = wrongIdsKey.split(',').filter(Boolean);
-      const questionIds = ids
-        .map((wid) => wrongAnswers.find((w) => w.id === wid))
-        .filter((w): w is NonNullable<typeof w> => !!w && !w.reviewed)
-        .map((w) => w.questionId);
-      startQuizSession(null, 'wrong-review', questionIds);
-    } else {
-      startQuizSession(currentSubjectFilter, 'practice');
-    }
-    initRef.current = true;
-    setShowResult(false);
-    setSelectedOption(null);
-    setIsSubmitted(false);
-    setShowExplanation(true);
-    setExplanationStyle('detailed');
-  }, [mode, wrongIdsKey]);
-
-  useEffect(() => {
-    if (mode !== 'practice' || !initRef.current) return;
-    startQuizSession(currentSubjectFilter, 'practice');
-    setShowResult(false);
-    setSelectedOption(null);
-    setIsSubmitted(false);
-    setShowExplanation(true);
-    setExplanationStyle('detailed');
-  }, [currentSubjectFilter, mode]);
-
-  const sessionQuestionIds = currentSession?.questionIds || [];
-  const sessionCurrentIndex = currentSession?.currentIndex || 0;
-  const totalQuestions = sessionQuestionIds.length;
-
-  const currentQuestionId = sessionQuestionIds[sessionCurrentIndex] || null;
-  const currentQuestion = currentQuestionId ? questionMap.get(currentQuestionId) || null : null;
-  const currentSubject = currentQuestion ? subjectMap.get(currentQuestion.subjectId) : null;
-
-  const displayIndex = Math.min(sessionCurrentIndex + 1, totalQuestions);
-
-  useEffect(() => {
-    setSelectedOption(null);
-    setIsSubmitted(false);
-    setShowExplanation(true);
-    setExplanationStyle('detailed');
-  }, [sessionCurrentIndex, currentSession?.id]);
-
-  const resetAnswerState = useCallback(() => {
-    setSelectedOption(null);
-    setIsSubmitted(false);
-    setShowExplanation(true);
-    setExplanationStyle('detailed');
+    return () => {
+      abortControllersRef.current.forEach((c) => c.abort());
+      abortControllersRef.current.clear();
+    };
   }, []);
 
-  const handleSelectOption = useCallback((index: number) => {
-    if (isSubmitted) return;
-    setSelectedOption(index);
-  }, [isSubmitted]);
+  /* ─── Model Settings State ─── */
+  const [modelSettings, setModelSettings] = useState<ModelSettings>(loadModelSettings);
 
-  const handleSubmit = useCallback(() => {
-    if (selectedOption === null || !currentQuestion) return;
-    const result = submitAnswerInSession(currentQuestion.id, selectedOption);
-    setIsSubmitted(true);
-    setShowExplanation(true);
-    if (result.isCorrect) {
-      addToast('success', '回答正确！继续加油～');
-      if (mode === 'wrong-review') {
-        markWrongAsReviewedByQuestion(currentQuestion.id);
-      }
+  /* ─── Derived ─── */
+  const selectedAgent = getAgent(selectedAgentId);
+  const agentSessionsForSelected = agentSessions.filter(
+    (s) => s.agentId === selectedAgentId,
+  );
+  const latestSession = [...agentSessionsForSelected].sort(
+    (a, b) => b.createdAt - a.createdAt,
+  )[0];
+
+  /* ─── When agent changes, load latest session ─── */
+  useEffect(() => {
+    if (latestSession) {
+      setActiveSessionId(latestSession.id);
     } else {
-      addToast('error', '答错了，看看解析吧');
+      setActiveSessionId(null);
     }
-  }, [selectedOption, currentQuestion, submitAnswerInSession, addToast, mode, markWrongAsReviewedByQuestion]);
+    setSelectedSkill(null);
+    setChatInput('');
+  }, [selectedAgentId, latestSession]);
 
-  const handleNext = useCallback(() => {
-    const result = advanceSession();
-    if (result.finished) {
-      endQuizSession();
-      setShowResult(true);
-    } else {
-      resetAnswerState();
+  /* ─── Auto-scroll chat ─── */
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [latestSession?.messages, isTyping]);
+
+  useEffect(() => {
+    workflowChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [workflowChatMessages, workflowChatTyping]);
+
+  /* ─── Reset workflow state when switching workflows ─── */
+  useEffect(() => {
+    setUploadedFile(null);
+    setWorkflowRunning(false);
+    setCurrentStep(-1);
+    setStepOutputs([]);
+    setWorkflowComplete(false);
+    setWorkflowChatMessages([]);
+    setWorkflowChatInput('');
+  }, [activeWorkflowId]);
+
+  /* ================================================================== */
+  /*  File Upload                                                        */
+  /* ================================================================== */
+
+  const handleFileUpload = useCallback((file: File) => {
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    if (file.size > MAX_FILE_SIZE) {
+      addToast('error', '文件过大（上限 10MB）');
+      return;
     }
-  }, [advanceSession, endQuizSession, resetAnswerState]);
-
-  const handleFilterChange = useCallback((subjectId: string | null) => {
-    if (mode === 'wrong-review') return;
-    setCurrentSubjectFilter(subjectId);
-  }, [setCurrentSubjectFilter, mode]);
-
-  const handleRetry = useCallback(() => {
-    if (currentSession?.mode === 'wrong-review') {
-      startQuizSession(null, 'wrong-review', currentSession.questionIds);
-    } else {
-      startQuizSession(currentSession?.subjectId ?? null, 'practice');
+    if (file.name.endsWith('.pdf') || file.type === 'application/pdf') {
+      addToast('error', '暂不支持 PDF 直接解析，请转为 .txt 或 .md 后上传');
+      return;
     }
-    setShowResult(false);
-    resetAnswerState();
-  }, [currentSession, startQuizSession, resetAnswerState]);
-
-  const handleGoHome = useCallback(() => {
-    navigate('/');
-  }, [navigate]);
-
-  const handleReviewWrong = useCallback(() => {
-    navigate('/my-notes');
-  }, [navigate]);
-
-  const isCorrect = isSubmitted && selectedOption === currentQuestion?.correctIndex;
-
-  const resultData = useMemo(() => {
-    if (!currentSession || !showResult) return null;
-
-    const answers = currentSession.answers;
-    const correctCount = answers.filter((a) => a.isCorrect).length;
-    const wrongCount = answers.filter((a) => !a.isCorrect).length;
-    const total = currentSession.questionIds.length;
-    const accuracy = total > 0 ? Math.round((correctCount / total) * 100) : 0;
-    const durationSeconds = Math.round(
-      ((currentSession.endTime || Date.now()) - currentSession.startTime) / 1000
-    );
-
-    const wrongSubjectMap = new Map<string, { name: string; icon: string; count: number; color: string }>();
-    answers
-      .filter((a) => !a.isCorrect)
-      .forEach((a) => {
-        const q = questionMap.get(a.questionId);
-        if (!q) return;
-        const s = subjectMap.get(q.subjectId);
-        if (!s) return;
-        const existing = wrongSubjectMap.get(q.subjectId);
-        if (existing) {
-          existing.count++;
-        } else {
-          wrongSubjectMap.set(q.subjectId, { name: s.name, icon: s.icon, count: 1, color: s.color });
-        }
-      });
-
-    const weakSubjects = Array.from(wrongSubjectMap.values());
-
-    return {
-      id: currentSession.id,
-      subjectId: currentSession.subjectId,
-      mode: currentSession.mode,
-      totalQuestions: total,
-      correctCount,
-      wrongCount,
-      accuracy,
-      durationSeconds,
-      weakSubjects: weakSubjects.length > 0 ? weakSubjects : undefined,
+    if (file.name.endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      addToast('error', '暂不支持 docx 直接解析，请转为 .txt 或 .md 后上传');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      setUploadedFile({ name: file.name, size: file.size, content: text, type: file.type });
+      addToast('success', '文件上传成功');
     };
-  }, [currentSession, showResult, questionMap, subjectMap]);
+    reader.onerror = () => {
+      addToast('error', '文件读取失败');
+    };
+    reader.readAsText(file);
+  }, [addToast]);
 
-  const stepRotations = useMemo(
-    () => (currentQuestion?.steps || []).map(() => (Math.random() - 0.5) * 3),
-    [currentQuestion?.id]
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileUpload(file);
+  }, [handleFileUpload]);
+
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFileUpload(file);
+  }, [handleFileUpload]);
+
+  /* ================================================================== */
+  /*  Workflow Execution                                                  */
+  /* ================================================================== */
+
+  const executeWorkflow = useCallback(async (workflow: Workflow, input: string) => {
+    setWorkflowRunning(true);
+    setWorkflowComplete(false);
+    setStepOutputs([]);
+    setCurrentStep(-1);
+
+    const outputs: StepOutput[] = [];
+
+    for (let i = 0; i < workflow.steps.length; i++) {
+      setCurrentStep(i);
+      const step = workflow.steps[i];
+      const agent = getAgent(step.agentId);
+      if (!agent) continue;
+
+      // 出题步骤需注入题库原文，否则 LLM 看不到用户上传的题库只能凭空生成
+      const prompt = i === 0
+        ? `${step.prompt}\n\n${input}`
+        : step.agentId === 'question-agent' && input
+          ? `基于上一步的分析结果：\n${outputs[i - 1].content}\n\n${step.prompt}\n\n【题库原文】\n${input}`
+          : `基于上一步的分析结果：\n${outputs[i - 1].content}\n\n${step.prompt}`;
+
+      const controller = new AbortController();
+      abortControllersRef.current.add(controller);
+      try {
+        const result = await callModelWithCache(modelSettings, agent.systemPrompt, prompt, controller.signal);
+        const output: StepOutput = {
+          agentId: step.agentId,
+          content: result.content,
+          tokens: result.tokens,
+          collapsed: false,
+        };
+        outputs.push(output);
+        setStepOutputs([...outputs]);
+        addToast('success', `${agent.name} 完成`);
+
+        setModelSettings((prev) => ({
+          ...prev,
+          tokenUsed: prev.tokenUsed + result.tokens,
+        }));
+      } catch (error: unknown) {
+        if (controller.signal.aborted) break;
+        const output: StepOutput = {
+          agentId: step.agentId,
+          content: `❌ 调用失败：${error instanceof Error ? error.message : '未知错误'}`,
+          tokens: 0,
+          collapsed: false,
+        };
+        outputs.push(output);
+        setStepOutputs([...outputs]);
+        addToast('error', error instanceof Error ? error.message : '工作流执行失败');
+        break;
+      } finally {
+        abortControllersRef.current.delete(controller);
+      }
+    }
+
+    setWorkflowRunning(false);
+    setWorkflowComplete(true);
+    if (outputs.length === workflow.steps.length) {
+      addToast('success', '工作流全部完成');
+    }
+  }, [modelSettings, addToast]);
+
+  const handleStartWorkflow = useCallback(() => {
+    if (!uploadedFile || activeWorkflow.steps.length === 0) return;
+    executeWorkflow(activeWorkflow, uploadedFile.content);
+  }, [uploadedFile, activeWorkflow, executeWorkflow]);
+
+  const handleResetWorkflow = useCallback(() => {
+    setUploadedFile(null);
+    setWorkflowRunning(false);
+    setCurrentStep(-1);
+    setStepOutputs([]);
+    setWorkflowComplete(false);
+    setWorkflowChatMessages([]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, []);
+
+  /* ================================================================== */
+  /*  Workflow Chat                                                      */
+  /* ================================================================== */
+
+  const handleWorkflowChatSend = useCallback(async () => {
+    if (!workflowChatInput.trim() || workflowChatTyping) return;
+
+    const userText = workflowChatInput.trim();
+    setWorkflowChatInput('');
+
+    const userMsg: AgentMessage = {
+      id: `wc-user-${Date.now()}`,
+      agentId: workflowChatAgent,
+      role: 'user',
+      content: userText,
+      timestamp: Date.now(),
+    };
+    setWorkflowChatMessages((prev) => [...prev, userMsg]);
+
+    const agent = getAgent(workflowChatAgent);
+    if (!agent) return;
+
+    // Include workflow context
+    const contextParts = stepOutputs
+      .map((o) => { const a = getAgent(o.agentId); return `${a?.name || o.agentId}的分析结果：\n${o.content}`; })
+      .join('\n\n---\n\n');
+    const fullPrompt = `【工作流上下文】\n${contextParts}\n\n【用户问题】${userText}`;
+
+    setWorkflowChatTyping(true);
+    const controller = new AbortController();
+    abortControllersRef.current.add(controller);
+    try {
+      const result = await callModelWithCache(modelSettings, agent.systemPrompt, fullPrompt, controller.signal);
+      if (controller.signal.aborted) return;
+      const aiMsg: AgentMessage = {
+        id: `wc-ai-${Date.now()}`,
+        agentId: workflowChatAgent,
+        role: 'assistant',
+        content: result.content,
+        timestamp: Date.now(),
+        tokens: result.tokens,
+      };
+      setWorkflowChatMessages((prev) => [...prev, aiMsg]);
+    } catch (error: unknown) {
+      if (controller.signal.aborted) return;
+      addToast('error', error instanceof Error ? error.message : 'AI 响应失败');
+    } finally {
+      setWorkflowChatTyping(false);
+      abortControllersRef.current.delete(controller);
+    }
+  }, [workflowChatInput, workflowChatTyping, workflowChatAgent, stepOutputs, modelSettings, addToast]);
+
+  /* ================================================================== */
+  /*  Free Chat Submit                                                   */
+  /* ================================================================== */
+
+  const handleSendMessage = useCallback(async () => {
+    if (!chatInput.trim() || isTyping || !selectedAgent) return;
+
+    const userText = chatInput.trim();
+    setChatInput('');
+
+    let sessionId = activeSessionId;
+    if (!sessionId) {
+      sessionId = createAgentSession(selectedAgentId);
+      setActiveSessionId(sessionId);
+    }
+
+    let fullInput = userText;
+    if (selectedSkill) {
+      const skillPrompt = getAgentSkillPrompt(selectedAgentId, selectedSkill);
+      fullInput = skillPrompt + '\n\n' + userText;
+    }
+    const promptForModel = modelSettings.enableCompression
+      ? compressPrompt(selectedAgent, fullInput)
+      : fullInput;
+
+    const userMsg: AgentMessage = {
+      id: `user-${Date.now()}`,
+      agentId: selectedAgentId,
+      role: 'user',
+      content: userText,
+      timestamp: Date.now(),
+    };
+    addAgentMessage(sessionId, userMsg);
+
+    setIsTyping(true);
+
+    const controller = new AbortController();
+    abortControllersRef.current.add(controller);
+    try {
+      const result = await callModelWithCache(
+        modelSettings,
+        selectedAgent.systemPrompt,
+        promptForModel,
+        controller.signal,
+      );
+      if (controller.signal.aborted) return;
+
+      const aiMsg: AgentMessage = {
+        id: `ai-${Date.now()}`,
+        agentId: selectedAgentId,
+        role: 'assistant',
+        content: result.content,
+        timestamp: Date.now(),
+        tokens: result.tokens,
+      };
+      addAgentMessage(sessionId, aiMsg);
+
+      setModelSettings((prev) => ({
+        ...prev,
+        tokenUsed: prev.tokenUsed + result.tokens,
+      }));
+    } catch (error: unknown) {
+      if (controller.signal.aborted) return;
+      addToast('error', error instanceof Error ? error.message : 'AI 响应失败');
+
+      const errMsg: AgentMessage = {
+        id: `err-${Date.now()}`,
+        agentId: selectedAgentId,
+        role: 'system',
+        content: `❌ 调用失败：${error instanceof Error ? error.message : '未知错误'}`,
+        timestamp: Date.now(),
+      };
+      addAgentMessage(sessionId, errMsg);
+    } finally {
+      setIsTyping(false);
+      setSelectedSkill(null);
+      abortControllersRef.current.delete(controller);
+    }
+  }, [
+    chatInput,
+    isTyping,
+    selectedAgent,
+    selectedAgentId,
+    selectedSkill,
+    activeSessionId,
+    modelSettings,
+    createAgentSession,
+    addAgentMessage,
+    addToast,
+  ]);
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const handleWorkflowChatKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleWorkflowChatSend();
+    }
+  };
+
+  /* ─── Clear Session ─── */
+  const handleClearSession = useCallback(() => {
+    if (activeSessionId) {
+      clearAgentSession(activeSessionId);
+      setActiveSessionId(null);
+      setSelectedSkill(null);
+      setChatInput('');
+    }
+  }, [activeSessionId, clearAgentSession]);
+
+  /* ─── Model Settings Handlers ─── */
+  const handleProviderChange = useCallback(
+    (provider: ModelProvider, field: keyof ModelConfig, value: string | number | boolean) => {
+      setModelSettings((prev) => ({
+        ...prev,
+        providers: {
+          ...prev.providers,
+          [provider]: { ...prev.providers[provider], [field]: value },
+        },
+      }));
+    },
+    [],
   );
 
-  if (showResult && resultData) {
-    return (
-      <QuizResultPage
-        session={resultData}
-        onReviewWrong={handleReviewWrong}
-        onRetry={handleRetry}
-        onGoHome={handleGoHome}
-      />
-    );
-  }
+  const handleSettingsChange = useCallback(
+    (key: keyof ModelSettings, value: string | number | boolean) => {
+      setModelSettings((prev) => ({ ...prev, [key]: value }));
+    },
+    [],
+  );
 
-  if (!initRef.current) {
-    return (
-      <div className="max-w-4xl mx-auto py-12 px-4">
-        <PaperCard className="p-12 text-center">
-          <p className="font-serif text-ink-600 text-lg">加载中...</p>
-        </PaperCard>
+  const handleSaveSettings = useCallback(() => {
+    saveModelSettings(modelSettings);
+    addToast('success', '配置已保存');
+  }, [modelSettings, addToast]);
+
+  const handleClearCache = useCallback(() => {
+    clearModelCache();
+    addToast('info', '缓存已清除');
+  }, [addToast]);
+
+  /* ─── Messages for display ─── */
+  const displayMessages: AgentMessage[] = (() => {
+    if (!latestSession) return [];
+
+    if (latestSession.messages.length === 0 && selectedAgent) {
+      return [
+        {
+          id: 'welcome',
+          agentId: selectedAgentId,
+          role: 'assistant',
+          content: `你好！我是${selectedAgent.name}（${selectedAgent.role}）\n\n${selectedAgent.description}\n\n请选择下方技能或直接输入你的问题！`,
+          timestamp: Date.now(),
+        },
+      ];
+    }
+    return latestSession.messages;
+  })();
+
+  /* ================================================================== */
+  /*  Render Helpers                                                     */
+  /* ================================================================== */
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const renderAgentOrb = (agent: AgentIdentity, isSelected: boolean, onClick: () => void, size: number = 48) => (
+    <motion.button
+      key={agent.id}
+      whileHover={{ scale: 1.08 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={onClick}
+      className="agent-orb flex flex-col items-center gap-1.5 cursor-pointer group"
+      style={{ width: size + 24 }}
+    >
+      <div
+        className="relative rounded-full flex items-center justify-center transition-all duration-300"
+        style={{
+          width: size,
+          height: size,
+          background: isSelected ? 'rgba(99,91,255,0.1)' : '#0d2d4a',
+          border: `2px solid ${isSelected ? '#635BFF' : 'rgba(255,255,255,0.06)'}`,
+        }}
+      >
+        <span style={{ fontSize: size * 0.45 }}>{agent.avatar}</span>
+        {isSelected && (
+          <motion.div
+            layoutId="agent-orb-ring"
+            className="absolute inset-0 rounded-full"
+            style={{
+              border: '2px solid #635BFF',
+              opacity: 0.3,
+            }}
+            animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.1, 0.3] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        )}
       </div>
-    );
-  }
+      <span
+        className="text-[10px] font-sans truncate max-w-full text-center transition-colors"
+        style={{ color: isSelected ? '#635BFF' : '#a3b5cc' }}
+      >
+        {agent.name}
+      </span>
+    </motion.button>
+  );
 
-  if (!currentQuestion || totalQuestions === 0) {
-    return (
-      <div className="max-w-4xl mx-auto py-12 px-4">
-        <PaperCard className="p-12 text-center">
-          {mode === 'wrong-review' ? (
-            <>
-              <p className="font-serif text-2xl text-ink-800 mb-4">🎉</p>
-              <p className="font-serif text-ink-700 text-lg mb-2">没有待订正的错题</p>
-              <p className="font-serif text-ink-500 text-sm mb-6">太棒了！所有错题都已订正</p>
-              <div className="flex justify-center gap-3">
-                <VintageButton variant="ghost" onClick={handleGoHome}>
-                  🏠 返回首页
-                </VintageButton>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="font-serif text-ink-600 text-lg mb-4">该学科暂无题目</p>
-              <p className="font-serif text-ink-500 text-sm mb-6">去上传资料生成题目吧</p>
-              <div className="flex justify-center gap-3">
-                <VintageButton variant="ghost" onClick={handleGoHome}>
-                  🏠 返回首页
-                </VintageButton>
-              </div>
-            </>
-          )}
-        </PaperCard>
-      </div>
-    );
-  }
+  /* ================================================================== */
+  /*  Pipeline Visualization                                             */
+  /* ================================================================== */
 
-  const difficulty = DIFFICULTY_LABEL[currentQuestion.difficulty];
+  const renderPipeline = (steps: WorkflowStep[], current: number, outputs: StepOutput[]) => (
+    <div className="workflow-pipeline flex items-center justify-center gap-0 py-4 overflow-x-auto">
+      {steps.map((step, i) => {
+        const agent = getAgent(step.agentId);
+        const isCompleted = i < outputs.length && !outputs[i].content.startsWith('❌');
+        const isCurrent = i === current;
+
+        return (
+          <div key={`${step.agentId}-${i}`} className="flex items-center flex-shrink-0">
+            {/* Step orb */}
+            <div className="flex flex-col items-center gap-1.5">
+              <div
+                className="relative w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500"
+                style={{
+                  background: isCompleted
+                    ? 'rgba(0,217,36,0.1)'
+                    : isCurrent
+                    ? 'rgba(99,91,255,0.1)'
+                    : '#0d2d4a',
+                  border: `2px solid ${isCompleted ? '#00D924' : isCurrent ? '#635BFF' : 'rgba(255,255,255,0.06)'}`,
+                }}
+              >
+                {isCompleted ? (
+                  <Check size={18} style={{ color: '#00D924' }} />
+                ) : isCurrent && workflowRunning ? (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                    className="w-5 h-5 border-2 border-t-transparent rounded-full"
+                    style={{ borderColor: '#635BFF', borderTopColor: 'transparent' }}
+                  />
+                ) : (
+                  <span style={{ fontSize: 20 }}>{agent?.avatar || '🤖'}</span>
+                )}
+              </div>
+              <span
+                className="text-[10px] font-sans whitespace-nowrap"
+                style={{
+                  color: isCompleted
+                    ? '#00D924'
+                    : isCurrent
+                    ? '#ffffff'
+                    : '#6b7c93',
+                }}
+              >
+                {step.label}
+              </span>
+              {agent && (
+                <span className="text-[9px] font-sans text-[#6b7c93]">{agent.name}</span>
+              )}
+            </div>
+
+            {/* Connector line */}
+            {i < steps.length - 1 && (
+              <div className="flex items-center mx-2">
+                <div
+                  className="h-[2px] w-8"
+                  style={{
+                    background: isCompleted ? '#00D924' : 'rgba(255,255,255,0.06)',
+                  }}
+                />
+                <ArrowRight
+                  size={12}
+                  style={{
+                    color: isCompleted ? '#00D924' : 'rgba(255,255,255,0.2)',
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  /* ================================================================== */
+  /*  Step Output Cards                                                  */
+  /* ================================================================== */
+
+  const renderStepOutputs = () => (
+    <div className="space-y-3">
+      {stepOutputs.map((output, i) => {
+        const agent = getAgent(output.agentId);
+        const isError = output.content.startsWith('❌');
+        return (
+          <motion.div
+            key={`step-${i}`}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05 }}
+            className="card overflow-hidden"
+          >
+            {/* Card header */}
+            <button
+              onClick={() =>
+                setStepOutputs((prev) =>
+                  prev.map((o, idx) => (idx === i ? { ...o, collapsed: !o.collapsed } : o)),
+                )
+              }
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#0A2540] transition-colors cursor-pointer"
+            >
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: isError ? 'rgba(255,61,0,0.1)' : 'rgba(99,91,255,0.1)',
+                  border: `1px solid ${isError ? 'rgba(255,61,0,0.3)' : 'rgba(99,91,255,0.3)'}`,
+                }}
+              >
+                <span className="text-sm">{agent?.avatar || '🤖'}</span>
+              </div>
+              <div className="flex-1 text-left min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-sans font-semibold text-[#ffffff]">
+                    {agent?.name || 'Unknown'}
+                  </span>
+                  <span
+                    className={`badge ${isError ? 'badge-red' : 'badge-green'}`}
+                  >
+                    {isError ? '失败' : '完成'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#6b7c93] font-sans">
+                  {activeWorkflow.steps[i]?.label}
+                  {output.tokens > 0 && ` · ${output.tokens} tokens`}
+                </p>
+              </div>
+              {output.collapsed ? (
+                <ChevronRight size={16} className="text-[#6b7c93]" />
+              ) : (
+                <ChevronDown size={16} className="text-[#6b7c93]" />
+              )}
+            </button>
+
+            {/* Card content */}
+            <AnimatePresence>
+              {!output.collapsed && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-4 pb-4 pt-1 border-t border-white/[0.06]">
+                    <div
+                      className="text-sm font-sans text-[#a3b5cc] leading-relaxed max-h-[400px] overflow-y-auto"
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(output.content) }}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+
+  /* ================================================================== */
+  /*  JSX                                                                */
+  /* ================================================================== */
 
   return (
-    <div className="max-w-4xl mx-auto py-6 px-4 pb-24">
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="font-serif text-2xl font-bold text-ink-800 flex items-center gap-2">
-            <BookMarked className="text-seal" size={24} />
-            {mode === 'wrong-review' ? '错题订正' : '开始刷题'}
-          </h1>
-          <div className="font-serif text-ink-600 text-sm">
-            第 <span className="text-seal font-bold text-lg">{displayIndex}</span> / {totalQuestions} 题
-          </div>
-        </div>
-
-        {mode === 'wrong-review' ? (
-          <div className="flex items-center gap-2">
-            <StickyNote color="pink" rotation={-1} className="!py-2 !px-4 !min-h-0 inline-flex">
-              <span className="font-serif text-sm flex items-center gap-1">
-                📕 错题订正模式
-              </span>
-            </StickyNote>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 flex-wrap">
-            {SUBJECT_FILTERS.map((filter) => (
-              <button
-                key={filter.id ?? 'all'}
-                onClick={() => handleFilterChange(filter.id)}
-                className={`
-                  px-4 py-1.5 font-serif text-sm rounded-sm border transition-all duration-200 cursor-pointer
-                  ${currentSubjectFilter === filter.id
-                    ? 'bg-seal text-paper-50 border-seal shadow-stamp'
-                    : 'bg-paper-100 text-ink-700 border-ink-600/20 hover:bg-paper-200'
-                  }
-                `}
-              >
-                <span className="mr-1">{filter.icon}</span>
-                {filter.name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className="mt-4 max-w-full">
-          <div className="h-1.5 bg-paper-300 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-seal/70 rounded-full"
-              initial={{ width: 0 }}
-              animate={{ width: `${(sessionCurrentIndex / totalQuestions) * 100}%` }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-            />
-          </div>
-        </div>
+    <div className="max-w-7xl mx-auto h-[calc(100vh-80px)] flex flex-col overflow-x-hidden">
+      {/* Tab bar */}
+      <div className="flex gap-0 mb-4 flex-shrink-0 border-b border-white/[0.06] overflow-x-auto">
+        <button
+          onClick={() => setActiveTab('agent')}
+          className={`flex items-center gap-2 px-5 py-2.5 text-sm font-sans transition-all duration-200 cursor-pointer border-b-2
+            ${activeTab === 'agent'
+              ? 'border-[var(--accent)] text-[var(--accent)] font-medium'
+              : 'border-transparent text-[#6b7c93] hover:text-[#a3b5cc]'
+            }`}
+        >
+          <Bot size={16} />
+          Agent 工作台
+        </button>
+        <button
+          onClick={() => setActiveTab('model')}
+          className={`flex items-center gap-2 px-5 py-2.5 text-sm font-sans transition-all duration-200 cursor-pointer border-b-2
+            ${activeTab === 'model'
+              ? 'border-[var(--accent)] text-[var(--accent)] font-medium'
+              : 'border-transparent text-[#6b7c93] hover:text-[#a3b5cc]'
+            }`}
+        >
+          <Settings size={16} />
+          模型配置
+        </button>
       </div>
 
+      {/* Tab content */}
       <AnimatePresence mode="wait">
-        <motion.div
-          key={currentQuestion.id}
-          initial={{ opacity: 0, y: 20, rotateX: 5 }}
-          animate={{ opacity: 1, y: 0, rotateX: 0 }}
-          exit={{ opacity: 0, y: -20, rotateX: -5 }}
-          transition={{ duration: 0.4, ease: 'easeOut' }}
-        >
-          <PaperCard className="relative min-h-[380px]">
-            <div className="pl-8 pr-8 py-8">
-              <div className="flex items-center gap-2 mb-6">
-                {currentSubject && (
-                  <VintageTag color="ink">{currentSubject.icon} {currentSubject.name}</VintageTag>
-                )}
-                <VintageTag color={difficulty.color}>{difficulty.label}</VintageTag>
-                {currentQuestion.type === 'judgment' && (
-                  <VintageTag color="worn">判断题</VintageTag>
-                )}
-              </div>
-
-              <div className="flex items-start gap-4 mb-6">
-                <div className="relative flex-shrink-0">
-                  <div
-                    className="w-12 h-12 rounded-full border-2 border-seal flex items-center justify-center"
-                    style={{ boxShadow: '0 0 0 1px rgba(139,37,0,0.1)' }}
-                  >
-                    <span className="font-serif text-seal font-bold text-sm">
-                      {CHINESE_NUMERALS[sessionCurrentIndex] || `Q${displayIndex}`}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex-1 pt-2">
-                  <p className="font-serif text-xl text-ink-800 leading-relaxed">
-                    {currentQuestion.question}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-3 mt-8">
-                {currentQuestion.options.map((option, index) => {
-                  const isSelected = selectedOption === index;
-                  const isCorrectOption = index === currentQuestion.correctIndex;
-                  const showCorrect = isSubmitted && isCorrectOption;
-                  const showWrong = isSubmitted && isSelected && !isCorrectOption;
-                  const showInactive = isSubmitted && !isSelected && !isCorrectOption;
-
+        {activeTab === 'agent' ? (
+          <motion.div
+            key="agent"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="flex-1 flex flex-col min-h-0 overflow-hidden"
+          >
+            {/* ═══════════════ Workflow Selector ═══════════════ */}
+            <div className="flex-shrink-0 mb-4">
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+                {WORKFLOWS.map((wf) => {
+                  const isActive = activeWorkflowId === wf.id;
                   return (
-                    <motion.div
-                      key={index}
-                      onClick={() => handleSelectOption(index)}
-                      className={`
-                        relative p-4 rounded-sm border cursor-pointer transition-all duration-200
-                        flex items-start gap-4
-                        ${!isSubmitted && isSelected
-                          ? 'border-seal bg-seal/5'
-                          : ''
-                        }
-                        ${showCorrect
-                          ? 'border-[#2D5A27] bg-[#2D5A27]/5'
-                          : ''
-                        }
-                        ${showWrong
-                          ? 'border-seal bg-seal/10'
-                          : ''
-                        }
-                        ${showInactive
-                          ? 'opacity-50 border-ink-600/20 bg-paper-50'
-                          : ''
-                        }
-                        ${!isSubmitted && !isSelected
-                          ? 'border-ink-600/20 bg-paper-50 hover:border-seal/40 hover:bg-paper-100'
-                          : ''
-                        }
-                      `}
-                      whileHover={!isSubmitted ? { scale: 1.005 } : undefined}
-                      whileTap={!isSubmitted ? { scale: 0.995 } : undefined}
+                    <motion.button
+                      key={wf.id}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => setActiveWorkflowId(wf.id)}
+                      className={`badge flex items-center gap-2 cursor-pointer transition-all duration-200 whitespace-nowrap
+                        ${isActive
+                          ? 'badge-blue'
+                          : 'bg-[#0d2d4a] border border-white/[0.06] text-[#6b7c93] hover:text-[#a3b5cc] hover:border-white/[0.12]'
+                        }`}
                     >
-                      <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center font-mono font-bold text-lg relative">
-                        {showCorrect ? (
-                          <>
-                            <motion.span
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              className="text-[#2D5A27] text-2xl z-10"
-                            >
-                              ✓
-                            </motion.span>
-                            <motion.div
-                              initial={{ scale: 0, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              transition={{ delay: 0.2, type: 'spring', stiffness: 300, damping: 20 }}
-                              className="absolute inset-0 rounded-full border-2 border-[#2D5A27]"
-                            />
-                          </>
-                        ) : showWrong ? (
-                          <>
-                            <motion.span
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              className="text-seal text-2xl z-10"
-                            >
-                              ✗
-                            </motion.span>
-                          </>
-                        ) : (
-                          <span className={`${isSelected ? 'text-seal' : 'text-ink-500'}`}>
-                            [{OPTION_LABELS[index]}]
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex-1 pt-1">
-                        <p className={`font-serif text-base leading-relaxed
-                          ${showCorrect ? 'text-[#2D5A27] font-medium' : ''}
-                          ${showWrong ? 'text-seal font-medium' : ''}
-                          ${!isSubmitted && isSelected ? 'text-ink-800' : ''}
-                          ${!isSubmitted && !isSelected ? 'text-ink-700' : ''}
-                          ${showInactive ? 'text-ink-500' : ''}
-                        `}>
-                          {option}
-                        </p>
-                      </div>
-
-                      {isSelected && !isSubmitted && (
-                        <motion.div
-                          layoutId="option-selected"
-                          className="absolute inset-0 rounded-sm border-2 border-seal/30 pointer-events-none"
-                          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                        />
+                      <span>{wf.icon}</span>
+                      {wf.name}
+                      {wf.steps.length > 0 && (
+                        <span className="text-[9px] opacity-70 ml-1">[{wf.patternLabel}]</span>
                       )}
-                    </motion.div>
+                    </motion.button>
                   );
                 })}
               </div>
 
-              <AnimatePresence>
-                {isSubmitted && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="mt-8"
-                  >
-                    {isCorrect ? (
-                      <div className="p-5 rounded-sm border-l-4 bg-[#2D5A27]/5 border-[#2D5A27]">
-                        <div className="flex items-center gap-3 mb-3">
-                          <CheckCircle2 className="text-[#2D5A27]" size={28} />
-                          <span className="font-serif text-2xl font-bold text-[#2D5A27]">
-                            回答正确！
+              {/* Pipeline visualization for non-free-chat workflows */}
+              {activeWorkflowId !== 'free-chat' && activeWorkflow.steps.length > 0 && (
+                <div className="card px-4 py-2 mt-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-[#6b7c93] font-sans">
+                      协同模式：<span className="text-[var(--accent)]">{activeWorkflow.patternLabel}</span>
+                    </span>
+                    <span className="text-[10px] text-[#6b7c93] font-sans">
+                      {activeWorkflow.steps.length} 个 Agent 节点
+                    </span>
+                  </div>
+                  {renderPipeline(activeWorkflow.steps, currentStep, stepOutputs)}
+                </div>
+              )}
+            </div>
+
+            {/* ═══════════════ Main Work Area ═══════════════ */}
+            <div className="flex-1 min-h-0 overflow-hidden">
+              {activeWorkflowId === 'free-chat' ? (
+                /* ──── Free Chat Mode ──── */
+                <div className="h-full flex flex-col card">
+                  {/* Agent selector: horizontal scrollable orbs */}
+                  <div className="flex-shrink-0 px-4 pt-4 pb-3 border-b border-white/[0.06]">
+                    <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+                      {SUB_AGENTS.map((agent) =>
+                        renderAgentOrb(
+                          agent,
+                          selectedAgentId === agent.id,
+                          () => setSelectedAgentId(agent.id),
+                          44,
+                        )
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Agent info bar */}
+                  {selectedAgent && (
+                    <div className="flex items-center gap-3 px-5 pt-3 pb-2 border-b border-white/[0.06] flex-shrink-0 min-w-0">
+                      <span className="text-lg">{selectedAgent.avatar}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h2 className="font-sans font-semibold text-[#ffffff] text-sm">
+                            {selectedAgent.name}
+                          </h2>
+                          <span className="badge badge-blue">
+                            {selectedAgent.role}
                           </span>
                         </div>
+                        <p className="text-[11px] text-[#6b7c93] font-sans mt-0.5 line-clamp-1">
+                          {selectedAgent.description}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {latestSession && latestSession.messages.length > 0 && (
+                          <button
+                            onClick={handleClearSession}
+                            className="ghost-btn flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
+                          >
+                            <Trash2 size={12} />
+                            清除对话
+                          </button>
+                        )}
+                        <span className="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse" />
+                        <span className="text-[10px] text-[#6b7c93] font-sans">在线</span>
+                      </div>
+                    </div>
+                  )}
 
-                        {!showExplanation ? (
-                          <motion.button
-                            onClick={() => setShowExplanation(true)}
-                            className="font-serif text-sm text-[#2D5A27] italic underline decoration-dotted underline-offset-4 hover:opacity-70 transition-opacity cursor-pointer"
-                            whileHover={{ x: 2 }}
-                          >
-                            查看解析 →
-                          </motion.button>
-                        ) : (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            className="mt-3 pt-3 border-t border-[#2D5A27]/20"
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className="w-1 h-full min-h-[40px] bg-[#2D5A27]/30 rounded-full flex-shrink-0" />
-                              <div>
-                                <p className="handwritten text-[#2D5A27] text-base" style={{ transform: 'skew(-2deg)' }}>
-                                  {currentQuestion.explanation}
-                                </p>
+                  {/* Chat messages */}
+                  <div className="flex-1 overflow-y-auto px-3 sm:px-5 py-4 space-y-4 min-h-0">
+                    <AnimatePresence initial={false}>
+                      {displayMessages.map((msg) => (
+                        <motion.div
+                          key={msg.id}
+                          initial={{ opacity: 0, y: 12, scale: 0.97 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          transition={{ duration: 0.3, ease: 'easeOut' }}
+                          className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+                        >
+                          {msg.role === 'system' ? (
+                            <div className="w-full flex justify-center">
+                              <div className="max-w-[80%] px-4 py-2 rounded-[16px] bg-[#0A2540] border border-white/[0.06] text-[11px] text-[#6b7c93] font-sans text-center">
+                                {msg.content}
                               </div>
                             </div>
-                          </motion.div>
-                        )}
-                      </div>
-                    ) : (
-                      <div>
-                        <div className="p-5 rounded-sm border-l-4 bg-seal/5 border-seal">
-                          <div className="flex items-center gap-3 mb-2">
-                            <XCircle className="text-seal" size={28} />
-                            <span className="font-serif text-2xl font-bold text-seal">
-                              回答错误
-                            </span>
-                          </div>
+                          ) : (
+                            <>
+                              <div
+                                className="w-8 h-8 rounded-[10px] flex items-center justify-center flex-shrink-0"
+                                style={
+                                  msg.role === 'assistant' && selectedAgent
+                                    ? { backgroundColor: 'rgba(99,91,255,0.1)' }
+                                    : { backgroundColor: 'rgba(99,91,255,0.1)' }
+                                }
+                              >
+                                {msg.role === 'assistant' ? (
+                                  <span>{selectedAgent?.avatar || '🤖'}</span>
+                                ) : (
+                                  <User size={16} className="text-[var(--accent)]" />
+                                )}
+                              </div>
+                              <div
+                                className={`max-w-[80%] px-4 py-3 rounded-[16px] text-sm font-sans leading-relaxed
+                                  ${msg.role === 'assistant'
+                                    ? 'bg-[#1a3a5c] border border-white/[0.06] text-[#ffffff] rounded-tl-sm'
+                                    : 'bg-[#635BFF]/10 border border-[#635BFF]/30 text-[#ffffff] rounded-tr-sm whitespace-pre-wrap'
+                                  }`}
+                              >
+                                {msg.role === 'assistant' ? (
+                                  <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                                ) : (
+                                  msg.content
+                                )}
+                                {msg.role === 'assistant' && msg.tokens && msg.tokens > 0 && (
+                                  <p className="text-[9px] text-[#6b7c93] mt-1">{msg.tokens} tokens</p>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
 
-                          <p className="font-serif text-ink-700 mb-3">
-                            正确答案是：<span className="text-[#2D5A27] font-bold">[{OPTION_LABELS[currentQuestion.correctIndex]}] {currentQuestion.options[currentQuestion.correctIndex]}</span>
-                          </p>
-
-                          <div className="flex items-center gap-2 text-sm font-serif text-seal/80">
-                            <span>📕</span>
-                            <span>✓ 已自动加入错题本，稍后可复习</span>
+                    {/* Typing indicator */}
+                    {isTyping && (
+                      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3">
+                        <div className="w-8 h-8 rounded-[10px] flex items-center justify-center flex-shrink-0 bg-[#0A2540]">
+                          <span>{selectedAgent?.avatar || '🤖'}</span>
+                        </div>
+                        <div className="px-4 py-3 rounded-[16px] rounded-tl-sm bg-[#0A2540] border border-white/[0.06]">
+                          <div className="flex gap-1.5 items-center h-5">
+                            {[0, 150, 300].map((delay) => (
+                              <span
+                                key={delay}
+                                className="w-2 h-2 rounded-full animate-bounce"
+                                style={{
+                                  backgroundColor: '#635BFF',
+                                  animationDelay: `${delay}ms`,
+                                }}
+                              />
+                            ))}
                           </div>
                         </div>
+                      </motion.div>
+                    )}
+                    <div ref={chatEndRef} />
+                  </div>
 
-                        <AnimatePresence>
-                          {showExplanation && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              transition={{ duration: 0.3, ease: 'easeOut' }}
-                              className="overflow-hidden"
+                  {/* Skill quick-select + Input area */}
+                  <div className="px-3 sm:px-4 pb-4 pt-2 flex-shrink-0 space-y-2">
+                    {selectedAgent && selectedAgent.skills.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedAgent.skills.map((skill) => {
+                          const isActive = selectedSkill === skill.name;
+                          return (
+                            <button
+                              key={skill.name}
+                              onClick={() => setSelectedSkill((prev) => (prev === skill.name ? null : skill.name))}
+                              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-sans transition-all duration-200 cursor-pointer
+                                ${isActive
+                                  ? 'badge-blue'
+                                  : 'bg-[#0d2d4a] border border-white/[0.06] text-[#6b7c93] hover:text-[#a3b5cc] hover:border-white/[0.12]'
+                                }`}
                             >
-                              <div className="mt-4 pt-4 border-t-2 border-seal/30 relative">
-                                <div className="absolute left-0 top-4 bottom-4 w-0.5 bg-seal/20" />
-
-                                <div className="flex items-center gap-2 mb-5 pl-4 flex-wrap">
-                                  <span className="handwritten text-seal text-sm mr-1" style={{ transform: 'skew(-1deg)' }}>
-                                    讲解方式：
-                                  </span>
-                                  {EXPLANATION_STYLES.map((style) => (
-                                    <motion.button
-                                      key={style.id}
-                                      onClick={() => setExplanationStyle(style.id)}
-                                      className={`
-                                        px-3 py-1 font-serif text-xs rounded-sm border transition-all cursor-pointer
-                                        ${explanationStyle === style.id
-                                          ? 'bg-seal text-paper-50 border-seal shadow-stamp'
-                                          : 'bg-paper-50 text-ink-600 border-ink-600/20 hover:border-seal/40 hover:bg-seal/5'
-                                        }
-                                      `}
-                                      whileHover={{ scale: 1.02 }}
-                                      whileTap={{ scale: 0.98 }}
-                                      style={explanationStyle === style.id ? { transform: 'rotate(-1deg)' } : undefined}
-                                    >
-                                      <span className="mr-1">{style.icon}</span>
-                                      {style.label}
-                                    </motion.button>
-                                  ))}
-                                </div>
-
-                                <div className="pl-4 relative">
-                                  <AnimatePresence mode="wait">
-                                    {explanationStyle === 'detailed' && (
-                                      <motion.div
-                                        key="detailed"
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: 10 }}
-                                        transition={{ duration: 0.25 }}
-                                      >
-                                        <div className="mb-6">
-                                          <h4 className="handwritten text-seal text-lg mb-4 flex items-center gap-2" style={{ transform: 'skew(-2deg)', color: '#8B2500' }}>
-                                            <span className="text-xl">【</span>
-                                            解题步骤
-                                            <span className="text-xl">】</span>
-                                          </h4>
-                                          <div className="space-y-3">
-                                            {currentQuestion.steps.map((step, i) => (
-                                              <motion.div
-                                                key={i}
-                                                initial={{ opacity: 0, x: -10 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                transition={{ delay: i * 0.1 }}
-                                                className="flex items-start gap-3"
-                                              >
-                                                <div className="flex-shrink-0 w-7 h-7 rounded-full border-2 border-seal flex items-center justify-center bg-seal/5"
-                                                  style={{ transform: `rotate(${stepRotations[i] * 0.3}deg)` }}>
-                                                  <span className="font-serif text-seal font-bold text-sm">
-                                                    {CIRCLED_NUMERALS[i]}
-                                                  </span>
-                                                </div>
-                                                <div
-                                                  className="flex-1 border-l-2 border-seal/60 pl-3 py-1"
-                                                  style={{ transform: `rotate(${stepRotations[i] * 0.2}deg)` }}
-                                                >
-                                                  <p className="font-serif text-ink-700 text-base leading-relaxed">
-                                                    {step}
-                                                  </p>
-                                                </div>
-                                              </motion.div>
-                                            ))}
-                                          </div>
-                                        </div>
-
-                                        {currentQuestion.mistakes.length > 0 && (
-                                          <div className="mb-4">
-                                            <h4 className="handwritten text-seal text-lg mb-3 flex items-center gap-2" style={{ transform: 'skew(-1deg)', color: '#8B2500' }}>
-                                              ⚠️ 易错点
-                                            </h4>
-                                            <div className="max-w-md">
-                                              <StickyNote color="yellow" rotation={-2} className="!py-4">
-                                                <div className="flex items-start gap-2">
-                                                  <span className="text-red-600 text-lg flex-shrink-0">❗</span>
-                                                  <ul className="space-y-1.5">
-                                                    {currentQuestion.mistakes.map((mistake, i) => (
-                                                      <li key={i} className="flex items-start gap-2">
-                                                        <span className="text-seal font-bold flex-shrink-0">•</span>
-                                                        <span className="text-[#5D4E37]">{mistake}</span>
-                                                      </li>
-                                                    ))}
-                                                  </ul>
-                                                </div>
-                                              </StickyNote>
-                                            </div>
-                                          </div>
-                                        )}
-                                      </motion.div>
-                                    )}
-
-                                    {explanationStyle === 'concise' && (
-                                      <motion.div
-                                        key="concise"
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: 10 }}
-                                        transition={{ duration: 0.25 }}
-                                        className="flex justify-end"
-                                      >
-                                        <div className="max-w-sm relative">
-                                          <StickyNote color="pink" rotation={-4}>
-                                            <div className="flex items-start gap-2">
-                                              <span className="text-xl flex-shrink-0">💡</span>
-                                              <div>
-                                                <p className="handwritten text-base leading-relaxed" style={{ color: '#5D3A3A' }}>
-                                                  {currentQuestion.explanation}
-                                                </p>
-                                              </div>
-                                            </div>
-                                          </StickyNote>
-                                        </div>
-                                      </motion.div>
-                                    )}
-
-                                    {explanationStyle === 'socratic' && (
-                                      <motion.div
-                                        key="socratic"
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: 10 }}
-                                        transition={{ duration: 0.25 }}
-                                      >
-                                        <div className="mb-4">
-                                          <h4 className="handwritten text-ink-700 text-base mb-4 flex items-center gap-2 italic">
-                                            <Lightbulb size={18} className="text-blue-700" />
-                                            先不要看答案，试着思考以下问题：
-                                          </h4>
-                                          <div className="space-y-3">
-                                            {SOCRATIC_QUESTIONS.map((question, i) => (
-                                              <motion.div
-                                                key={i}
-                                                initial={{ opacity: 0, y: 10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                transition={{ delay: i * 0.15 }}
-                                                className="max-w-md"
-                                              >
-                                                <StickyNote
-                                                  color="blue"
-                                                  rotation={i % 2 === 0 ? -2 : 2}
-                                                  className="!py-3"
-                                                >
-                                                  <div className="flex items-start gap-2">
-                                                    <span className="text-lg flex-shrink-0">❓</span>
-                                                    <p className="text-[#2C3E50] font-serif text-base leading-relaxed">
-                                                      {question}
-                                                    </p>
-                                                  </div>
-                                                </StickyNote>
-                                              </motion.div>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      </motion.div>
-                                    )}
-                                  </AnimatePresence>
-                                </div>
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                              <span className="text-xs">{skill.icon}</span>
+                              {skill.name}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </PaperCard>
-        </motion.div>
-      </AnimatePresence>
 
-      <div className="mt-6 flex items-center justify-center gap-3 flex-wrap">
-        {!isSubmitted ? (
-          <VintageButton
-            variant="stamp"
-            size="lg"
-            disabled={selectedOption === null}
-            onClick={handleSubmit}
-          >
-            提交答案
-          </VintageButton>
+                    <div className="flex items-end gap-2 bg-[#1a3a5c] border border-white/[0.06] rounded-[16px] px-4 py-2 focus-within:border-[#635BFF] focus-within:ring-2 focus-within:ring-[#635BFF]/20 transition-all duration-300">
+                      <textarea
+                        value={chatInput}
+                        onChange={(e) => {
+                          setChatInput(e.target.value);
+                          e.target.style.height = 'auto';
+                          e.target.style.height = Math.min(e.target.scrollHeight, 3 * 24) + 'px';
+                        }}
+                        onKeyDown={handleInputKeyDown}
+                        placeholder="输入你的问题... (Shift+Enter 换行)"
+                        rows={1}
+                        className="flex-1 bg-transparent text-sm font-sans text-[#ffffff] placeholder-[#6b7c93] outline-none resize-none leading-6"
+                        style={{ maxHeight: '72px' }}
+                        disabled={isTyping}
+                      />
+                      <button
+                        onClick={handleSendMessage}
+                        disabled={!chatInput.trim() || isTyping}
+                        className="accent-btn w-8 h-8 rounded-[10px] flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex-shrink-0"
+                      >
+                        <Send size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* ──── Workflow Mode ──── */
+                <div className="h-full flex flex-col gap-4 overflow-y-auto">
+                  {/* File Upload Zone */}
+                  {!uploadedFile ? (
+                    <div
+                      className={`file-drop-zone card flex-shrink-0 w-full flex flex-col items-center justify-center py-12 cursor-pointer transition-all duration-300
+                        ${isDragOver ? 'border-[var(--accent)] bg-[#635BFF]/10' : ''}`}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".pdf,.txt,.md,.docx"
+                        className="hidden"
+                        onChange={handleFileInputChange}
+                      />
+                      <motion.div
+                        animate={isDragOver ? { scale: 1.1, y: -4 } : { scale: 1, y: 0 }}
+                        className="w-16 h-16 rounded-[16px] bg-[#0A2540] border border-white/[0.06] flex items-center justify-center mb-4"
+                      >
+                        <Upload size={28} className="text-[#6b7c93]" />
+                      </motion.div>
+                      <p className="text-sm font-sans text-[#a3b5cc] mb-1">
+                        拖拽文件到此处，或点击上传
+                      </p>
+                      <p className="text-[11px] font-sans text-[#6b7c93]">
+                        支持 PDF、TXT、MD、DOCX 格式
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="card flex-shrink-0 px-4 sm:px-5 py-4">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                        <div className="w-12 h-12 rounded-[16px] bg-[#635BFF]/10 border border-[#635BFF]/30 flex items-center justify-center flex-shrink-0">
+                          <FileText size={22} className="text-[var(--accent)]" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-sans font-semibold text-[#ffffff] truncate">
+                            {uploadedFile.name}
+                          </p>
+                          <p className="text-[11px] text-[#6b7c93] font-sans">
+                            {formatFileSize(uploadedFile.size)} · {uploadedFile.type || '未知类型'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                          {!workflowRunning && !workflowComplete && (
+                            <button
+                              onClick={handleStartWorkflow}
+                              className="bg-gradient-to-r from-[#635BFF] to-[#7C5CFF] text-white flex items-center gap-2 px-4 py-2 rounded-[10px] text-sm font-sans cursor-pointer"
+                            >
+                              <Play size={14} />
+                              开始分析
+                            </button>
+                          )}
+                          {!workflowRunning && (
+                            <button
+                              onClick={handleResetWorkflow}
+                              className="text-[#a3b5cc] border border-white/[0.06] flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-xs font-sans cursor-pointer"
+                            >
+                              <RotateCcw size={12} />
+                              重置
+                            </button>
+                          )}
+                          {workflowRunning && (
+                            <div className="flex items-center gap-2 text-[var(--accent)] text-sm font-sans">
+                              <motion.div
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                                className="w-4 h-4 border-2 border-t-transparent rounded-full border-[var(--accent)]"
+                              />
+                              执行中...
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step Outputs */}
+                  {stepOutputs.length > 0 && (
+                    <div className="flex-shrink-0">
+                      {renderStepOutputs()}
+                    </div>
+                  )}
+
+                  {/* Workflow Chat Tab */}
+                  {(workflowComplete || stepOutputs.length > 0) && (
+                    <div className="card flex-1 min-h-[300px] flex flex-col">
+                      <div className="flex items-center gap-3 px-4 sm:px-5 pt-4 pb-3 border-b border-white/[0.06] flex-shrink-0 flex-wrap">
+                        <Bot size={16} className="text-[var(--accent)]" />
+                        <h3 className="font-sans font-semibold text-[#ffffff] text-sm">对话</h3>
+                        <span className="text-[10px] text-[#6b7c93] font-sans">
+                          选择 Agent 继续探讨结果
+                        </span>
+                        <div className="flex-1" />
+                        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none max-w-full">
+                          {SUB_AGENTS.map((agent) => (
+                            <button
+                              key={agent.id}
+                              onClick={() => setWorkflowChatAgent(agent.id)}
+                              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-sans transition-all cursor-pointer whitespace-nowrap
+                                ${workflowChatAgent === agent.id
+                                  ? 'badge-blue'
+                                  : 'bg-[#0d2d4a] border border-white/[0.06] text-[#6b7c93] hover:text-[#a3b5cc]'
+                                }`}
+                            >
+                              <span className="text-xs">{agent.avatar}</span>
+                              {agent.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Chat messages */}
+                      <div className="flex-1 overflow-y-auto px-3 sm:px-5 py-3 space-y-3 min-h-0">
+                        {workflowChatMessages.length === 0 && (
+                          <div className="flex items-center justify-center h-full">
+                            <p className="text-sm text-[#6b7c93] font-sans">
+                              选择一个 Agent，对工作流结果继续提问
+                            </p>
+                          </div>
+                        )}
+                        <AnimatePresence initial={false}>
+                          {workflowChatMessages.map((msg) => (
+                            <motion.div
+                              key={msg.id}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+                            >
+                              <div
+                                className="w-7 h-7 rounded-[10px] flex items-center justify-center flex-shrink-0"
+                                style={
+                                  msg.role === 'assistant'
+                                    ? { backgroundColor: 'rgba(99,91,255,0.1)' }
+                                    : { backgroundColor: 'rgba(99,91,255,0.1)' }
+                                }
+                              >
+                                {msg.role === 'assistant' ? (
+                                  <span className="text-sm">{getAgent(msg.agentId)?.avatar || '🤖'}</span>
+                                ) : (
+                                  <User size={14} className="text-[var(--accent)]" />
+                                )}
+                              </div>
+                              <div
+                                className={`max-w-[80%] px-3.5 py-2.5 rounded-[16px] text-sm font-sans leading-relaxed
+                                  ${msg.role === 'assistant'
+                                    ? 'bg-[#1a3a5c] border border-white/[0.06] text-[#ffffff] rounded-tl-sm'
+                                    : 'bg-[#635BFF]/10 border border-[#635BFF]/30 text-[#ffffff] rounded-tr-sm whitespace-pre-wrap'
+                                  }`}
+                              >
+                                {msg.role === 'assistant' ? (
+                                  <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                                ) : (
+                                  msg.content
+                                )}
+                              </div>
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                        {workflowChatTyping && (
+                          <div className="flex gap-3">
+                            <div className="w-7 h-7 rounded-[10px] flex items-center justify-center flex-shrink-0 bg-[#635BFF]/10">
+                              <span className="text-sm">{getAgent(workflowChatAgent)?.avatar || '🤖'}</span>
+                            </div>
+                            <div className="px-3.5 py-2.5 rounded-[16px] rounded-tl-sm bg-[#0A2540] border border-white/[0.06]">
+                              <div className="flex gap-1.5 items-center h-4">
+                                {[0, 150, 300].map((delay) => (
+                                  <span
+                                    key={delay}
+                                    className="w-1.5 h-1.5 rounded-full animate-bounce"
+                                    style={{
+                                      backgroundColor: '#635BFF',
+                                      animationDelay: `${delay}ms`,
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        <div ref={workflowChatEndRef} />
+                      </div>
+
+                      {/* Input */}
+                      <div className="px-3 sm:px-4 pb-4 pt-2 flex-shrink-0">
+                        <div className="flex items-end gap-2 bg-[#1a3a5c] border border-white/[0.06] rounded-[16px] px-4 py-2 focus-within:border-[#635BFF] focus-within:ring-2 focus-within:ring-[#635BFF]/20 transition-all duration-300">
+                          <textarea
+                            value={workflowChatInput}
+                            onChange={(e) => {
+                              setWorkflowChatInput(e.target.value);
+                              e.target.style.height = 'auto';
+                              e.target.style.height = Math.min(e.target.scrollHeight, 3 * 24) + 'px';
+                            }}
+                            onKeyDown={handleWorkflowChatKeyDown}
+                            placeholder={`向 ${getAgent(workflowChatAgent)?.name || 'Agent'} 提问...`}
+                            rows={1}
+                            className="flex-1 bg-transparent text-sm font-sans text-[#ffffff] placeholder-[#6b7c93] outline-none resize-none leading-6"
+                            style={{ maxHeight: '72px' }}
+                            disabled={workflowChatTyping}
+                          />
+                          <button
+                            onClick={handleWorkflowChatSend}
+                            disabled={!workflowChatInput.trim() || workflowChatTyping}
+                            className="accent-btn w-8 h-8 rounded-[10px] flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex-shrink-0"
+                          >
+                            <Send size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
         ) : (
-          <>
-            {isCorrect && (
-              <motion.button
-                onClick={() => setShowExplanation(!showExplanation)}
-                className="font-serif text-sm text-ink-600 italic underline decoration-dotted underline-offset-4 hover:text-ink-800 transition-colors cursor-pointer"
-                whileHover={{ x: 2 }}
-              >
-                {showExplanation ? '收起解析' : '查看解析'}
-              </motion.button>
-            )}
-            <VintageButton
-              variant="primary"
-              size="lg"
-              onClick={handleNext}
+          /* ======== TAB 2: 模型配置 ======== */
+          <motion.div
+            key="model"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="flex-1 overflow-y-auto min-h-0 space-y-4"
+          >
+            {/* Provider cards grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {(Object.keys(DEFAULT_PROVIDERS) as ModelProvider[]).map((key) => {
+                const config = modelSettings.providers[key];
+                const isEnabled = config.enabled;
+                const hasApiKey = !!config.apiKey;
+                const statusText = isEnabled && (hasApiKey || config.provider === 'ollama')
+                  ? '已连接'
+                  : '未配置';
+                const statusColor = isEnabled && (hasApiKey || config.provider === 'ollama')
+                  ? '#00D924'
+                  : '#FFB800';
+
+                return (
+                  <motion.div
+                    key={key}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="card p-5 space-y-4"
+                  >
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Cpu size={16} className="text-[var(--accent)]" />
+                        <h3 className="font-sans font-semibold text-[#ffffff] text-sm">
+                          {config.name}
+                        </h3>
+                      </div>
+                      <span
+                        className={`badge ${statusColor === '#00D924' ? 'badge-green' : 'badge-yellow'}`}
+                      >
+                        {statusText}
+                      </span>
+                    </div>
+
+                    {/* Model name */}
+                    <div>
+                      <label className="text-[10px] text-[#6b7c93] font-sans block mb-1">模型名称</label>
+                      <input
+                        type="text"
+                        value={config.model}
+                        onChange={(e) => handleProviderChange(key, 'model', e.target.value)}
+                        placeholder="模型名称"
+                        className="w-full bg-[#1a3a5c] border border-white/[0.06] rounded-[10px] px-3 py-2 text-xs font-sans text-[#ffffff] placeholder-[#6b7c93] outline-none focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/20 transition-all"
+                      />
+                    </div>
+
+                    {/* Base URL */}
+                    <div>
+                      <label className="text-[10px] text-[#6b7c93] font-sans block mb-1">Base URL</label>
+                      <input
+                        type="text"
+                        value={config.baseUrl}
+                        onChange={(e) => handleProviderChange(key, 'baseUrl', e.target.value)}
+                        placeholder="API 端点地址"
+                        className="w-full bg-[#1a3a5c] border border-white/[0.06] rounded-[10px] px-3 py-2 text-xs font-sans text-[#ffffff] placeholder-[#6b7c93] outline-none focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/20 transition-all"
+                      />
+                    </div>
+
+                    {/* API Key */}
+                    <div>
+                      <label className="text-[10px] text-[#6b7c93] font-sans block mb-1">API Key</label>
+                      <input
+                        type="password"
+                        value={config.apiKey}
+                        onChange={(e) => handleProviderChange(key, 'apiKey', e.target.value)}
+                        placeholder="输入 API Key"
+                        className="w-full bg-[#1a3a5c] border border-white/[0.06] rounded-[10px] px-3 py-2 text-xs font-sans text-[#ffffff] placeholder-[#6b7c93] outline-none focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/20 transition-all"
+                      />
+                    </div>
+
+                    {/* Temperature */}
+                    <div>
+                      <label className="text-[10px] text-[#6b7c93] font-sans block mb-1">
+                        Temperature: {config.temperature.toFixed(1)}
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="2"
+                        step="0.1"
+                        value={config.temperature}
+                        onChange={(e) => handleProviderChange(key, 'temperature', parseFloat(e.target.value))}
+                        className="w-full accent-[var(--accent)]"
+                      />
+                      <div className="flex justify-between text-[9px] text-[#6b7c93]">
+                        <span>精确 0</span>
+                        <span>创意 2</span>
+                      </div>
+                    </div>
+
+                    {/* Max Tokens */}
+                    <div>
+                      <label className="text-[10px] text-[#6b7c93] font-sans block mb-1">Max Tokens</label>
+                      <input
+                        type="number"
+                        value={config.maxTokens}
+                        onChange={(e) => handleProviderChange(key, 'maxTokens', parseInt(e.target.value) || 2048)}
+                        className="w-full bg-[#1a3a5c] border border-white/[0.06] rounded-[10px] px-3 py-2 text-xs font-sans text-[#ffffff] outline-none focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/20 transition-all"
+                      />
+                    </div>
+
+                    {/* Top P */}
+                    <div>
+                      <label className="text-[10px] text-[#6b7c93] font-sans block mb-1">
+                        Top P: {config.topP.toFixed(2)}
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={config.topP}
+                        onChange={(e) => handleProviderChange(key, 'topP', parseFloat(e.target.value))}
+                        className="w-full accent-[var(--accent)]"
+                      />
+                    </div>
+
+                    {/* Enable toggle */}
+                    <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
+                      <span className="text-[11px] text-[#6b7c93] font-sans">启用此提供者</span>
+                      <button
+                        onClick={() => handleProviderChange(key, 'enabled', !config.enabled)}
+                        className={`relative w-10 h-5 rounded-full transition-colors duration-200 cursor-pointer
+                          ${config.enabled ? 'bg-[#635BFF]' : 'bg-white/[0.12]'}`}
+                      >
+                        <motion.div
+                          animate={{ x: config.enabled ? 20 : 2 }}
+                          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                          className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm"
+                        />
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {/* Global settings */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="card p-5 space-y-4"
             >
-              {sessionCurrentIndex >= totalQuestions - 1 ? '查看结果' : '下一题'}
-              <ArrowRight size={16} className="ml-2" />
-            </VintageButton>
-          </>
+              <h3 className="font-sans font-semibold text-[#ffffff] text-sm flex items-center gap-2">
+                <Settings size={16} className="text-[var(--accent)]" />
+                全局设置
+              </h3>
+
+              {/* Token usage */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-[#6b7c93] font-sans">Token 用量显示</span>
+                  <span className="text-[11px] text-[#6b7c93] font-sans">
+                    {modelSettings.tokenUsed.toLocaleString()} / {modelSettings.tokenBudget.toLocaleString()}
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-[#1a3a5c] rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-gradient-to-r from-[#635BFF] to-[#7C5CFF] rounded-full"
+                    animate={{
+                      width: `${Math.min((modelSettings.tokenUsed / modelSettings.tokenBudget) * 100, 100)}%`,
+                    }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                  />
+                </div>
+              </div>
+
+              {/* Enable Cache toggle */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Zap size={14} className="text-[var(--accent)]" />
+                  <span className="text-xs text-[#6b7c93] font-sans">开启响应缓存</span>
+                </div>
+                <button
+                  onClick={() => handleSettingsChange('enableCache', !modelSettings.enableCache)}
+                  className={`relative w-10 h-5 rounded-full transition-colors duration-200 cursor-pointer
+                    ${modelSettings.enableCache ? 'bg-[#635BFF]' : 'bg-white/[0.12]'}`}
+                >
+                  <motion.div
+                    animate={{ x: modelSettings.enableCache ? 20 : 2 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm"
+                  />
+                </button>
+              </div>
+
+              {/* Enable Compression toggle */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={14} className="text-[var(--warning)]" />
+                  <span className="text-xs text-[#6b7c93] font-sans">开启 Prompt 压缩</span>
+                </div>
+                <button
+                  onClick={() => handleSettingsChange('enableCompression', !modelSettings.enableCompression)}
+                  className={`relative w-10 h-5 rounded-full transition-colors duration-200 cursor-pointer
+                    ${modelSettings.enableCompression ? 'bg-[#635BFF]' : 'bg-white/[0.12]'}`}
+                >
+                  <motion.div
+                    animate={{ x: modelSettings.enableCompression ? 20 : 2 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm"
+                  />
+                </button>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-3 pt-2 border-t border-white/[0.06]">
+                <button
+                  onClick={handleSaveSettings}
+                  className="bg-gradient-to-r from-[#635BFF] to-[#7C5CFF] text-white flex items-center gap-2 px-4 py-2 rounded-[10px] text-sm font-sans cursor-pointer"
+                >
+                  <Check size={14} />
+                  保存配置
+                </button>
+                <button
+                  onClick={handleClearCache}
+                  className="text-[#a3b5cc] border border-white/[0.06] flex items-center gap-2 px-4 py-2 rounded-[10px] text-sm font-sans cursor-pointer"
+                >
+                  <RotateCcw size={14} />
+                  清除缓存
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
     </div>
   );
+}
+
+/* ================================================================== */
+/*  Simple Markdown Renderer                                           */
+/* ================================================================== */
+
+function renderMarkdown(text: string): string {
+  let html = text;
+
+  // Escape HTML entities
+  html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // Code backticks
+  html = html.replace(
+    /`([^`]+)`/g,
+    '<code style="background:rgba(99,91,255,0.1);color:#635BFF;padding:1px 5px;border-radius:4px;font-size:0.85em;font-family:monospace">$1</code>',
+  );
+
+  // Bold
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+  // Italic
+  html = html.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
+
+  // List processing
+  const lines = html.split('\n');
+  const processedLines: string[] = [];
+  let inUl = false;
+  let inOl = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (/^[ \t]*[-•]\s/.test(line)) {
+      if (!inUl) {
+        processedLines.push('<ul style="padding-left:1.2em;margin:0.3em 0;list-style:disc">');
+        inUl = true;
+      }
+      const content = line.replace(/^[ \t]*[-•]\s/, '');
+      processedLines.push(`<li style="margin:0.15em 0">${content}</li>`);
+      continue;
+    }
+
+    if (/^[ \t]*\d+\.\s/.test(line)) {
+      if (!inOl) {
+        processedLines.push('<ol style="padding-left:1.2em;margin:0.3em 0;list-style:decimal">');
+        inOl = true;
+      }
+      const content = line.replace(/^[ \t]*\d+\.\s/, '');
+      processedLines.push(`<li style="margin:0.15em 0">${content}</li>`);
+      continue;
+    }
+
+    if (inUl) {
+      processedLines.push('</ul>');
+      inUl = false;
+    }
+    if (inOl) {
+      processedLines.push('</ol>');
+      inOl = false;
+    }
+
+    processedLines.push(line);
+  }
+
+  if (inUl) processedLines.push('</ul>');
+  if (inOl) processedLines.push('</ol>');
+
+  html = processedLines.join('\n');
+  html = html.replace(/\n/g, '<br/>');
+
+  return html;
 }
