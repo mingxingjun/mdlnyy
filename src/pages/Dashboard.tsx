@@ -186,15 +186,74 @@ function extractJson(content: string): string {
       cleaned = cleaned.slice(start);
     }
   }
-  // 容错：中文引号 → 英文引号
+  // 容错 1：中文引号 → 英文引号
   cleaned = cleaned
     .replace(/[\u201c\u201d]/g, '"')
-    .replace(/[\u2018\u2019]/g, "'")
-    // 尾随逗号（] 或 } 前的逗号）
-    .replace(/,\s*([}\]])/g, '$1')
-    // 控制字符
-    .replace(/[\x00-\x1f]/g, (m) => (m === '\n' || m === '\t' ? m : ' '));
-  return cleaned;
+    .replace(/[\u2018\u2019]/g, "'");
+  // 容错 2：尾随逗号（] 或 } 前的逗号）
+  cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
+  // 容错 3：控制字符（保留 \n \t）
+  cleaned = cleaned.replace(/[\x00-\x1f]/g, (m) => (m === '\n' || m === '\t' ? m : ' '));
+  // 容错 4：尝试解析，失败则修复字符串值内的未转义双引号
+  try {
+    JSON.parse(cleaned);
+    return cleaned;
+  } catch {
+    // 修复：把字符串值内部的未转义 " 转义为 \"
+    // 策略：逐字符遍历，跟踪是否在字符串内部，遇到字符串内的 " 前面没有 \ 时补 \
+    cleaned = escapeUnescapedQuotesInStrings(cleaned);
+    return cleaned;
+  }
+}
+
+/**
+ * 修复 JSON 字符串值内部的未转义双引号。
+ * LLM 常把题干里的引号直接写成 " 而不转义，导致 JSON.parse 失败。
+ * 策略：状态机遍历，识别字符串边界（"..."），字符串内遇到非转义的 " 时补 \。
+ */
+function escapeUnescapedQuotesInStrings(json: string): string {
+  let result = '';
+  let inString = false;
+  let i = 0;
+  while (i < json.length) {
+    const ch = json[i];
+    if (!inString) {
+      result += ch;
+      if (ch === '"') inString = true;
+      i++;
+      continue;
+    }
+    // 在字符串内
+    if (ch === '\\') {
+      // 转义序列，原样保留两个字符
+      result += ch;
+      if (i + 1 < json.length) {
+        result += json[i + 1];
+        i += 2;
+      } else {
+        i++;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      // 判断这个 " 是字符串结束，还是字符串内部的未转义引号
+      // 启发式：看后面紧跟的字符。若是 , } ] : 空白 换行，视为字符串结束；否则视为内部引号需转义
+      const nextCh = json[i + 1];
+      if (nextCh === undefined || nextCh === ',' || nextCh === '}' || nextCh === ']' || nextCh === ':' || nextCh === ' ' || nextCh === '\n' || nextCh === '\r' || nextCh === '\t') {
+        result += '"';
+        inString = false;
+        i++;
+      } else {
+        // 字符串内部的引号，转义
+        result += '\\"';
+        i++;
+      }
+      continue;
+    }
+    result += ch;
+    i++;
+  }
+  return result;
 }
 
 /** 兼容多种字段名读取字符串 */
@@ -319,13 +378,20 @@ function parseQuestionBankResponse(content: string, materialId: string): Questio
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[题库解析] JSON.parse 失败：', err instanceof Error ? err.message : err, '\n清理后内容前 300 字：', jsonStr.slice(0, 300));
-    return [];
+    // 最终兜底：用正则逐题提取，尽可能挽救题目
+    const fallback = extractQuestionsByRegex(content, materialId);
+    if (fallback.length > 0) {
+      // eslint-disable-next-line no-console
+      console.info(`[题库解析] JSON.parse 失败，正则兜底提取到 ${fallback.length} 道题`);
+    }
+    return fallback;
   }
   const rawQs = locatePointsArray(parsed);
   if (rawQs.length === 0) {
     // eslint-disable-next-line no-console
     console.warn('[题库解析] locatePointsArray 未找到数组，parsed 类型：', typeof parsed, parsed instanceof Array ? 'Array' : '');
-    return [];
+    // 兜底：正则提取
+    return extractQuestionsByRegex(content, materialId);
   }
 
   return rawQs
@@ -360,6 +426,94 @@ function parseQuestionBankResponse(content: string, materialId: string): Questio
       };
     })
     .filter((q) => q.stem.length > 0);
+}
+
+/**
+ * 正则兜底提取：当 JSON.parse 彻底失败时，用正则从原始文本中逐题提取。
+ * 匹配形如 "stem": "..." 的键值对，兼容字段名变体。
+ */
+function extractQuestionsByRegex(content: string, materialId: string): Question[] {
+  const questions: Question[] = [];
+  // 匹配每个题目对象：从 { 开始到下一个 { 或数组结束
+  const objRegex = /\{[^{}]*\}/g;
+  const matches = content.match(objRegex) ?? [];
+
+  matches.forEach((objStr, i) => {
+    // 从对象字符串中提取各字段值（匹配 "key": "value" 或 "key":"value"）
+    const getField = (keys: string[]): string => {
+      for (const k of keys) {
+        const re = new RegExp(`"${k}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`, 'i');
+        const m = objStr.match(re);
+        if (m && m[1]) return m[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\').trim();
+      }
+      return '';
+    };
+    const stem = getField(['stem', 'question', 'content', 'title', 'problem', 'body', 'text', '题干']);
+    if (!stem) return;
+    const answer = getField(['answer', 'solution', 'ans', 'correct_answer', 'correctAnswer', '标准答案', '答案']);
+    const explanation = getField(['explanation', 'analysis', '解析', '解答', '分析']);
+    const typeStr = getField(['type', 'questionType', '题型']);
+    // options 正则提取
+    const optsMatch = objStr.match(/"options"\s*:\s*\[([^\]]*)\]/i);
+    let options: string[] | undefined;
+    if (optsMatch && optsMatch[1]) {
+      options = (optsMatch[1].match(/"([^"]*)"/g) ?? [])
+        .map((s) => s.replace(/^"|"$/g, '').trim())
+        .filter((s) => s.length > 0);
+      if (options.length === 0) options = undefined;
+    }
+    const hasStd = answer.length > 0;
+    questions.push({
+      id: crypto.randomUUID(),
+      materialId,
+      knowledgePointIds: [],
+      type: coerceQType(typeStr),
+      difficulty: 3,
+      stem,
+      options,
+      answer,
+      explanation,
+      source: 'bank',
+      bankId: materialId,
+      aiFilled: !hasStd,
+      createdAt: Date.now() + i,
+    });
+  });
+  return questions;
+}
+
+/**
+ * 正则兜底提取 AI 补答返回的 answers 数组。
+ * 当 JSON.parse 失败时，用正则从原始文本中逐项提取 { index, answer, explanation }。
+ */
+function extractAnswersByRegex(
+  content: string,
+): Array<{ index?: number; answer?: string; explanation?: string }> {
+  const results: Array<{ index?: number; answer?: string; explanation?: string }> = [];
+  // 匹配每个对象 { ... }（不含嵌套花括号）
+  const objRegex = /\{[^{}]*\}/g;
+  const matches = content.match(objRegex) ?? [];
+
+  matches.forEach((objStr) => {
+    // 提取字符串字段：兼容字段名变体
+    const getField = (keys: string[]): string => {
+      for (const k of keys) {
+        const re = new RegExp(`"${k}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`, 'i');
+        const m = objStr.match(re);
+        if (m && m[1]) return m[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\').trim();
+      }
+      return '';
+    };
+    // 提取数字字段 index
+    const indexMatch = objStr.match(/"index"\s*:\s*(-?\d+(?:\.\d+)?)/i);
+    const index = indexMatch ? Math.trunc(Number(indexMatch[1])) : undefined;
+    const answer = getField(['answer', 'solution', 'ans', 'correct_answer', 'correctAnswer', '答案']);
+    const explanation = getField(['explanation', 'analysis', '解析', '解答', '分析']);
+    // 至少要有 answer 或 explanation 才算有效项
+    if (answer === '' && explanation === '' && index === undefined) return;
+    results.push({ index, answer, explanation });
+  });
+  return results;
 }
 
 /** AI 补答系统提示词：为无标准答案的题库题补 answer + explanation */
@@ -409,7 +563,13 @@ ${batch.map((q, i) => JSON.stringify({
         settings, 'chat', AI_FILL_ANSWER_SYSTEM_PROMPT, userMsg, signal,
       );
       const jsonStr = extractJson(content);
-      const parsed = JSON.parse(jsonStr) as { answers?: Array<{ index?: number; answer?: string; explanation?: string }> };
+      let parsed: { answers?: Array<{ index?: number; answer?: string; explanation?: string }> };
+      try {
+        parsed = JSON.parse(jsonStr);
+      } catch {
+        // 容错：正则提取 answers 数组
+        parsed = { answers: extractAnswersByRegex(jsonStr) };
+      }
       const answers = Array.isArray(parsed.answers) ? parsed.answers : [];
       answers.forEach((a) => {
         const idx = typeof a.index === 'number' ? a.index : -1;
