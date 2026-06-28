@@ -848,9 +848,10 @@ ${kpList}
             type="button"
             onClick={handleBackHome}
             title="返回首页"
+            aria-label="返回首页"
             className="inline-flex items-center justify-center w-9 h-9 rounded-paper border border-ink-600/20 bg-paper-100 text-ink-700 hover:bg-paper-200 hover:text-seal transition-colors"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={16} aria-hidden="true" />
           </button>
           <div>
             <p className="font-handwritten text-sm text-ink-500 leading-none">出题 · 作答 · 讲解</p>

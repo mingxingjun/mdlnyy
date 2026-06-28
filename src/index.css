@@ -97,7 +97,11 @@ body {
 }
 .no-scrollbar {
   -ms-overflow-style: none;
-  scrollbar-width: none;
+}
+@supports (scrollbar-width: none) {
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
 }
 
 #root {
@@ -500,9 +504,13 @@ select option {
   background: rgba(92, 64, 51, 0.25);
 }
 
-* {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(92, 64, 51, 0.15) transparent;
+/* 滚动条样式：用 @supports 限定，仅 Firefox（支持 scrollbar-width）应用，
+   Safari/Chrome 用上方的 ::-webkit-scrollbar。避免在不支持浏览器上报兼容性告警。 */
+@supports (scrollbar-width: thin) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(92, 64, 51, 0.15) transparent;
+  }
 }
 
 /* ─── AI Message Styles (paper) ────────────────────── */

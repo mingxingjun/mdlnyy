@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import ErrorBoundary from './ErrorBoundary';
 import FallbackView from './FallbackView';
@@ -26,6 +26,30 @@ const VIEW_COMPONENTS: Record<ViewKey, () => ReactNode> = {
 
 const VIEW_ORDER: ViewKey[] = ['dashboard', 'practice', 'wrongbook', 'memory', 'supervisor', 'questionbank'];
 
+/**
+ * Keep-alive 视图容器：非激活视图用 hidden 隐藏以保留状态，
+ * 并通过 inert 属性（运行时设置，兼容 React 18）彻底禁止内部聚焦与交互，
+ * 避免 aria-hidden + 可聚焦元素的 WAI-ARIA 违规。
+ */
+function ViewSlot({ active, children }: { active: boolean; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (active) {
+      el.removeAttribute('inert');
+    } else {
+      el.setAttribute('inert', '');
+    }
+  }, [active]);
+
+  return (
+    <div ref={ref} hidden={!active} className={active ? 'block' : 'hidden'}>
+      {children}
+    </div>
+  );
+}
+
 function ViewRouter() {
   const activeView = useAppStore((s) => s.activeView) as ViewKey;
 
@@ -38,17 +62,11 @@ function ViewRouter() {
 
   return (
     <ErrorBoundary resetKeys={[activeView]} fallback={<FallbackView><ViewRouter /></FallbackView>}>
-      {/* 渲染所有已访问过的视图，非激活视图用 hidden 隐藏以保留状态 */}
       {VIEW_ORDER.filter((key) => mounted.has(key)).map((key) => {
         const isActive = key === activeView;
         const Comp = VIEW_COMPONENTS[key];
         return (
-          <div
-            key={key}
-            hidden={!isActive}
-            aria-hidden={!isActive}
-            className={isActive ? 'block' : 'hidden'}
-          >
+          <ViewSlot key={key} active={isActive}>
             {isActive ? (
               <motion.div
                 initial={{ opacity: 0, y: -12, rotate: -3, scale: 0.985 }}
@@ -60,7 +78,7 @@ function ViewRouter() {
             ) : (
               <Comp />
             )}
-          </div>
+          </ViewSlot>
         );
       })}
     </ErrorBoundary>

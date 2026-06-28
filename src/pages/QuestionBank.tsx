@@ -337,9 +337,10 @@ export default function QuestionBank() {
             type="button"
             onClick={() => setActiveView('dashboard')}
             title="返回首页"
+            aria-label="返回首页"
             className="inline-flex items-center justify-center w-9 h-9 rounded-paper border border-ink-600/20 bg-paper-100 text-ink-700 hover:bg-paper-200 hover:text-seal transition-colors"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={16} aria-hidden="true" />
           </button>
           <div>
             <p className="font-handwritten text-sm text-ink-500 leading-none">题库管理</p>
@@ -374,7 +375,8 @@ export default function QuestionBank() {
             type="text"
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
-            placeholder="搜索题干/答案/解析（在展开的题库内筛选）"
+            aria-label="搜索题库"
+            placeholder="搜索题库..."
             className="w-full pl-9 pr-3 py-2 text-sm font-sans rounded-[3px] border border-ink-600/15 bg-paper-100 text-ink-800 placeholder:text-ink-400 focus:outline-none focus:border-seal/50"
           />
         </div>
@@ -459,9 +461,10 @@ export default function QuestionBank() {
                         <button
                           type="button"
                           onClick={() => toggleExpand(set.material.id)}
+                          aria-label={isExpanded ? '折叠题库' : '展开题库'}
                           className="w-6 h-6 rounded-[3px] hover:bg-paper-200 flex items-center justify-center text-ink-600 flex-shrink-0"
                         >
-                          {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                          {isExpanded ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
                         </button>
 
                         {/* 批量模式下的全选 checkbox */}
@@ -469,9 +472,10 @@ export default function QuestionBank() {
                           <button
                             type="button"
                             onClick={() => toggleSelectAllInSet(set)}
+                            aria-label="全选/取消全选"
                             className="w-5 h-5 flex-shrink-0 text-ink-600"
                           >
-                            {allSelectedInSet ? <CheckSquare size={18} className="text-seal" /> : <Square size={18} />}
+                            {allSelectedInSet ? <CheckSquare size={18} className="text-seal" aria-hidden="true" /> : <Square size={18} aria-hidden="true" />}
                           </button>
                         )}
 
@@ -486,14 +490,16 @@ export default function QuestionBank() {
                                 value={renameValue}
                                 onChange={(e) => setRenameValue(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmRename(); if (e.key === 'Escape') setRenameId(null); }}
+                                aria-label="题库名称"
+                                placeholder="输入题库名称"
                                 autoFocus
                                 className="flex-1 px-2 py-1 text-sm font-serif rounded-[3px] border border-seal/40 bg-paper-100 text-ink-900 focus:outline-none"
                               />
-                              <button onClick={handleConfirmRename} className="text-sage-dark hover:bg-sage/10 w-7 h-7 rounded flex items-center justify-center">
-                                <Save size={14} />
+                              <button onClick={handleConfirmRename} aria-label="确认重命名" className="text-sage-dark hover:bg-sage/10 w-7 h-7 rounded flex items-center justify-center">
+                                <Save size={14} aria-hidden="true" />
                               </button>
-                              <button onClick={() => setRenameId(null)} className="text-ink-500 hover:bg-paper-200 w-7 h-7 rounded flex items-center justify-center">
-                                <X size={14} />
+                              <button onClick={() => setRenameId(null)} aria-label="取消重命名" className="text-ink-500 hover:bg-paper-200 w-7 h-7 rounded flex items-center justify-center">
+                                <X size={14} aria-hidden="true" />
                               </button>
                             </div>
                           ) : (
@@ -512,9 +518,10 @@ export default function QuestionBank() {
                               type="button"
                               onClick={() => handleStartRename(set.material)}
                               title="重命名"
+                              aria-label="重命名题库"
                               className="w-7 h-7 rounded-[3px] hover:bg-paper-200 text-ink-500 hover:text-ink-800 flex items-center justify-center"
                             >
-                              <Edit3 size={13} />
+                              <Edit3 size={13} aria-hidden="true" />
                             </button>
                           )}
                           {!batchMode && (
@@ -522,9 +529,10 @@ export default function QuestionBank() {
                               type="button"
                               onClick={() => setPendingDelete({ type: 'set', id: set.material.id, name: set.material.name })}
                               title={set.material.id === '__orphan__' ? '清空未分类题目' : '删除整套'}
+                              aria-label="删除整套题库"
                               className="w-7 h-7 rounded-[3px] hover:bg-terracotta/10 text-terracotta-dark flex items-center justify-center"
                             >
-                              <Trash2 size={13} />
+                              <Trash2 size={13} aria-hidden="true" />
                             </button>
                           )}
                         </div>
@@ -562,9 +570,10 @@ export default function QuestionBank() {
                                         <button
                                           type="button"
                                           onClick={() => toggleSelect(q.id)}
+                                          aria-label="勾选题目"
                                           className="w-5 h-5 flex-shrink-0 mt-0.5 text-ink-600"
                                         >
-                                          {isSelected ? <CheckSquare size={16} className="text-seal" /> : <Square size={16} />}
+                                          {isSelected ? <CheckSquare size={16} className="text-seal" aria-hidden="true" /> : <Square size={16} aria-hidden="true" />}
                                         </button>
                                       )}
 
@@ -595,16 +604,18 @@ export default function QuestionBank() {
                                           <button
                                             type="button"
                                             onClick={() => handleOpenEdit(q)}
+                                            aria-label="编辑题目"
                                             className="w-7 h-7 rounded-[3px] border border-ink-600/10 bg-paper-100 text-ink-500 hover:text-ink-800 hover:bg-paper-200 flex items-center justify-center"
                                           >
-                                            <Pencil size={12} />
+                                            <Pencil size={12} aria-hidden="true" />
                                           </button>
                                           <button
                                             type="button"
                                             onClick={() => setPendingDelete({ type: 'question', id: q.id })}
+                                            aria-label="删除题目"
                                             className="w-7 h-7 rounded-[3px] border border-terracotta/20 bg-paper-100 text-terracotta-dark hover:bg-terracotta/10 flex items-center justify-center"
                                           >
-                                            <Trash2 size={12} />
+                                            <Trash2 size={12} aria-hidden="true" />
                                           </button>
                                         </div>
                                       )}
@@ -664,18 +675,21 @@ export default function QuestionBank() {
                 <button
                   type="button"
                   onClick={() => setEditForm(null)}
+                  aria-label="关闭"
                   className="w-7 h-7 rounded-full hover:bg-paper-200 flex items-center justify-center text-ink-500"
                 >
-                  <X size={16} />
+                  <X size={16} aria-hidden="true" />
                 </button>
               </div>
 
               <div className="p-5 space-y-4">
                 <div>
-                  <label className="block text-xs font-serif text-ink-600 mb-1">所属题库</label>
+                  <label htmlFor="qb-edit-material" className="block text-xs font-serif text-ink-600 mb-1">所属题库</label>
                   <select
+                    id="qb-edit-material"
                     value={editForm.materialId}
                     onChange={(e) => setEditForm({ ...editForm, materialId: e.target.value })}
+                    aria-label="所属题库"
                     className="w-full px-3 py-2 text-sm font-sans rounded-[3px] border border-ink-600/15 bg-paper-100 text-ink-800 focus:outline-none focus:border-seal/50"
                   >
                     <option value="">请选择题库…</option>
@@ -687,10 +701,12 @@ export default function QuestionBank() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-serif text-ink-600 mb-1">题型</label>
+                    <label htmlFor="qb-edit-type" className="block text-xs font-serif text-ink-600 mb-1">题型</label>
                     <select
+                      id="qb-edit-type"
                       value={editForm.type}
                       onChange={(e) => setEditForm({ ...editForm, type: e.target.value as Question['type'] })}
+                      aria-label="题型"
                       className="w-full px-3 py-2 text-sm font-sans rounded-[3px] border border-ink-600/15 bg-paper-100 text-ink-800 focus:outline-none focus:border-seal/50"
                     >
                       {QTYPE_OPTIONS.map((opt) => (
@@ -699,10 +715,12 @@ export default function QuestionBank() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-serif text-ink-600 mb-1">难度（1-5）</label>
+                    <label htmlFor="qb-edit-difficulty" className="block text-xs font-serif text-ink-600 mb-1">难度（1-5）</label>
                     <select
+                      id="qb-edit-difficulty"
                       value={editForm.difficulty}
                       onChange={(e) => setEditForm({ ...editForm, difficulty: Number(e.target.value) as Question['difficulty'] })}
+                      aria-label="难度"
                       className="w-full px-3 py-2 text-sm font-sans rounded-[3px] border border-ink-600/15 bg-paper-100 text-ink-800 focus:outline-none focus:border-seal/50"
                     >
                       {[1, 2, 3, 4, 5].map((n) => (
@@ -713,11 +731,13 @@ export default function QuestionBank() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-serif text-ink-600 mb-1">题干</label>
+                  <label htmlFor="qb-edit-stem" className="block text-xs font-serif text-ink-600 mb-1">题干</label>
                   <textarea
+                    id="qb-edit-stem"
                     value={editForm.stem}
                     onChange={(e) => setEditForm({ ...editForm, stem: e.target.value })}
                     rows={3}
+                    aria-label="题干"
                     placeholder="输入题干内容，填空题用 ______ 表示空格"
                     className="w-full px-3 py-2 text-sm font-serif rounded-[3px] border border-ink-600/15 bg-paper-100 text-ink-800 placeholder:text-ink-400 focus:outline-none focus:border-seal/50 resize-y"
                   />
@@ -725,13 +745,15 @@ export default function QuestionBank() {
 
                 {editForm.type === 'choice' && (
                   <div>
-                    <label className="block text-xs font-serif text-ink-600 mb-1">
+                    <label htmlFor="qb-edit-options" className="block text-xs font-serif text-ink-600 mb-1">
                       选项（每行一个，形如 "A. 选项内容"）
                     </label>
                     <textarea
+                      id="qb-edit-options"
                       value={editForm.optionsText}
                       onChange={(e) => setEditForm({ ...editForm, optionsText: e.target.value })}
                       rows={4}
+                      aria-label="选项"
                       placeholder={'A. 选项一\nB. 选项二\nC. 选项三\nD. 选项四'}
                       className="w-full px-3 py-2 text-sm font-sans rounded-[3px] border border-ink-600/15 bg-paper-100 text-ink-800 placeholder:text-ink-400 focus:outline-none focus:border-seal/50 resize-y"
                     />
@@ -739,24 +761,28 @@ export default function QuestionBank() {
                 )}
 
                 <div>
-                  <label className="block text-xs font-serif text-ink-600 mb-1">
+                  <label htmlFor="qb-edit-answer" className="block text-xs font-serif text-ink-600 mb-1">
                     答案{editForm.type === 'choice' ? '（填字母如 B）' : ''}
                   </label>
                   <input
+                    id="qb-edit-answer"
                     type="text"
                     value={editForm.answer}
                     onChange={(e) => setEditForm({ ...editForm, answer: e.target.value })}
+                    aria-label="答案"
                     placeholder="输入正确答案"
                     className="w-full px-3 py-2 text-sm font-serif rounded-[3px] border border-ink-600/15 bg-paper-100 text-ink-800 placeholder:text-ink-400 focus:outline-none focus:border-seal/50"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-serif text-ink-600 mb-1">解析（可选）</label>
+                  <label htmlFor="qb-edit-explanation" className="block text-xs font-serif text-ink-600 mb-1">解析（可选）</label>
                   <textarea
+                    id="qb-edit-explanation"
                     value={editForm.explanation}
                     onChange={(e) => setEditForm({ ...editForm, explanation: e.target.value })}
                     rows={2}
+                    aria-label="解析"
                     placeholder="输入解析内容"
                     className="w-full px-3 py-2 text-sm font-serif rounded-[3px] border border-ink-600/15 bg-paper-100 text-ink-800 placeholder:text-ink-400 focus:outline-none focus:border-seal/50 resize-y"
                   />

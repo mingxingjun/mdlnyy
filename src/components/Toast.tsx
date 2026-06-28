@@ -104,9 +104,10 @@ export function ToastContainer() {
               </p>
               <button
                 onClick={() => removeToast(toast.id)}
+                aria-label="关闭通知"
                 className="p-1 rounded-paper hover:bg-ink-600/10 transition-colors flex-shrink-0"
               >
-                <X size={12} className="text-ink-500" />
+                <X size={12} className="text-ink-500" aria-hidden="true" />
               </button>
             </motion.div>
           );

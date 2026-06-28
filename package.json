@@ -44,5 +44,15 @@
     "typescript-eslint": "^8.30.1",
     "vite": "^6.3.5",
     "vite-tsconfig-paths": "^5.1.4"
-  }
+  },
+  "browserslist": [
+    "defaults",
+    "Chrome >= 84",
+    "ChromeAndroid >= 84",
+    "Edge >= 84",
+    "Safari >= 15.4",
+    "iOS >= 15.4",
+    "Firefox >= 91",
+    "Firefox ESR"
+  ]
 }

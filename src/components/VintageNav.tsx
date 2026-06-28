@@ -113,6 +113,7 @@ export default function VintageNav({ onSettingsClick }: VintageNavProps) {
               whileTap={{ scale: 0.95 }}
               transition={{ duration: 0.3 }}
               title="AI设置"
+              aria-label="AI 设置"
             >
               ⚙️
             </motion.button>

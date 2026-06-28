@@ -193,7 +193,7 @@ export default function QuizResultPage({ session, onReviewWrong, onRetry, onGoHo
             className="flex flex-col items-center mb-8"
           >
             <div className="relative">
-              <svg width="140" height="140" viewBox="0 0 140 140" className="transform -rotate-90">
+              <svg width="140" height="140" viewBox="0 0 140 140" className="transform -rotate-90" role="img" aria-label={`正确率 ${accuracy}%`}>
                 <circle
                   cx="70"
                   cy="70"

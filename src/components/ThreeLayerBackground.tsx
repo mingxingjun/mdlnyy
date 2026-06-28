@@ -31,6 +31,8 @@ function FeatherPen({ className, style }: { className?: string; style?: React.CS
       viewBox="0 0 80 80"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      focusable="false"
     >
       <path
         d="M55 10C48 15 38 25 32 38C28 47 24 55 20 62L25 65C30 58 36 50 42 42C48 34 55 22 62 15C64 13 60 8 55 10Z"
@@ -61,7 +63,7 @@ function FeatherPen({ className, style }: { className?: string; style?: React.CS
 
 function InkSplash({ size, color }: { size: number; color: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" aria-hidden="true" focusable="false">
       <circle cx="20" cy="20" r="8" fill={color} opacity="0.3" />
       <circle cx="28" cy="14" r="2" fill={color} opacity="0.2" />
       <circle cx="12" cy="26" r="1.5" fill={color} opacity="0.15" />
@@ -104,7 +106,7 @@ function SmallSnippet({ color, rotation }: { color: string; rotation: number }) 
 
 function Petal({ size, color, rotation }: { size: number; color: string; rotation: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" style={{ transform: `rotate(${rotation}deg)` }}>
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false" style={{ transform: `rotate(${rotation}deg)` }}>
       <ellipse cx="10" cy="10" rx="6" ry="9" fill={color} opacity="0.3" />
     </svg>
   );

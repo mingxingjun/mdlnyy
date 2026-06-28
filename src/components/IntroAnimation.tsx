@@ -180,6 +180,15 @@ export default function IntroAnimation({ onComplete }: IntroAnimationProps) {
         animate={isFading || isSkipping ? { opacity: 0 } : { opacity: 1 }}
         transition={{ duration: isSkipping ? 0.08 : 0.4, ease: 'easeOut' }}
         onClick={skipAnimation}
+        role="button"
+        tabIndex={0}
+        aria-label="跳过开场动画"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            skipAnimation();
+          }
+        }}
       >
         {!reduce && particles.map((p) => {
           const targetX = cx - p.startX;

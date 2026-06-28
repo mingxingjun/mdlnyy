@@ -63,7 +63,7 @@ const PaperCard = forwardRef<HTMLDivElement, PaperCardProps>(
 
         {status === 'completed' && (
           <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden rounded-[3px]">
-            <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+            <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" aria-hidden="true" focusable="false">
               <motion.line
                 x1="0"
                 y1="100%"

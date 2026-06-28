@@ -276,9 +276,10 @@ function CardRow({ card, kpName }: CardRowProps) {
           type="button"
           onClick={handleRemove}
           title="移除卡片"
+          aria-label="移除卡片"
           className="flex-shrink-0 p-1.5 rounded-paper text-ink-500 hover:bg-terracotta/10 hover:text-terracotta-dark transition-colors"
         >
-          <Trash2 size={14} />
+          <Trash2 size={14} aria-hidden="true" />
         </button>
       </div>
     </li>
@@ -458,9 +459,10 @@ ${kpList}
             type="button"
             onClick={handleBackHome}
             title="返回首页"
+            aria-label="返回首页"
             className="inline-flex items-center justify-center w-9 h-9 rounded-paper border border-ink-600/20 bg-paper-100 text-ink-700 hover:bg-paper-200 hover:text-seal transition-colors"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={16} aria-hidden="true" />
           </button>
           <div>
             <p className="font-handwritten text-sm text-ink-500 leading-none">间隔重复 · 长期记忆</p>
@@ -521,9 +523,10 @@ ${kpList}
             type="button"
             onClick={handleBackHome}
             title="返回首页"
+            aria-label="返回首页"
             className="inline-flex items-center justify-center w-9 h-9 rounded-paper border border-ink-600/20 bg-paper-100 text-ink-700 hover:bg-paper-200 hover:text-seal transition-colors"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={16} aria-hidden="true" />
           </button>
           <div>
             <p className="font-handwritten text-sm text-ink-500 leading-none">间隔重复 · 长期记忆</p>

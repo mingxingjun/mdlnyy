@@ -54,9 +54,10 @@ export default function VintageTag({
             e.stopPropagation();
             onClose?.();
           }}
+          aria-label="移除标签"
           className="relative z-[1] inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-black/10 transition-colors"
         >
-          <X size={10} strokeWidth={2.5} />
+          <X size={10} strokeWidth={2.5} aria-hidden="true" />
         </button>
       )}
     </motion.span>

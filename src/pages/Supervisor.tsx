@@ -235,6 +235,7 @@ function PlanItemRow({ item, index, kpNames }: PlanItemRowProps) {
         type="button"
         onClick={() => togglePlanItemCompleted(item.date, index)}
         title={item.completed ? '标记为未完成' : '标记为已完成'}
+        aria-label={item.completed ? '标记为未完成' : '标记为已完成'}
         className={cn(
           'flex-shrink-0 mt-0.5 w-5 h-5 rounded-paper border-2 flex items-center justify-center transition-colors',
           item.completed
@@ -251,6 +252,7 @@ function PlanItemRow({ item, index, kpNames }: PlanItemRowProps) {
               animate={{ scale: 1, rotate: 0 }}
               exit={{ scale: 0, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+              aria-hidden="true"
             />
           )}
         </AnimatePresence>
@@ -479,9 +481,10 @@ ${wrongSummary}
             type="button"
             onClick={handleBackHome}
             title="返回首页"
+            aria-label="返回首页"
             className="inline-flex items-center justify-center w-9 h-9 rounded-paper border border-ink-600/20 bg-paper-100 text-ink-700 hover:bg-paper-200 hover:text-seal transition-colors"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={16} aria-hidden="true" />
           </button>
           <div>
             <p className="font-handwritten text-sm text-ink-500 leading-none">进度 · 报告 · 提醒</p>
@@ -514,9 +517,10 @@ ${wrongSummary}
             type="button"
             onClick={handleBackHome}
             title="返回首页"
+            aria-label="返回首页"
             className="inline-flex items-center justify-center w-9 h-9 rounded-paper border border-ink-600/20 bg-paper-100 text-ink-700 hover:bg-paper-200 hover:text-seal transition-colors"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={16} aria-hidden="true" />
           </button>
           <div>
             <p className="font-handwritten text-sm text-ink-500 leading-none">进度 · 报告 · 提醒</p>

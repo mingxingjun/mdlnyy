@@ -247,7 +247,7 @@ function WrongQuestionCard({ wq, kpNameMap, index }: WrongQuestionCardProps) {
             animate={{ scale: 1, rotate: -12, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 300, damping: 14, delay: 0.1 }}
           >
-            <svg width="60" height="60" viewBox="0 0 60 60">
+            <svg width="60" height="60" viewBox="0 0 60 60" aria-hidden="true" focusable="false">
               <circle cx="30" cy="30" r="26" fill="none" stroke="#8B2500" strokeWidth="2" opacity="0.7" />
               <circle cx="30" cy="30" r="22" fill="none" stroke="#8B2500" strokeWidth="1" opacity="0.5" />
               <text x="30" y="36" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#8B2500" opacity="0.85" fontFamily="serif">已掌握</text>
@@ -616,9 +616,10 @@ ${kpList}
             type="button"
             onClick={handleBackHome}
             title="返回首页"
+            aria-label="返回首页"
             className="inline-flex items-center justify-center w-9 h-9 rounded-paper border border-ink-600/20 bg-paper-100 text-ink-700 hover:bg-paper-200 hover:text-seal transition-colors"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={16} aria-hidden="true" />
           </button>
           <div>
             <p className="font-handwritten text-sm text-ink-500 leading-none">收集 · 归类 · 分析</p>
@@ -656,9 +657,10 @@ ${kpList}
             type="button"
             onClick={handleBackHome}
             title="返回首页"
+            aria-label="返回首页"
             className="inline-flex items-center justify-center w-9 h-9 rounded-paper border border-ink-600/20 bg-paper-100 text-ink-700 hover:bg-paper-200 hover:text-seal transition-colors"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={16} aria-hidden="true" />
           </button>
           <div>
             <p className="font-handwritten text-sm text-ink-500 leading-none">收集 · 归类 · 分析</p>

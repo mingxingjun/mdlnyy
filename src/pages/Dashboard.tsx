@@ -1255,18 +1255,20 @@ function MaterialRow({
             onClick={onReparse}
             disabled={isParsing}
             title="重新解析"
+            aria-label="重新解析"
             className="p-1.5 rounded-[3px] text-ink-600 hover:bg-seal/10 hover:text-seal transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <RefreshCw size={14} className={isParsing ? 'animate-spin' : ''} />
+            <RefreshCw size={14} className={isParsing ? 'animate-spin' : ''} aria-hidden="true" />
           </button>
         )}
         <button
           type="button"
           onClick={onRemove}
           title="移除"
+          aria-label="移除资料"
           className="p-1.5 rounded-[3px] text-ink-600 hover:bg-terracotta/10 hover:text-terracotta-dark transition-colors"
         >
-          <Trash2 size={14} />
+          <Trash2 size={14} aria-hidden="true" />
         </button>
       </div>
     </motion.li>
