@@ -1,13 +1,18 @@
 /**
- * 文件文本提取器
+ * 文件文本提取器（输出结构化 Markdown，便于 LLM 解析）
  *
  * 支持格式：
  * - 纯文本：.txt / .md / .markdown / .csv / .log
  * - PDF：.pdf（pdfjs-dist 前端解析）
- * - Word：.docx（mammoth 提取纯文本）；.doc 老格式不支持，提示转换
- * - PPT：.pptx（jszip 解压 + 提取 slide XML 文本）；.ppt 老格式不支持，提示转换
+ * - Word：.docx（mammoth 转 HTML → turndown 转 Markdown，保留标题/列表/表格）
+ *         .doc 老格式不支持，提示转换
+ * - PPT：.pptx（jszip 解压 + 提取 slide XML 文本，输出 Markdown 分节）
+ *         .ppt 老格式不支持，提示转换
  *
  * 所有二进制解析库均采用动态 import，仅在上传对应格式时才加载，避免首屏体积膨胀。
+ *
+ * 设计理念：参考 microsoft/markitdown，把文件转成结构化 Markdown 再喂给 LLM，
+ * 保留标题/列表/表格等语义结构，显著提升 LLM 题库解析准确率。
  */
 
 /** 清洗控制字符并合并多余空白 */
@@ -18,6 +23,53 @@ function cleanText(raw: string): string {
     .replace(/[ \t]+/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+/* ─── HTML → Markdown（turndown）────────────────────── */
+
+/**
+ * 把 HTML 转成 Markdown，保留标题/列表/表格/加粗等语义结构。
+ * turndown 是纯 JS 库，浏览器友好，无需后端。
+ */
+async function htmlToMarkdown(html: string): Promise<string> {
+  const TurndownService = (await import('turndown')).default;
+  const turndown = new TurndownService({
+    headingStyle: 'atx',        // # 风格标题
+    bulletListMarker: '-',      // - 列表项
+    codeBlockStyle: 'fenced',   // ``` 代码块
+    emDelimiter: '*',           // *斜体*
+    strongDelimiter: '**',      // **加粗**
+  });
+  // 启用表格转换（turndown 默认不转表格，需注册规则）
+  // 简单实现：把 <table> 转成 Markdown 管道表格
+  turndown.addRule('tableCell', {
+    filter: ['th', 'td'],
+    replacement: (content, node) => {
+      const cell = content.trim().replace(/\|/g, '\\|').replace(/\n/g, ' ');
+      return ` ${cell} |`;
+    },
+  });
+  turndown.addRule('tableRow', {
+    filter: 'tr',
+    replacement: (content, node) => {
+      const cells = content.trim();
+      if (!cells) return '';
+      const row = `|${cells}`;
+      // 表头行后加分隔行
+      const tr = node as HTMLElement;
+      if (tr.querySelector('th')) {
+        const colCount = tr.querySelectorAll('th,td').length;
+        const separator = `|${Array(colCount).fill(' --- ').join('|')}|`;
+        return `${row}\n${separator}\n`;
+      }
+      return `${row}\n`;
+    },
+  });
+  turndown.addRule('table', {
+    filter: 'table',
+    replacement: (content) => `\n\n${content}\n\n`,
+  });
+  return turndown.turndown(html);
 }
 
 /* ─── PDF 解析（pdfjs-dist）────────────────────────── */
@@ -49,15 +101,20 @@ async function extractPdf(file: File): Promise<string> {
   return parts.join('\n');
 }
 
-/* ─── Word .docx 解析（mammoth）────────────────────── */
+/* ─── Word .docx 解析（mammoth → HTML → Markdown）──── */
 async function extractDocx(file: File): Promise<string> {
   const mammoth = await import('mammoth');
   const arrayBuffer = await file.arrayBuffer();
-  const result = await mammoth.extractRawText({ arrayBuffer });
-  return result.value || '';
+  // 用 convertToHtml 而非 extractRawText，保留标题/列表/表格/加粗等语义结构
+  const result = await mammoth.convertToHtml({ arrayBuffer });
+  const html = result.value || '';
+  if (!html.trim()) return '';
+  // HTML → Markdown，让 LLM 拿到结构化文本而非扁平纯文本
+  const markdown = await htmlToMarkdown(html);
+  return cleanText(markdown);
 }
 
-/* ─── PPT .pptx 解析（jszip 提取 slide 文本）───────── */
+/* ─── PPT .pptx 解析（jszip → Markdown 分节）────────── */
 async function extractPptx(file: File): Promise<string> {
   const JSZip = (await import('jszip')).default;
   const arrayBuffer = await file.arrayBuffer();
@@ -77,21 +134,33 @@ async function extractPptx(file: File): Promise<string> {
   }
 
   const parts: string[] = [];
-  for (const path of slidePaths) {
+  for (let i = 0; i < slidePaths.length; i++) {
+    const path = slidePaths[i];
     const xml = await zip.files[path].async('string');
     // OOXML 中正文文本节点为 <a:t>…</a:t>，提取其内容
     const matches = xml.match(/<a:t>([^<]*)<\/a:t>/g) ?? [];
-    const slideText = matches
+    const texts = matches
       .map((m) => m.replace(/<\/?a:t>/g, ''))
-      .join(' ')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&apos;/g, "'");
-    if (slideText.trim()) parts.push(slideText);
+      .map((s) => s
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'"));
+
+    // 第一段文本作为幻灯片标题，其余作为内容列表
+    const nonEmpty = texts.filter((t) => t.trim());
+    if (nonEmpty.length === 0) continue;
+    const title = nonEmpty[0].trim();
+    const body = nonEmpty.slice(1);
+    let slideMd = `## 幻灯片 ${i + 1}：${title}\n`;
+    if (body.length > 0) {
+      slideMd += body.map((t) => `- ${t.trim()}`).join('\n');
+    }
+    parts.push(slideMd);
   }
-  return parts.join('\n');
+  // 用分隔线分节，保留幻灯片边界（LLM 能识别"这是一页一页的"）
+  return parts.join('\n\n---\n\n');
 }
 
 /**
