@@ -85,7 +85,8 @@
 
 body {
   background: linear-gradient(135deg, #EDE4D3 0%, #E0D4C0 50%, #EDE4D3 100%);
-  background-attachment: fixed;
+  /* 移除 background-attachment: fixed —— 它是 GPU 头号杀手，
+     滚动时强制全视口图层重绘。ThreeLayerBackground 已提供固定背景层。 */
   min-height: 100vh;
   color: var(--text-primary);
   overflow-x: hidden;
@@ -270,6 +271,13 @@ body {
 }
 
 /* ─── Animations ───────────────────────────────────── */
+
+/* ThreeLayerBackground 装饰浮动：纯 transform 走合成层，不触发 layout/paint，
+   GPU 开销远低于 framer-motion 的 JS 驱动动画 */
+@keyframes tlbg-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
 
 @keyframes fadeIn {
   from { opacity: 0; }

@@ -1,5 +1,5 @@
-import { memo, useMemo, type ReactNode } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { memo, useMemo, type ReactNode, type CSSProperties } from 'react';
+import { useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 interface ThreeLayerBackgroundProps {
@@ -18,10 +18,11 @@ interface DecorItem {
   rotation: number;
   color: string;
   floatDelay: number;
+  /** 是否启用浮动动画。为降低 GPU 合成压力，仅少量关键装饰启用 */
   animated: boolean;
 }
 
-function FeatherPen({ className, style }: { className?: string; style?: React.CSSProperties }) {
+function FeatherPen({ className, style }: { className?: string; style?: CSSProperties }) {
   return (
     <svg
       className={className}
@@ -112,6 +113,21 @@ function Petal({ size, color, rotation }: { size: number; color: string; rotatio
   );
 }
 
+/**
+ * 装饰浮动动画样式。
+ * 用 CSS animation 代替 framer-motion 的 repeat: Infinity，
+ * CSS 动画由浏览器合成层直接处理，GPU 开销远低于 JS 驱动的 motion 动画。
+ * transform 与 opacity 走合成层，不触发 layout/paint。
+ */
+function buildFloatStyle(delay: number, reduce: boolean): CSSProperties {
+  if (reduce) return {};
+  return {
+    animation: `tlbg-float 6s ease-in-out infinite`,
+    animationDelay: `${delay}s`,
+    willChange: 'transform',
+  };
+}
+
 function ThreeLayerBackgroundInner({ children, className }: ThreeLayerBackgroundProps) {
   const reduce = useReducedMotion();
   const decorItems = useMemo<DecorItem[]>(() => {
@@ -126,22 +142,24 @@ function ThreeLayerBackgroundInner({ children, className }: ThreeLayerBackground
 
     const items: DecorItem[] = [];
 
+    // 羽毛笔：静态，不动画（体积大，动画开销高）
     items.push({
       id: 1, type: 'feather', top: '8%', left: '2%', size: 80, rotation: -15,
-      color: 'rgba(92,64,51,0.3)', floatDelay: 0, animated: true,
+      color: 'rgba(92,64,51,0.3)', floatDelay: 0, animated: false,
     });
 
+    // 纸屑：仅 2 个动画，其余静态（降低同时合成的图层数）
     items.push({
       id: 2, type: 'confetti', top: '5%', right: '8%', size: 10, rotation: 25,
       color: colors[0], floatDelay: 1.2, animated: true,
     });
     items.push({
       id: 3, type: 'confetti', top: '12%', right: '4%', size: 8, rotation: -40,
-      color: colors[1], floatDelay: 0.5, animated: true,
+      color: colors[1], floatDelay: 0.5, animated: false,
     });
     items.push({
       id: 4, type: 'confetti', top: '3%', right: '15%', size: 7, rotation: 60,
-      color: colors[2], floatDelay: 2, animated: true,
+      color: colors[2], floatDelay: 2, animated: false,
     });
 
     items.push({
@@ -150,12 +168,12 @@ function ThreeLayerBackgroundInner({ children, className }: ThreeLayerBackground
     });
     items.push({
       id: 6, type: 'snippet', bottom: '12%', left: '8%', size: 0, rotation: 5,
-      color: snippetColors[1], floatDelay: 1.5, animated: true,
+      color: snippetColors[1], floatDelay: 1.5, animated: false,
     });
 
     items.push({
       id: 7, type: 'inkdot', top: '20%', right: '2%', size: 30, rotation: 0,
-      color: colors[3], floatDelay: 0.3, animated: true,
+      color: colors[3], floatDelay: 0.3, animated: false,
     });
     items.push({
       id: 8, type: 'inkdot', bottom: '25%', right: '3%', size: 24, rotation: 0,
@@ -168,41 +186,24 @@ function ThreeLayerBackgroundInner({ children, className }: ThreeLayerBackground
     });
     items.push({
       id: 10, type: 'petal', bottom: '35%', left: '2%', size: 14, rotation: -50,
-      color: colors[1], floatDelay: 2.2, animated: true,
+      color: colors[1], floatDelay: 2.2, animated: false,
     });
 
     items.push({
       id: 11, type: 'confetti', top: '60%', right: '1%', size: 9, rotation: 15,
-      color: colors[2], floatDelay: 1, animated: true,
+      color: colors[2], floatDelay: 1, animated: false,
     });
     items.push({
       id: 12, type: 'confetti', bottom: '5%', right: '10%', size: 6, rotation: -20,
-      color: colors[4], floatDelay: 0.7, animated: true,
+      color: colors[4], floatDelay: 0.7, animated: false,
     });
 
     return items;
   }, []);
 
-  const floatAnimation = (delay: number, duration = 5) => {
-    if (reduce) {
-      return { animate: { y: 0, rotate: 0 }, transition: { duration: 0 } };
-    }
-    return {
-      animate: {
-        y: [0, -4, 2, -2, 0],
-        rotate: [0, 0.8, -0.5, 0.3, 0],
-      },
-      transition: {
-        duration,
-        delay,
-        repeat: Infinity,
-        ease: 'easeInOut',
-      },
-    };
-  };
-
   return (
     <div className={cn('relative overflow-hidden min-h-screen', className)}>
+      {/* z-0：渐变 + 纹理底色层（纯静态，无动画） */}
       <div
         className="absolute inset-0 z-0"
         style={{
@@ -253,34 +254,20 @@ function ThreeLayerBackgroundInner({ children, className }: ThreeLayerBackground
 
       <div className="relative z-10">{children}</div>
 
+      {/* z-20：装饰层。仅 3 个元素启用 CSS 浮动动画（原 11 个），大幅降低 GPU 合成压力 */}
       <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
         {decorItems.map((item) => {
-          const posStyle: React.CSSProperties = {
+          const posStyle: CSSProperties = {
             top: item.top,
             left: item.left,
             right: item.right,
             bottom: item.bottom,
             position: 'absolute',
           };
-
-          if (item.animated) {
-            return (
-              <motion.div
-                key={item.id}
-                style={posStyle}
-                {...floatAnimation(item.floatDelay, 4 + (item.id % 4))}
-              >
-                {item.type === 'feather' && <FeatherPen style={{ opacity: 0.4 }} />}
-                {item.type === 'confetti' && <Confetti size={item.size} color={item.color} rotation={item.rotation} />}
-                {item.type === 'snippet' && <SmallSnippet color={item.color} rotation={item.rotation} />}
-                {item.type === 'inkdot' && <InkSplash size={item.size} color={item.color} />}
-                {item.type === 'petal' && <Petal size={item.size} color={item.color} rotation={item.rotation} />}
-              </motion.div>
-            );
-          }
+          const animStyle = item.animated ? buildFloatStyle(item.floatDelay, reduce) : {};
 
           return (
-            <div key={item.id} style={posStyle}>
+            <div key={item.id} style={{ ...posStyle, ...animStyle }}>
               {item.type === 'feather' && <FeatherPen style={{ opacity: 0.4 }} />}
               {item.type === 'confetti' && <Confetti size={item.size} color={item.color} rotation={item.rotation} />}
               {item.type === 'snippet' && <SmallSnippet color={item.color} rotation={item.rotation} />}
@@ -291,15 +278,19 @@ function ThreeLayerBackgroundInner({ children, className }: ThreeLayerBackground
         })}
       </div>
 
-      <motion.div
+      {/*
+        z-30：噪点层。
+        优化点（原为 GPU 重负载源）：
+        1. 移除 mixBlendMode: 'multiply' —— 它强制 GPU 合成全屏图层，是 GPU 飙升主因
+        2. 移除 20s 无限循环 backgroundPosition 动画 —— 持续触发重绘
+        3. 改为纯静态层 + 低 opacity，视觉差异极小但 GPU 开销归零
+      */}
+      <div
         className="absolute inset-0 z-30 pointer-events-none"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-          opacity: 0.03,
-          mixBlendMode: 'multiply',
+          opacity: 0.04,
         }}
-        animate={reduce ? undefined : { backgroundPosition: ['0 0', '2px 2px', '0 0'] }}
-        transition={reduce ? undefined : { duration: 20, repeat: Infinity, ease: 'linear' }}
       />
     </div>
   );
