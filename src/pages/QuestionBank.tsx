@@ -110,17 +110,38 @@ export default function QuestionBank() {
   const [searchKeyword, setSearchKeyword] = useState('');
 
   // 按套分组：每个有题目的 material 为一套，按上传日期倒序
+  // orphan 题目（materialId 为空或指向已删除的 material）归到"未分类题库"虚拟套
   const questionSets = useMemo<QuestionSet[]>(() => {
-    const ids = new Set(questions.map((q) => q.materialId).filter(Boolean));
+    const materialIds = new Set(materials.map((m) => m.id));
     const sets: QuestionSet[] = materials
-      .filter((m) => ids.has(m.id))
       .map((m) => ({
         material: m,
         questions: questions
           .filter((q) => q.materialId === m.id)
           .sort((a, b) => a.createdAt - b.createdAt),
         dateLabel: toDateLabel(m.uploadedAt),
-      }));
+      }))
+      .filter((s) => s.questions.length > 0);
+
+    // orphan 题目：materialId 为空，或指向不存在的 material
+    const orphanQs = questions.filter(
+      (q) => !q.materialId || !materialIds.has(q.materialId),
+    ).sort((a, b) => a.createdAt - b.createdAt);
+    if (orphanQs.length > 0) {
+      sets.push({
+        material: {
+          id: '__orphan__',
+          name: '未分类题库',
+          type: 'text',
+          uploadedAt: orphanQs[0]?.createdAt ?? Date.now(),
+          status: 'parsed',
+          kind: 'bank',
+        } as StudyMaterial,
+        questions: orphanQs,
+        dateLabel: toDateLabel(orphanQs[0]?.createdAt ?? Date.now()),
+      });
+    }
+
     // 按上传时间倒序（最新的套在前）
     sets.sort((a, b) => b.material.uploadedAt - a.material.uploadedAt);
     return sets;
@@ -259,8 +280,20 @@ export default function QuestionBank() {
   const handleConfirmDelete = () => {
     if (!pendingDelete) return;
     if (pendingDelete.type === 'set') {
-      removeMaterialAndQuestions(pendingDelete.id);
-      addToast('success', `已删除题库「${pendingDelete.name}」及全部题目`);
+      if (pendingDelete.id === '__orphan__') {
+        // 未分类虚拟套：只删题目，不删 material
+        const orphanIds = questions
+          .filter((q) => {
+            const materialIds = new Set(materials.map((m) => m.id));
+            return !q.materialId || !materialIds.has(q.materialId);
+          })
+          .map((q) => q.id);
+        orphanIds.forEach((id) => deleteQuestion(id));
+        addToast('success', `已清空「${pendingDelete.name}」共 ${orphanIds.length} 道题目`);
+      } else {
+        removeMaterialAndQuestions(pendingDelete.id);
+        addToast('success', `已删除题库「${pendingDelete.name}」及全部题目`);
+      }
     } else if (pendingDelete.type === 'question') {
       deleteQuestion(pendingDelete.id);
       setSelectedIds((prev) => { const n = new Set(prev); n.delete(pendingDelete.id); return n; });
@@ -456,25 +489,25 @@ export default function QuestionBank() {
 
                         {/* 操作按钮 */}
                         <div className="flex items-center gap-1 flex-shrink-0">
+                          {!batchMode && set.material.id !== '__orphan__' && (
+                            <button
+                              type="button"
+                              onClick={() => handleStartRename(set.material)}
+                              title="重命名"
+                              className="w-7 h-7 rounded-[3px] hover:bg-paper-200 text-ink-500 hover:text-ink-800 flex items-center justify-center"
+                            >
+                              <Edit3 size={13} />
+                            </button>
+                          )}
                           {!batchMode && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => handleStartRename(set.material)}
-                                title="重命名"
-                                className="w-7 h-7 rounded-[3px] hover:bg-paper-200 text-ink-500 hover:text-ink-800 flex items-center justify-center"
-                              >
-                                <Edit3 size={13} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setPendingDelete({ type: 'set', id: set.material.id, name: set.material.name })}
-                                title="删除整套"
-                                className="w-7 h-7 rounded-[3px] hover:bg-terracotta/10 text-terracotta-dark flex items-center justify-center"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </>
+                            <button
+                              type="button"
+                              onClick={() => setPendingDelete({ type: 'set', id: set.material.id, name: set.material.name })}
+                              title={set.material.id === '__orphan__' ? '清空未分类题目' : '删除整套'}
+                              className="w-7 h-7 rounded-[3px] hover:bg-terracotta/10 text-terracotta-dark flex items-center justify-center"
+                            >
+                              <Trash2 size={13} />
+                            </button>
                           )}
                         </div>
                       </div>
@@ -625,7 +658,7 @@ export default function QuestionBank() {
                     className="w-full px-3 py-2 text-sm font-sans rounded-[3px] border border-ink-600/15 bg-paper-100 text-ink-800 focus:outline-none focus:border-seal/50"
                   >
                     <option value="">请选择题库…</option>
-                    {questionSets.map((s) => (
+                    {questionSets.filter((s) => s.material.id !== '__orphan__').map((s) => (
                       <option key={s.material.id} value={s.material.id}>{s.material.name}</option>
                     ))}
                   </select>
