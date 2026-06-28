@@ -10,6 +10,7 @@ import Practice from '@/pages/Practice';
 import Wrongbook from '@/pages/Wrongbook';
 import MemoryCards from '@/pages/MemoryCards';
 import Supervisor from '@/pages/Supervisor';
+import QuestionBank from '@/pages/QuestionBank';
 import { useAppStore } from '@/store/useAppStore';
 
 function renderView(activeView: string) {
@@ -22,6 +23,8 @@ function renderView(activeView: string) {
       return <MemoryCards />;
     case 'supervisor':
       return <Supervisor />;
+    case 'questionbank':
+      return <QuestionBank />;
     case 'dashboard':
     default:
       return <Dashboard />;

@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 
-type ViewKey = 'dashboard' | 'practice' | 'wrongbook' | 'memory' | 'supervisor';
+type ViewKey = 'dashboard' | 'practice' | 'wrongbook' | 'memory' | 'supervisor' | 'questionbank';
 
 interface NavItem {
   view: ViewKey;
@@ -15,7 +15,8 @@ interface VintageNavProps {
 
 const NAV_ITEMS: NavItem[] = [
   { view: 'dashboard', label: '首页', icon: '🏠' },
-  { view: 'practice', label: '开始练习', icon: '✏️' },
+  { view: 'practice', label: '练习', icon: '✏️' },
+  { view: 'questionbank', label: '题库', icon: '📚' },
   { view: 'wrongbook', label: '错题本', icon: '📕' },
   { view: 'memory', label: '记忆卡片', icon: '🃏' },
   { view: 'supervisor', label: '学习报告', icon: '📊' },

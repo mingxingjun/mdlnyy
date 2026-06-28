@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, Check, X, Lightbulb, RefreshCw, Home,
@@ -396,6 +396,7 @@ function ExplanationPanel({
 export default function Practice() {
   const knowledgePoints = useAppStore((s) => s.knowledgePoints);
   const bankQuestions = useAppStore((s) => s.questions);          // 题库题（source='bank'）
+  const materials = useAppStore((s) => s.materials);             // 用于文件筛选
   const addQuestions = useAppStore((s) => s.addQuestions);
   const addAnswerRecord = useAppStore((s) => s.addAnswerRecord);
   const addWrongQuestion = useAppStore((s) => s.addWrongQuestion);
@@ -407,6 +408,8 @@ export default function Practice() {
 
   /** 出题模式：auto=自动选(有题库走题库，否则走知识点) / bank=题库 / knowledge=知识点 */
   const [genMode, setGenMode] = useState<'auto' | 'bank' | 'knowledge'>('auto');
+  /** 题库模式：选中的文件筛选（'all' = 全部文件） */
+  const [selectedMaterialId, setSelectedMaterialId] = useState<string>('all');
   const [phase, setPhase] = useState<Phase>('setup');
   const [sessionQuestions, setSessionQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -530,10 +533,14 @@ ${optionsBlock}【学生答案】${userAnswer}
     [sessionQuestions, currentIndex, userAnswer, addToast, updateWrongQuestion],
   );
 
-  /** 题库模式：从已导入题库抽取原题，分批出完 */
+  /** 题库模式：从已导入题库抽取原题，分批出完。支持按文件筛选 */
   const startBankSession = useCallback(async (controller: AbortController): Promise<Question[]> => {
-    // 过滤掉答案为空的题（极端情况：补答失败），保留所有有答案的题库题
-    const bankQs = bankQuestions.filter((q) => q.source === 'bank' && q.answer);
+    // 过滤：题库题 + 有答案 + 文件筛选（'all' = 全部）
+    const bankQs = bankQuestions.filter((q) => {
+      if (q.source !== 'bank' || !q.answer) return false;
+      if (selectedMaterialId !== 'all' && q.materialId !== selectedMaterialId) return false;
+      return true;
+    });
     if (bankQs.length === 0) return [];
 
     // 一次性出全部，但分批写入 sessionQuestions（前端展示）。这里先返回第一批，后续题已在 store。
@@ -541,7 +548,7 @@ ${optionsBlock}【学生答案】${userAnswer}
     // 但为避免单次练习过长，取 BANK_QUESTIONS_PER_BATCH 为一批，由用户做完后继续下一批。
     const firstBatch = bankQs.slice(0, BANK_QUESTIONS_PER_BATCH);
     return firstBatch;
-  }, [bankQuestions]);
+  }, [bankQuestions, selectedMaterialId]);
 
   /** 知识点模式：覆盖所有知识点出题，按 priority 分配题量，分批生成 */
   const startKnowledgeSession = useCallback(async (controller: AbortController): Promise<Question[]> => {
@@ -609,8 +616,14 @@ ${kpList}
   }, [knowledgePoints, studyProgress.weakPointIds]);
 
   const startSession = useCallback(async () => {
+    // 题库筛选：auto/bank 模式下应用文件筛选
+    const filteredBank = bankQuestions.filter((q) => {
+      if (q.source !== 'bank' || !q.answer) return false;
+      if (selectedMaterialId !== 'all' && q.materialId !== selectedMaterialId) return false;
+      return true;
+    });
+    const hasBank = filteredBank.length > 0;
     // 决定实际模式：auto 时有题库走题库，否则走知识点
-    const hasBank = bankQuestions.some((q) => q.source === 'bank' && q.answer);
     const mode = genMode === 'auto' ? (hasBank ? 'bank' : 'knowledge') : genMode;
 
     if (mode === 'knowledge' && knowledgePoints.length === 0) {
@@ -618,7 +631,9 @@ ${kpList}
       return;
     }
     if (mode === 'bank' && !hasBank) {
-      addToast('warning', '尚无题库题，请先以「题库」类型上传资料');
+      addToast('warning', selectedMaterialId !== 'all'
+        ? '所选文件下无可练题库题，请换个文件或上传题库'
+        : '尚无题库题，请先以「题库」类型上传资料');
       return;
     }
     if (mode === 'knowledge' && !isApiKeyConfigured()) {
@@ -664,7 +679,7 @@ ${kpList}
       addToast('error', `出题失败：${err instanceof Error ? err.message : '未知错误'}`);
       setPhase('setup');
     }
-  }, [genMode, bankQuestions, knowledgePoints, startBankSession, startKnowledgeSession, addQuestions, addToast, resetQuestionState]);
+  }, [genMode, bankQuestions, selectedMaterialId, knowledgePoints, startBankSession, startKnowledgeSession, addQuestions, addToast, resetQuestionState]);
 
   const handleSubmit = useCallback(() => {
     const q = sessionQuestions[currentIndex];
@@ -751,6 +766,14 @@ ${kpList}
   const accuracy = totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0;
   const noKnowledgePoints = knowledgePoints.length === 0;
   const noApiKey = !isApiKeyConfigured();
+  /** 题库题所在的文件列表（用于文件筛选器） */
+  const bankMaterials = useMemo(
+    () => {
+      const ids = new Set(bankQuestions.map((q) => q.materialId).filter(Boolean));
+      return materials.filter((m) => ids.has(m.id));
+    },
+    [bankQuestions, materials],
+  );
 
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 space-y-5">
@@ -860,6 +883,45 @@ ${kpList}
                     </p>
                   )}
                 </div>
+
+                {/* 文件筛选器（仅当题库题来自多个文件时显示） */}
+                {bankMaterials.length > 1 && genMode !== 'knowledge' && (
+                  <div className="text-left max-w-md mx-auto">
+                    <span className="block text-xs font-serif text-ink-600 mb-1.5">出题文件范围</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedMaterialId('all')}
+                        className={`px-2.5 py-1.5 rounded-[3px] text-xs font-serif border transition-colors ${
+                          selectedMaterialId === 'all'
+                            ? 'bg-seal text-paper-50 border-seal'
+                            : 'bg-paper-100 text-ink-700 border-ink-600/15 hover:border-seal/50'
+                        }`}
+                      >
+                        全部 ({bankQuestions.filter((q) => q.source === 'bank' && q.answer).length})
+                      </button>
+                      {bankMaterials.map((m) => {
+                        const cnt = bankQuestions.filter((q) => q.materialId === m.id && q.source === 'bank' && q.answer).length;
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => setSelectedMaterialId(m.id)}
+                            title={m.name}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[3px] text-xs font-serif border transition-colors max-w-[200px] ${
+                              selectedMaterialId === m.id
+                                ? 'bg-seal text-paper-50 border-seal'
+                                : 'bg-paper-100 text-ink-700 border-ink-600/15 hover:border-seal/50'
+                            }`}
+                          >
+                            <span className="truncate">{m.name}</span>
+                            <span className="opacity-70 flex-shrink-0">({cnt})</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {genMode === 'knowledge' && noApiKey && (
                   <p className="text-xs text-terracotta-dark font-serif">知识点模式需调用 AI 出题，请先配置 API Key</p>

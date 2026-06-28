@@ -142,6 +142,12 @@ interface AppState {
 
   questions: Question[];
   addQuestions: (qs: Question[]) => void;
+  /** 新增单道题目（题库管理手动添加） */
+  addQuestion: (q: Question) => void;
+  /** 更新指定题目（题库管理编辑） */
+  updateQuestion: (id: string, updates: Partial<Omit<Question, 'id'>>) => void;
+  /** 删除指定题目（题库管理删除） */
+  deleteQuestion: (id: string) => void;
   removeQuestionsByMaterial: (materialId: string) => void;
   /** 用新题替换指定 materialId 下的所有题目（题库重新导入时使用） */
   replaceQuestionsByMaterial: (materialId: string, qs: Question[]) => void;
@@ -174,9 +180,9 @@ interface AppState {
   createAgentSession: (agentId: string) => string;
   clearAgentSession: (sessionId: string) => void;
 
-  /** 单页视图切换：工作台 / 出题 / 错题本 / 记忆卡片 / 督学 */
-  activeView: 'dashboard' | 'practice' | 'wrongbook' | 'memory' | 'supervisor';
-  setActiveView: (view: 'dashboard' | 'practice' | 'wrongbook' | 'memory' | 'supervisor') => void;
+  /** 单页视图切换：工作台 / 出题 / 错题本 / 记忆卡片 / 督学 / 题库管理 */
+  activeView: 'dashboard' | 'practice' | 'wrongbook' | 'memory' | 'supervisor' | 'questionbank';
+  setActiveView: (view: 'dashboard' | 'practice' | 'wrongbook' | 'memory' | 'supervisor' | 'questionbank') => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -212,6 +218,13 @@ export const useAppStore = create<AppState>()(
 
       questions: [],
       addQuestions: (qs) => set((state) => ({ questions: [...state.questions, ...qs] })),
+      addQuestion: (q) => set((state) => ({ questions: [...state.questions, q] })),
+      updateQuestion: (id, updates) => set((state) => ({
+        questions: state.questions.map((q) => (q.id === id ? { ...q, ...updates } : q)),
+      })),
+      deleteQuestion: (id) => set((state) => ({
+        questions: state.questions.filter((q) => q.id !== id),
+      })),
       removeQuestionsByMaterial: (materialId) => set((state) => ({
         questions: state.questions.filter((q) => q.materialId !== materialId),
       })),
