@@ -148,7 +148,8 @@ Onboarded → MaterialReady → KnowledgeReady → Practicing
       },
     ],
     temperature: 0.5,
-    maxTokens: 4096,
+    // 单批最多 8 题，4096 易被截断导致题目不完整；提升至 8192 保证完整输出
+    maxTokens: 8192,
   },
 
   /* ───────────── Explanation Agent 讲解 ───────────── */

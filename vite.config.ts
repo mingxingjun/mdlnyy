@@ -7,6 +7,21 @@ export default defineConfig({
   base: '/mdlnyy/',
   build: {
     sourcemap: false,
+    rollupOptions: {
+      output: {
+        // 代码分割：将第三方依赖拆分为独立 chunk，提升首屏加载与缓存命中率
+        manualChunks: {
+          // React 核心（react + react-dom + react-dom/client）
+          'react-vendor': ['react', 'react-dom'],
+          // framer-motion 动画库单独拆分（体积较大）
+          'motion-vendor': ['framer-motion'],
+          // 图标库单独拆分
+          'icons-vendor': ['lucide-react'],
+          // 状态管理
+          'state-vendor': ['zustand'],
+        },
+      },
+    },
   },
   plugins: [
     react(),

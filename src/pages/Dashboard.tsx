@@ -749,11 +749,15 @@ function DashboardHeader() {
    ═══════════════════════════════════════════════════════ */
 
 function MaterialUploadCard() {
-  const {
-    materials, addMaterial, updateMaterial, removeMaterial,
-    addKnowledgePoints, replaceQuestionsByMaterial,
-    setLearningState, learningState,
-  } = useAppStore();
+  // 选择器订阅：避免任意 store 变更触发本组件重渲染
+  const materials = useAppStore((s) => s.materials);
+  const addMaterial = useAppStore((s) => s.addMaterial);
+  const updateMaterial = useAppStore((s) => s.updateMaterial);
+  const removeMaterial = useAppStore((s) => s.removeMaterial);
+  const addKnowledgePoints = useAppStore((s) => s.addKnowledgePoints);
+  const replaceQuestionsByMaterial = useAppStore((s) => s.replaceQuestionsByMaterial);
+  const setLearningState = useAppStore((s) => s.setLearningState);
+  const learningState = useAppStore((s) => s.learningState);
   const { addToast } = useToastStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1308,10 +1312,12 @@ function MaterialStatusBadge({ material }: { material: StudyMaterial }) {
    ═══════════════════════════════════════════════════════ */
 
 function ActivityCardList() {
-  const {
-    learningState, wrongQuestions, memoryCards, questions,
-    setActiveView,
-  } = useAppStore();
+  // 选择器订阅：仅订阅本组件实际使用的字段
+  const learningState = useAppStore((s) => s.learningState);
+  const wrongQuestions = useAppStore((s) => s.wrongQuestions);
+  const memoryCards = useAppStore((s) => s.memoryCards);
+  const questions = useAppStore((s) => s.questions);
+  const setActiveView = useAppStore((s) => s.setActiveView);
 
   const today = useMemo(() => todayISO(), []);
   const dueCardsCount = useMemo(

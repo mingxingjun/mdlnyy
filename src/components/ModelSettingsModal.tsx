@@ -4,7 +4,7 @@ import PaperCard from './PaperCard';
 import VintageButton from './VintageButton';
 import { loadModelSettings, saveModelSettings } from '@/lib/models/api';
 import type { ModelConfig, ModelProvider, ModelSettings, ModelTaskType } from '@/lib/models/types';
-import { DEFAULT_PROVIDERS } from '@/lib/models/types';
+import { DEFAULT_PROVIDERS, MODEL_OPTIONS } from '@/lib/models/types';
 import { useToastStore } from './Toast';
 
 interface ModelSettingsModalProps {
@@ -164,8 +164,8 @@ export default function ModelSettingsModal({ open, onClose }: ModelSettingsModal
                 </button>
               </div>
 
-              {/* 可滚动主体区 */}
-              <div className="overflow-y-auto -mx-1 px-1 pb-1 mt-1 min-h-0 max-h-[calc(100vh-16rem)]">
+              {/* 可滚动主体区：用 flex-1 + min-h-0 自适应剩余高度，避免固定 max-h 在小屏裁切 */}
+              <div className="flex-1 overflow-y-auto -mx-1 px-1 pb-1 mt-1 min-h-0">
               {/* 任务分工 */}
               <h3 className="font-serif text-base text-ink-800 font-semibold mb-3 mt-5">任务分工</h3>
               <div className="space-y-3 mb-5">
@@ -275,18 +275,32 @@ export default function ModelSettingsModal({ open, onClose }: ModelSettingsModal
                         </div>
                       </div>
 
-                      {/* Model name */}
+                      {/* Model name —— datalist 提供常用模型下拉，同时允许自定义输入 */}
                       <div className="mb-3">
-                        <label htmlFor={`cfg-model-${key}`} className="block text-xs font-serif text-ink-600 mb-1">模型名称</label>
+                        <label htmlFor={`cfg-model-${key}`} className="block text-xs font-serif text-ink-600 mb-1">
+                          模型名称
+                          {MODEL_OPTIONS[key].length > 0 && (
+                            <span className="text-[10px] text-ink-400 ml-1">（可从下拉选择或手动输入）</span>
+                          )}
+                        </label>
                         <input
                           id={`cfg-model-${key}`}
                           type="text"
+                          list={`model-options-${key}`}
                           value={config.model}
                           onChange={(e) => updateProvider(key, 'model', e.target.value)}
-                          placeholder="模型名称"
+                          placeholder="选择或输入模型 ID"
                           aria-label={`${PROVIDER_LABELS[key]} 模型名称`}
+                          autoComplete="off"
                           className={inputClass}
                         />
+                        {MODEL_OPTIONS[key].length > 0 && (
+                          <datalist id={`model-options-${key}`}>
+                            {MODEL_OPTIONS[key].map((opt) => (
+                              <option key={opt.id} value={opt.id}>{opt.label}</option>
+                            ))}
+                          </datalist>
+                        )}
                       </div>
 
                       {/* Base URL */}

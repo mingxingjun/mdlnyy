@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { memo, useMemo, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -110,7 +110,7 @@ function Petal({ size, color, rotation }: { size: number; color: string; rotatio
   );
 }
 
-export default function ThreeLayerBackground({ children, className }: ThreeLayerBackgroundProps) {
+function ThreeLayerBackgroundInner({ children, className }: ThreeLayerBackgroundProps) {
   const reduce = useReducedMotion();
   const decorItems = useMemo<DecorItem[]>(() => {
     const colors = [
@@ -267,7 +267,6 @@ export default function ThreeLayerBackground({ children, className }: ThreeLayer
                 key={item.id}
                 style={posStyle}
                 {...floatAnimation(item.floatDelay, 4 + (item.id % 4))}
-                className="backdrop-blur-[1px]"
               >
                 {item.type === 'feather' && <FeatherPen style={{ opacity: 0.4 }} />}
                 {item.type === 'confetti' && <Confetti size={item.size} color={item.color} rotation={item.rotation} />}
@@ -279,7 +278,7 @@ export default function ThreeLayerBackground({ children, className }: ThreeLayer
           }
 
           return (
-            <div key={item.id} style={posStyle} className="backdrop-blur-[1px]">
+            <div key={item.id} style={posStyle}>
               {item.type === 'feather' && <FeatherPen style={{ opacity: 0.4 }} />}
               {item.type === 'confetti' && <Confetti size={item.size} color={item.color} rotation={item.rotation} />}
               {item.type === 'snippet' && <SmallSnippet color={item.color} rotation={item.rotation} />}
@@ -303,3 +302,7 @@ export default function ThreeLayerBackground({ children, className }: ThreeLayer
     </div>
   );
 }
+
+// memo：背景装饰为静态内容，父组件状态变化时无需重渲染
+const ThreeLayerBackground = memo(ThreeLayerBackgroundInner);
+export default ThreeLayerBackground;

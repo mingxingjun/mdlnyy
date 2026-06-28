@@ -99,3 +99,41 @@ export const DEFAULT_TASK_ROUTING: TaskRouting = {
   doc_parse: 'kimi',
   chat: 'deepseek',
 };
+
+/**
+ * 各厂商可选模型 ID 列表（2026 年最新可用模型）。
+ * 用于 AI 配置页面的模型选择下拉，同时允许用户自定义输入。
+ */
+export const MODEL_OPTIONS: Record<ModelProvider, { id: string; label: string }[]> = {
+  deepseek: [
+    { id: 'deepseek-chat', label: 'deepseek-chat（通用对话，稳定）' },
+    { id: 'deepseek-reasoner', label: 'deepseek-reasoner（推理增强）' },
+  ],
+  kimi: [
+    { id: 'moonshot-v1-8k', label: 'moonshot-v1-8k（短文档）' },
+    { id: 'moonshot-v1-32k', label: 'moonshot-v1-32k（中长文档，推荐）' },
+    { id: 'moonshot-v1-128k', label: 'moonshot-v1-128k（超长文档）' },
+  ],
+  ollama: [
+    { id: 'qwen2.5:7b', label: 'qwen2.5:7b（轻量通用）' },
+    { id: 'qwen2.5:14b', label: 'qwen2.5:14b（中等）' },
+    { id: 'qwen2.5:32b', label: 'qwen2.5:32b（高质量）' },
+    { id: 'qwen2.5-coder:7b', label: 'qwen2.5-coder:7b（代码）' },
+    { id: 'llama3.3:70b', label: 'llama3.3:70b（大模型）' },
+    { id: 'deepseek-r1:7b', label: 'deepseek-r1:7b（推理）' },
+    { id: 'deepseek-r1:14b', label: 'deepseek-r1:14b（推理）' },
+    { id: 'gemma3:4b', label: 'gemma3:4b（轻量）' },
+    { id: 'phi4:14b', label: 'phi4:14b（推理）' },
+    { id: 'mistral:7b', label: 'mistral:7b（通用）' },
+  ],
+  openai: [
+    { id: 'gpt-4o-mini', label: 'gpt-4o-mini（快速经济）' },
+    { id: 'gpt-4o', label: 'gpt-4o（多模态旗舰）' },
+    { id: 'gpt-4.1-mini', label: 'gpt-4.1-mini（高效）' },
+    { id: 'gpt-4.1', label: 'gpt-4.1（高精度）' },
+    { id: 'gpt-4.1-nano', label: 'gpt-4.1-nano（最经济）' },
+    { id: 'o4-mini', label: 'o4-mini（推理轻量）' },
+    { id: 'o3-mini', label: 'o3-mini（推理经济）' },
+  ],
+  custom: [],
+};

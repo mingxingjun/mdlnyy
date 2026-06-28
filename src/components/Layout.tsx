@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, type ReactNode } from 'react';
+import { motion } from 'framer-motion';
 import ErrorBoundary from './ErrorBoundary';
 import FallbackView from './FallbackView';
 import ThreeLayerBackground from './ThreeLayerBackground';
@@ -13,39 +13,56 @@ import Supervisor from '@/pages/Supervisor';
 import QuestionBank from '@/pages/QuestionBank';
 import { useAppStore } from '@/store/useAppStore';
 
-function renderView(activeView: string) {
-  switch (activeView) {
-    case 'practice':
-      return <Practice />;
-    case 'wrongbook':
-      return <Wrongbook />;
-    case 'memory':
-      return <MemoryCards />;
-    case 'supervisor':
-      return <Supervisor />;
-    case 'questionbank':
-      return <QuestionBank />;
-    case 'dashboard':
-    default:
-      return <Dashboard />;
-  }
-}
+type ViewKey = 'dashboard' | 'practice' | 'wrongbook' | 'memory' | 'supervisor' | 'questionbank';
+
+const VIEW_COMPONENTS: Record<ViewKey, () => ReactNode> = {
+  dashboard: () => <Dashboard />,
+  practice: () => <Practice />,
+  wrongbook: () => <Wrongbook />,
+  memory: () => <MemoryCards />,
+  supervisor: () => <Supervisor />,
+  questionbank: () => <QuestionBank />,
+};
+
+const VIEW_ORDER: ViewKey[] = ['dashboard', 'practice', 'wrongbook', 'memory', 'supervisor', 'questionbank'];
 
 function ViewRouter() {
-  const activeView = useAppStore((s) => s.activeView);
+  const activeView = useAppStore((s) => s.activeView) as ViewKey;
+
+  // Keep-alive：记录已挂载过的视图，切换时保留组件状态（不卸载）。
+  // 使用「渲染期间调整 state」模式（React 官方推荐），避免 useEffect 延迟一帧导致闪烁。
+  const [mounted, setMounted] = useState<Set<ViewKey>>(() => new Set([activeView]));
+  if (!mounted.has(activeView)) {
+    setMounted(new Set(mounted).add(activeView));
+  }
+
   return (
     <ErrorBoundary resetKeys={[activeView]} fallback={<FallbackView><ViewRouter /></FallbackView>}>
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeView}
-          initial={{ opacity: 0, y: -20, rotate: -4, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 10, rotate: 2, scale: 0.98 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        >
-          {renderView(activeView)}
-        </motion.div>
-      </AnimatePresence>
+      {/* 渲染所有已访问过的视图，非激活视图用 hidden 隐藏以保留状态 */}
+      {VIEW_ORDER.filter((key) => mounted.has(key)).map((key) => {
+        const isActive = key === activeView;
+        const Comp = VIEW_COMPONENTS[key];
+        return (
+          <div
+            key={key}
+            hidden={!isActive}
+            aria-hidden={!isActive}
+            className={isActive ? 'block' : 'hidden'}
+          >
+            {isActive ? (
+              <motion.div
+                initial={{ opacity: 0, y: -12, rotate: -3, scale: 0.985 }}
+                animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <Comp />
+              </motion.div>
+            ) : (
+              <Comp />
+            )}
+          </div>
+        );
+      })}
     </ErrorBoundary>
   );
 }

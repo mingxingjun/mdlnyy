@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Check, X, Lightbulb, RefreshCw, Home,
@@ -232,6 +232,59 @@ function judgeAnswer(question: Question, userAnswer: string): boolean {
   return cn.includes(un) || un.includes(cn);
 }
 
+/**
+ * AI 判题兜底：当本地字符串匹配判定为「错」时（尤其中文简答/填空/计算题），
+ * 调用出题 Agent 用语义判断用户答案是否与标准答案等价，避免因表述差异误判。
+ * 返回 true 表示 AI 认为答对；失败或超时按 false 处理（保持本地判定结果）。
+ */
+async function judgeAnswerWithAI(
+  question: Question,
+  userAnswer: string,
+  signal?: AbortSignal,
+): Promise<boolean> {
+  const agent = getAgent('question-agent');
+  if (!agent) return false;
+  try {
+    const settings = loadModelSettings();
+    if (!isTaskConfigured(settings, 'chat')) return false;
+
+    const optionsBlock =
+      question.options && question.options.length > 0
+        ? `【选项】\n${question.options.join('\n')}\n`
+        : '';
+    const input = `请判定以下学生答案的对错，输出判定结果 JSON。
+
+【题干】${question.stem}
+${optionsBlock}【学生答案】${userAnswer}
+【标准答案】${question.answer}
+【题目原解析】${question.explanation || '（无）'}
+
+【判定原则】
+- 选择题：字母一致即对
+- 填空/简答/计算题：语义等价即对（含同义表达、单位等价、公式等价、计算结果一致）
+- 仅输出 JSON，不要 markdown 代码块
+
+【输出 JSON Schema】
+{
+  "correct": true,
+  "userAnswer": "${userAnswer.slice(0, 50)}",
+  "correctAnswer": "...",
+  "brief": "判定依据一句话"
+}`;
+
+    const userMessage = compressPrompt(agent, input);
+    const { content } = await callModelForTask(
+      settings, 'chat', agent.systemPrompt, userMessage, signal,
+      { temperature: 0.2, maxTokens: 512 },
+    );
+    const cleaned = stripCodeFence(content);
+    const parsed = JSON.parse(cleaned) as { correct?: unknown };
+    return parsed?.correct === true;
+  } catch {
+    return false;
+  }
+}
+
 /** 将讲解结构序列化为错题本的 stepBreakdown 字符串 */
 function formatStepBreakdown(exp: ParsedExplanation): string {
   const lines: string[] = [];
@@ -248,14 +301,14 @@ function formatStepBreakdown(exp: ParsedExplanation): string {
    小型展示组件
    ═══════════════════════════════════════════════════════ */
 
-function StatCard({ label, value, color }: { label: string; value: string | number; color: string }) {
+const StatCard = memo(function StatCard({ label, value, color }: { label: string; value: string | number; color: string }) {
   return (
     <div className="rounded-paper border border-ink-600/10 bg-paper-100/50 px-3 py-3 text-center">
       <p className="text-xs text-ink-500 font-sans mb-1">{label}</p>
       <p className={cn('font-serif text-2xl font-bold leading-none', color)}>{value}</p>
     </div>
   );
-}
+});
 
 interface ExplanationPanelProps {
   selectedStyle: ExplanationStyle;
@@ -266,7 +319,7 @@ interface ExplanationPanelProps {
   autoRecorded: boolean;
 }
 
-function ExplanationPanel({
+const ExplanationPanel = memo(function ExplanationPanel({
   selectedStyle, onStyleChange, loading, explanation, onGoWrongbook, autoRecorded,
 }: ExplanationPanelProps) {
   return (
@@ -372,7 +425,7 @@ function ExplanationPanel({
       </div>
     </PaperCard>
   );
-}
+});
 
 /* ═══════════════════════════════════════════════════════
    主组件
@@ -401,6 +454,8 @@ export default function Practice() {
   const [userAnswer, setUserAnswer] = useState('');
   const [selectedOptionIdx, setSelectedOptionIdx] = useState<number | null>(null);
   const [judged, setJudged] = useState<JudgedResult | null>(null);
+  /** AI 语义判题进行中（非选择题本地匹配为「错」时触发兜底） */
+  const [judging, setJudging] = useState(false);
   const [explanation, setExplanation] = useState<ParsedExplanation | null>(null);
   const [explanationLoading, setExplanationLoading] = useState(false);
   const [selectedStyle, setSelectedStyle] = useState<ExplanationStyle>('detailed');
@@ -426,6 +481,7 @@ export default function Practice() {
     setUserAnswer('');
     setSelectedOptionIdx(null);
     setJudged(null);
+    setJudging(false);
     setExplanation(null);
     setExplanationLoading(false);
     setAddedToWrongbook(false);
@@ -666,7 +722,7 @@ ${kpList}
     }
   }, [genMode, bankQuestions, selectedMaterialId, knowledgePoints, startBankSession, startKnowledgeSession, addQuestions, addToast, resetQuestionState]);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     const q = sessionQuestions[currentIndex];
     if (!q) return;
     const ua = userAnswer.trim();
@@ -674,7 +730,26 @@ ${kpList}
       addToast('warning', '请先作答');
       return;
     }
-    const isCorrect = judgeAnswer(q, ua);
+
+    // 本地判定：选择题精确匹配（权威）；非选择题用归一化包含匹配
+    let isCorrect = judgeAnswer(q, ua);
+
+    // AI 语义判题兜底：非选择题且本地判为「错」时，调用 AI 复核是否语义等价，
+    // 避免因同义表述、单位写法、公式变形等差异误判为错。
+    if (!isCorrect && q.type !== 'choice' && isApiKeyConfigured()) {
+      setJudging(true);
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      try {
+        const aiSaysCorrect = await judgeAnswerWithAI(q, ua, controller.signal);
+        if (controller.signal.aborted) return;
+        if (aiSaysCorrect) isCorrect = true;
+      } finally {
+        if (!controller.signal.aborted) setJudging(false);
+      }
+    }
+
     const timeSpentMs = Date.now() - questionStartRef.current;
     addAnswerRecord({
       questionId: q.id,
@@ -1027,7 +1102,7 @@ ${kpList}
                       variant="secondary"
                       className={cn('w-full justify-start text-left h-auto py-2.5 whitespace-normal', optCls)}
                       onClick={() => {
-                        if (!judged) {
+                        if (!judged && !judging) {
                           setSelectedOptionIdx(idx);
                           setUserAnswer(opt);
                         }
@@ -1054,7 +1129,7 @@ ${kpList}
               <textarea
                 value={userAnswer}
                 onChange={(e) => setUserAnswer(e.target.value)}
-                disabled={judged != null}
+                disabled={judged != null || judging}
                 placeholder="请输入你的答案..."
                 aria-label="输入你的答案"
                 title="输入你的答案"
@@ -1069,11 +1144,11 @@ ${kpList}
                 <VintageButton
                   variant="primary"
                   size="lg"
-                  disabled={!userAnswer.trim()}
-                  onClick={handleSubmit}
+                  disabled={!userAnswer.trim() || judging}
+                  onClick={() => void handleSubmit()}
                   className="w-full sm:w-auto"
                 >
-                  提交作答
+                  {judging ? 'AI 判定中…' : '提交作答'}
                 </VintageButton>
               </div>
             ) : (
