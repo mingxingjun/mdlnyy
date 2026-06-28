@@ -45,9 +45,9 @@ export default {
         },
       },
       fontFamily: {
-        serif: ['"Noto Serif SC"', '"Playfair Display"', 'Georgia', 'serif'],
+        serif: ['"Noto Serif SC"', 'Georgia', 'serif'],
         sans: ['"Noto Sans SC"', '"Inter"', 'sans-serif'],
-        handwritten: ['"Ma Shan Zheng"', '"Liu Jian Mao Cao"', 'cursive'],
+        handwritten: ['"Ma Shan Zheng"', 'cursive'],
       },
       boxShadow: {
         'paper': '0 1px 2px rgba(92,64,51,0.06), 0 2px 8px rgba(92,64,51,0.05), inset 0 1px 0 rgba(255,255,255,0.4)',

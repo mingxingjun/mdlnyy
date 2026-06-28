@@ -7,6 +7,9 @@ export default defineConfig({
   base: '/mdlnyy/',
   build: {
     sourcemap: false,
+    // 目标 ES2022：现代浏览器原生支持 top-level await、class fields、
+    // private methods 等，减少语法降级转换，减小 bundle 体积
+    target: 'es2022',
     rollupOptions: {
       output: {
         // 代码分割：将第三方依赖拆分为独立 chunk，提升首屏加载与缓存命中率

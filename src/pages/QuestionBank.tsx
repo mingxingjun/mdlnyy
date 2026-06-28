@@ -88,7 +88,7 @@ export default function QuestionBank() {
   const updateMaterial = useAppStore((s) => s.updateMaterial);
   const removeMaterialAndQuestions = useAppStore((s) => s.removeMaterialAndQuestions);
   const setActiveView = useAppStore((s) => s.setActiveView);
-  const { addToast } = useToastStore();
+  const addToast = useToastStore((s) => s.addToast);
 
   /** 批量模式开关 */
   const [batchMode, setBatchMode] = useState(false);
@@ -431,7 +431,7 @@ export default function QuestionBank() {
           {setsByDate.map(([dateLabel, sets]) => (
             <div key={dateLabel}>
               {/* 日期标题 */}
-              <div className="flex items-center gap-2 mb-2.5 sticky top-0 z-10 bg-paper-50/80 backdrop-blur-sm py-1">
+              <div className="flex items-center gap-2 mb-2.5 sticky top-0 z-10 bg-paper-50/95 py-1">
                 <div className="flex-1 h-px bg-ink-600/10" />
                 <span className="text-xs font-sans text-ink-500 px-2">{dateLabel}</span>
                 <div className="flex-1 h-px bg-ink-600/10" />

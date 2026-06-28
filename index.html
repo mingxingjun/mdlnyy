@@ -5,6 +5,16 @@
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>UniFlow 优流备考</title>
+    <!-- 字体优化：preconnect 预连接 + 异步加载，避免阻塞 CSS 解析。
+         精简字重：Noto Serif SC 仅 400/700，Noto Sans SC 仅 400/500，
+         Ma Shan Zheng 仅 400（手写体），移除未使用的 Playfair Display。
+         display=swap 确保不阻塞首屏文字渲染。 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@400;500&family=Ma+Shan+Zheng:wght@400&display=swap"
+    />
     <script type="module">
       if (import.meta.hot?.on) {
         import.meta.hot.on('vite:error', (error) => {

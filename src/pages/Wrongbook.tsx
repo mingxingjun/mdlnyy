@@ -207,7 +207,7 @@ interface WrongQuestionCardProps {
 function WrongQuestionCard({ wq, kpNameMap, index }: WrongQuestionCardProps) {
   const markWrongResolved = useAppStore((s) => s.markWrongResolved);
   const incrementWrongReview = useAppStore((s) => s.incrementWrongReview);
-  const { addToast } = useToastStore();
+  const addToast = useToastStore((s) => s.addToast);
 
   const [stemExpanded, setStemExpanded] = useState(false);
   const [explanationOpen, setExplanationOpen] = useState(false);
@@ -403,7 +403,7 @@ export default function Wrongbook() {
   const updateKnowledgePointMastery = useAppStore((s) => s.updateKnowledgePointMastery);
   const updateStudyProgress = useAppStore((s) => s.updateStudyProgress);
   const setActiveView = useAppStore((s) => s.setActiveView);
-  const { addToast } = useToastStore();
+  const addToast = useToastStore((s) => s.addToast);
 
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');

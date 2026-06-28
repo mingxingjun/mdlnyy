@@ -442,7 +442,7 @@ export default function Practice() {
   const incrementQuestions = useAppStore((s) => s.incrementQuestions);
   const studyProgress = useAppStore((s) => s.studyProgress);
   const setActiveView = useAppStore((s) => s.setActiveView);
-  const { addToast } = useToastStore();
+  const addToast = useToastStore((s) => s.addToast);
 
   /** 出题模式：auto=自动选(有题库走题库，否则走知识点) / bank=题库 / knowledge=知识点 */
   const [genMode, setGenMode] = useState<'auto' | 'bank' | 'knowledge'>('auto');

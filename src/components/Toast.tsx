@@ -71,7 +71,8 @@ const colorMap: Record<ToastType, { bg: string; border: string; text: string; ic
 };
 
 export function ToastContainer() {
-  const { toasts, removeToast } = useToastStore();
+  const toasts = useToastStore((s) => s.toasts);
+  const removeToast = useToastStore((s) => s.removeToast);
 
   return (
     <div className="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 z-[100] flex flex-col items-center sm:items-end gap-2 pointer-events-none">

@@ -758,7 +758,7 @@ function MaterialUploadCard() {
   const replaceQuestionsByMaterial = useAppStore((s) => s.replaceQuestionsByMaterial);
   const setLearningState = useAppStore((s) => s.setLearningState);
   const learningState = useAppStore((s) => s.learningState);
-  const { addToast } = useToastStore();
+  const addToast = useToastStore((s) => s.addToast);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);

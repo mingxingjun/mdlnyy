@@ -102,7 +102,7 @@ interface FlashCardViewProps {
 
 function FlashCardView({ card, kpName, index }: FlashCardViewProps) {
   const reviewMemoryCard = useAppStore((s) => s.reviewMemoryCard);
-  const { addToast } = useToastStore();
+  const addToast = useToastStore((s) => s.addToast);
   const [flipped, setFlipped] = useState(false);
   const [reviewed, setReviewed] = useState(false);
   const [shake, setShake] = useState(false);
@@ -228,7 +228,7 @@ interface CardRowProps {
 
 function CardRow({ card, kpName }: CardRowProps) {
   const removeMemoryCard = useAppStore((s) => s.removeMemoryCard);
-  const { addToast } = useToastStore();
+  const addToast = useToastStore((s) => s.addToast);
   const [expanded, setExpanded] = useState(false);
 
   const handleRemove = () => {
@@ -296,7 +296,7 @@ export default function MemoryCards() {
   const studyProgress = useAppStore((s) => s.studyProgress);
   const addMemoryCards = useAppStore((s) => s.addMemoryCards);
   const setActiveView = useAppStore((s) => s.setActiveView);
-  const { addToast } = useToastStore();
+  const addToast = useToastStore((s) => s.addToast);
 
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string>('');

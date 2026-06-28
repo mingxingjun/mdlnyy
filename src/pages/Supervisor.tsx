@@ -307,7 +307,7 @@ export default function Supervisor() {
   const reviewPlan = useAppStore((s) => s.reviewPlan);
   const updateStudyProgress = useAppStore((s) => s.updateStudyProgress);
   const setActiveView = useAppStore((s) => s.setActiveView);
-  const { addToast } = useToastStore();
+  const addToast = useToastStore((s) => s.addToast);
 
   const [reportState, setReportState] = useState<ReportState>('idle');
   const [report, setReport] = useState<ParsedReport | null>(null);

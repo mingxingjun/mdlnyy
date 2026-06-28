@@ -25,12 +25,12 @@ const variantClasses: Record<VintageButtonVariant, string> = {
   primary: cn(
     'bg-ink-800 text-paper-50 border border-ink-900/30',
     'shadow-[inset_0_1px_0_rgba(251,247,240,0.12),0_2px_6px_rgba(61,43,31,0.2)]',
-    'hover:bg-ink-700'
+    'hover:bg-ink-700 hover:shadow-[inset_0_1px_0_rgba(251,247,240,0.15),0_4px_12px_rgba(139,37,0,0.15)]'
   ),
   secondary: cn(
     'bg-paper-200 text-ink-800 border border-ink-600/20',
     'shadow-[0_1px_3px_rgba(92,64,51,0.08)]',
-    'hover:bg-paper-300'
+    'hover:bg-paper-300 hover:shadow-[0_2px_6px_rgba(92,64,51,0.12)]'
   ),
   ghost: cn(
     'bg-transparent text-ink-700 border border-dashed border-ink-600/30',
@@ -46,6 +46,13 @@ const variantClasses: Record<VintageButtonVariant, string> = {
   ),
 };
 
+/**
+ * VintageButton 性能优化要点：
+ * 1. 非 stamp 变体从 motion.button 改为普通 button —— 移除 whileHover（boxShadow 触发 paint）、
+ *    whileTap（每帧 JS 驱动），改用 CSS :hover/:active + transition（合成层直接处理）
+ * 2. hover 阴影变化用 CSS 类切换（Tailwind hover:shadow-*），而非 framer-motion 每帧驱动
+ * 3. stamp 变体保留 motion（盖章 spring 手感需要物理动画，且 stamp 按钮数量少）
+ */
 export default function VintageButton({
   children,
   variant = 'secondary',
@@ -63,33 +70,53 @@ export default function VintageButton({
     lg: 'w-20 h-20 text-sm',
   };
 
+  // stamp 变体保留 motion（spring 手感 + 数量少，开销可控）
+  if (isStamp) {
+    return (
+      <motion.button
+        type={type}
+        onClick={onClick}
+        disabled={disabled}
+        className={cn(
+          'inline-flex items-center justify-center font-serif font-medium select-none',
+          'transition-colors duration-200',
+          'focus:outline-none focus-visible:ring-2 focus-visible:ring-seal/40 focus-visible:ring-offset-1',
+          'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100',
+          stampSizeClass[size],
+          variantClasses[variant],
+          'btn-stamp-press',
+          className
+        )}
+        style={{ rotate: -8, letterSpacing: '1px' }}
+        whileTap={!disabled ? { scale: 0.92 } : undefined}
+        transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+      >
+        {children}
+      </motion.button>
+    );
+  }
+
+  // 非 stamp 变体：普通 button + CSS hover/active（无 framer-motion JS 开销）
   return (
-    <motion.button
+    <button
       type={type}
       onClick={onClick}
       disabled={disabled}
       className={cn(
         'inline-flex items-center justify-center font-serif font-medium select-none',
-        'transition-colors duration-200',
+        // CSS transition 替代 framer-motion spring（transform 走合成层，无 JS 开销）
+        'transition-[transform,box-shadow,background-color] duration-150 ease-out',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-seal/40 focus-visible:ring-offset-1',
-        'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100',
-        isStamp ? stampSizeClass[size] : cn('rounded-[4px]', sizeClasses[size]),
+        'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0',
+        'rounded-[4px]',
+        sizeClasses[size],
         variantClasses[variant],
-        // stamp 变体用 CSS stampPress keyframe 替代 framer-motion（盖章回弹手感更贴主题）
-        isStamp && 'btn-stamp-press',
+        // hover 上浮 + active 下压，纯 CSS 合成层动画
+        !disabled && 'hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97]',
         className
       )}
-      style={isStamp ? { rotate: -8, letterSpacing: '1px' } : undefined}
-      // 非 stamp 变体补 whileHover 目标值，让所有按钮都有 motion 手感
-      whileHover={
-        !isStamp && !disabled
-          ? { y: -2, boxShadow: '0 4px 12px rgba(139,37,0,0.15)', transition: { duration: 0.15, ease: 'easeOut' } }
-          : undefined
-      }
-      whileTap={!disabled ? (isStamp ? { scale: 0.92 } : { scale: 0.97 }) : undefined}
-      transition={{ type: 'spring', stiffness: 500, damping: 20 }}
     >
       {children}
-    </motion.button>
+    </button>
   );
 }
