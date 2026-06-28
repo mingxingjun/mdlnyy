@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Plus, Pencil, Trash2, X, Save, Search, FileText,
+  ChevronDown, ChevronRight, CheckSquare, Square, Edit3, Folder,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
-import type { Question } from '@/store/useAppStore';
+import type { Question, StudyMaterial } from '@/store/useAppStore';
 import { useToastStore } from '@/components/Toast';
 import { cn } from '@/lib/utils';
 import PaperCard from '@/components/PaperCard';
@@ -29,16 +30,22 @@ const QTYPE_LABEL: Record<Question['type'], string> = {
   calculation: '计算题',
 };
 
-/** 编辑表单的临时结构（与 Question 的区别：options 用换行字符串便于编辑） */
+const QTYPE_SHORT: Record<Question['type'], string> = {
+  choice: '选',
+  fill: '填',
+  short: '简',
+  calculation: '算',
+};
+
 interface EditForm {
-  id?: string; // 存在 = 编辑模式，undefined = 新增模式
+  id?: string;
   type: Question['type'];
   difficulty: Question['difficulty'];
   stem: string;
-  optionsText: string; // 每行一个选项
+  optionsText: string;
   answer: string;
   explanation: string;
-  materialId: string; // 关联的文件
+  materialId: string;
 }
 
 const EMPTY_FORM: EditForm = {
@@ -51,6 +58,22 @@ const EMPTY_FORM: EditForm = {
   materialId: '',
 };
 
+/** 一套题库 = 一个 material + 其下所有题目 */
+interface QuestionSet {
+  material: StudyMaterial;
+  questions: Question[];
+  dateLabel: string; // YYYY-MM-DD
+}
+
+/* ═══════════════════════════════════════════════════════
+   工具函数
+   ═══════════════════════════════════════════════════════ */
+
+function toDateLabel(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 /* ═══════════════════════════════════════════════════════
    主组件
    ═══════════════════════════════════════════════════════ */
@@ -61,62 +84,103 @@ export default function QuestionBank() {
   const addQuestion = useAppStore((s) => s.addQuestion);
   const updateQuestion = useAppStore((s) => s.updateQuestion);
   const deleteQuestion = useAppStore((s) => s.deleteQuestion);
+  const updateMaterial = useAppStore((s) => s.updateMaterial);
+  const removeMaterialAndQuestions = useAppStore((s) => s.removeMaterialAndQuestions);
   const setActiveView = useAppStore((s) => s.setActiveView);
   const { addToast } = useToastStore();
 
-  /** 当前选中的文件筛选（'all' = 全部） */
-  const [filterMaterialId, setFilterMaterialId] = useState<string>('all');
-  /** 题型筛选（'all' = 全部） */
-  const [filterType, setFilterType] = useState<string>('all');
-  /** 搜索关键词 */
-  const [searchKeyword, setSearchKeyword] = useState('');
-  /** 编辑/新增表单状态（null = 不显示表单） */
+  /** 批量模式开关 */
+  const [batchMode, setBatchMode] = useState(false);
+  /** 选中的题目 id 集合（批量模式用） */
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  /** 展开的题库套 materialId 集合 */
+  const [expandedSets, setExpandedSets] = useState<Set<string>>(new Set());
+  /** 编辑/新增表单 */
   const [editForm, setEditForm] = useState<EditForm | null>(null);
-  /** 待删除确认的题目 id */
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  /** 重命名表单：materialId */
+  const [renameId, setRenameId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  /** 待删除确认：{ type: 'set'|'question'|'batch', id? } */
+  const [pendingDelete, setPendingDelete] = useState<
+    { type: 'set'; id: string; name: string } |
+    { type: 'question'; id: string } |
+    { type: 'batch' } | null
+  >(null);
+  /** 搜索关键词（仅用于题目筛选，不影响套分组） */
+  const [searchKeyword, setSearchKeyword] = useState('');
 
-  // 题库题所在的文件列表（按上传时间排序）
-  const bankMaterials = useMemo(() => {
+  // 按套分组：每个有题目的 material 为一套，按上传日期倒序
+  const questionSets = useMemo<QuestionSet[]>(() => {
     const ids = new Set(questions.map((q) => q.materialId).filter(Boolean));
-    return materials.filter((m) => ids.has(m.id));
+    const sets: QuestionSet[] = materials
+      .filter((m) => ids.has(m.id))
+      .map((m) => ({
+        material: m,
+        questions: questions
+          .filter((q) => q.materialId === m.id)
+          .sort((a, b) => a.createdAt - b.createdAt),
+        dateLabel: toDateLabel(m.uploadedAt),
+      }));
+    // 按上传时间倒序（最新的套在前）
+    sets.sort((a, b) => b.material.uploadedAt - a.material.uploadedAt);
+    return sets;
   }, [questions, materials]);
 
-  // 过滤后的题目
-  const filteredQuestions = useMemo(() => {
-    let list = questions;
-    if (filterMaterialId !== 'all') {
-      list = list.filter((q) => q.materialId === filterMaterialId);
+  // 按日期分组（多套同一天上传归到一组）
+  const setsByDate = useMemo(() => {
+    const map = new Map<string, QuestionSet[]>();
+    for (const s of questionSets) {
+      if (!map.has(s.dateLabel)) map.set(s.dateLabel, []);
+      map.get(s.dateLabel)!.push(s);
     }
-    if (filterType !== 'all') {
-      list = list.filter((q) => q.type === filterType);
-    }
-    if (searchKeyword.trim()) {
-      const kw = searchKeyword.trim().toLowerCase();
-      list = list.filter(
-        (q) =>
-          q.stem.toLowerCase().includes(kw) ||
-          q.answer.toLowerCase().includes(kw) ||
-          (q.explanation || '').toLowerCase().includes(kw),
-      );
-    }
-    // 按创建时间倒序
-    return [...list].sort((a, b) => b.createdAt - a.createdAt);
-  }, [questions, filterMaterialId, filterType, searchKeyword]);
+    return Array.from(map.entries()); // [[dateLabel, sets], ...]
+  }, [questionSets]);
 
-  // 按文件分组统计题数
-  const countByMaterial = useMemo(() => {
-    const map = new Map<string, number>();
-    questions.forEach((q) => {
-      map.set(q.materialId, (map.get(q.materialId) || 0) + 1);
+  // 当前展开套里的、且匹配搜索词的题目
+  const getFilteredQuestions = (set: QuestionSet): Question[] => {
+    if (!searchKeyword.trim()) return set.questions;
+    const kw = searchKeyword.trim().toLowerCase();
+    return set.questions.filter(
+      (q) =>
+        q.stem.toLowerCase().includes(kw) ||
+        q.answer.toLowerCase().includes(kw) ||
+        (q.explanation || '').toLowerCase().includes(kw),
+    );
+  };
+
+  const toggleExpand = (materialId: string) => {
+    setExpandedSets((prev) => {
+      const next = new Set(prev);
+      if (next.has(materialId)) next.delete(materialId);
+      else next.add(materialId);
+      return next;
     });
-    return map;
-  }, [questions]);
+  };
 
-  const handleOpenAdd = () => {
-    // 默认关联当前筛选的文件（若选中了具体文件）
+  const toggleSelect = (questionId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(questionId)) next.delete(questionId);
+      else next.add(questionId);
+      return next;
+    });
+  };
+
+  const toggleSelectAllInSet = (set: QuestionSet) => {
+    const ids = set.questions.map((q) => q.id);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      const allSelected = ids.every((id) => next.has(id));
+      if (allSelected) ids.forEach((id) => next.delete(id));
+      else ids.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
+  const handleOpenAdd = (materialId?: string) => {
     setEditForm({
       ...EMPTY_FORM,
-      materialId: filterMaterialId !== 'all' ? filterMaterialId : (bankMaterials[0]?.id ?? ''),
+      materialId: materialId || (questionSets[0]?.material.id ?? ''),
     });
   };
 
@@ -140,7 +204,7 @@ export default function QuestionBank() {
       return;
     }
     if (!editForm.materialId) {
-      addToast('warning', '请选择所属文件');
+      addToast('warning', '请选择所属题库');
       return;
     }
     const options = editForm.type === 'choice'
@@ -148,7 +212,6 @@ export default function QuestionBank() {
       : undefined;
 
     if (editForm.id) {
-      // 编辑模式
       updateQuestion(editForm.id, {
         type: editForm.type,
         difficulty: editForm.difficulty,
@@ -160,8 +223,7 @@ export default function QuestionBank() {
       });
       addToast('success', '题目已更新');
     } else {
-      // 新增模式
-      const newQ: Question = {
+      addQuestion({
         id: crypto.randomUUID(),
         materialId: editForm.materialId,
         knowledgePointIds: [],
@@ -175,24 +237,65 @@ export default function QuestionBank() {
         bankId: editForm.materialId,
         aiFilled: false,
         createdAt: Date.now(),
-      };
-      addQuestion(newQ);
+      });
       addToast('success', '题目已添加');
     }
     setEditForm(null);
   };
 
-  const handleConfirmDelete = () => {
-    if (!pendingDeleteId) return;
-    deleteQuestion(pendingDeleteId);
-    setPendingDeleteId(null);
-    addToast('success', '题目已删除');
+  const handleStartRename = (m: StudyMaterial) => {
+    setRenameId(m.id);
+    setRenameValue(m.name);
   };
+
+  const handleConfirmRename = () => {
+    if (!renameId || !renameValue.trim()) return;
+    updateMaterial(renameId, { name: renameValue.trim() });
+    addToast('success', '题库名已更新');
+    setRenameId(null);
+    setRenameValue('');
+  };
+
+  const handleConfirmDelete = () => {
+    if (!pendingDelete) return;
+    if (pendingDelete.type === 'set') {
+      removeMaterialAndQuestions(pendingDelete.id);
+      addToast('success', `已删除题库「${pendingDelete.name}」及全部题目`);
+    } else if (pendingDelete.type === 'question') {
+      deleteQuestion(pendingDelete.id);
+      setSelectedIds((prev) => { const n = new Set(prev); n.delete(pendingDelete.id); return n; });
+      addToast('success', '题目已删除');
+    } else if (pendingDelete.type === 'batch') {
+      let count = 0;
+      selectedIds.forEach((id) => { deleteQuestion(id); count++; });
+      setSelectedIds(new Set());
+      addToast('success', `已批量删除 ${count} 道题目`);
+    }
+    setPendingDelete(null);
+  };
+
+  const handleExitBatchMode = () => {
+    setBatchMode(false);
+    setSelectedIds(new Set());
+  };
+
+  // 统计每套题型分布
+  const getTypeDist = (qs: Question[]): string => {
+    const dist: Record<string, number> = {};
+    qs.forEach((q) => { dist[q.type] = (dist[q.type] || 0) + 1; });
+    return QTYPE_OPTIONS
+      .map((o) => dist[o.value] ? `${QTYPE_SHORT[o.value]}${dist[o.value]}` : null)
+      .filter(Boolean)
+      .join(' ') || '无';
+  };
+
+  const totalQuestions = questions.length;
+  const totalSets = questionSets.length;
 
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 space-y-5">
       {/* 页头 */}
-      <header className="flex items-center justify-between gap-3">
+      <header className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -204,190 +307,281 @@ export default function QuestionBank() {
           </button>
           <div>
             <p className="font-handwritten text-sm text-ink-500 leading-none">题库管理</p>
-            <h1 className="font-serif text-2xl text-ink-900 font-bold tracking-wide leading-tight">题库</h1>
+            <h1 className="font-serif text-2xl text-ink-900 font-bold tracking-wide leading-tight">
+              题库 <span className="text-sm font-sans text-ink-500 font-normal ml-1">{totalSets} 套 · {totalQuestions} 题</span>
+            </h1>
           </div>
         </div>
-        <VintageButton variant="primary" size="md" onClick={handleOpenAdd}>
-          <Plus size={15} className="mr-1" /> 新增题目
-        </VintageButton>
+        <div className="flex items-center gap-2">
+          {batchMode ? (
+            <VintageButton variant="ghost" size="sm" onClick={handleExitBatchMode}>
+              退出批量
+            </VintageButton>
+          ) : (
+            <>
+              <VintageButton variant="ghost" size="sm" onClick={() => setBatchMode(true)}>
+                <CheckSquare size={14} className="mr-1" /> 批量操作
+              </VintageButton>
+              <VintageButton variant="primary" size="sm" onClick={() => handleOpenAdd()}>
+                <Plus size={14} className="mr-1" /> 新增题目
+              </VintageButton>
+            </>
+          )}
+        </div>
       </header>
 
-      {/* 筛选区 */}
-      <PaperCard status="default" className="p-4">
-        <div className="space-y-3">
-          {/* 文件筛选 */}
-          <div>
-            <p className="text-xs font-serif text-ink-500 mb-1.5">按文件筛选</p>
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                onClick={() => setFilterMaterialId('all')}
-                className={cn(
-                  'px-3 py-1.5 rounded-[3px] text-xs font-serif border transition-colors',
-                  filterMaterialId === 'all'
-                    ? 'bg-seal text-paper-50 border-seal'
-                    : 'bg-paper-100 text-ink-700 border-ink-600/15 hover:border-seal/50',
-                )}
-              >
-                全部 ({questions.length})
-              </button>
-              {bankMaterials.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setFilterMaterialId(m.id)}
-                  className={cn(
-                    'inline-flex items-center gap-1 px-3 py-1.5 rounded-[3px] text-xs font-serif border transition-colors max-w-[240px]',
-                    filterMaterialId === m.id
-                      ? 'bg-seal text-paper-50 border-seal'
-                      : 'bg-paper-100 text-ink-700 border-ink-600/15 hover:border-seal/50',
-                  )}
-                  title={m.name}
-                >
-                  <FileText size={11} className="flex-shrink-0" />
-                  <span className="truncate">{m.name}</span>
-                  <span className="opacity-70 flex-shrink-0">({countByMaterial.get(m.id) || 0})</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 题型 + 搜索 */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-serif text-ink-500">题型</span>
-              <button
-                type="button"
-                onClick={() => setFilterType('all')}
-                className={cn(
-                  'px-2.5 py-1 rounded-[3px] text-xs font-serif border transition-colors',
-                  filterType === 'all'
-                    ? 'bg-ink-700 text-paper-50 border-ink-700'
-                    : 'bg-paper-100 text-ink-700 border-ink-600/15 hover:border-ink-700/50',
-                )}
-              >
-                全部
-              </button>
-              {QTYPE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setFilterType(opt.value)}
-                  className={cn(
-                    'px-2.5 py-1 rounded-[3px] text-xs font-serif border transition-colors',
-                    filterType === opt.value
-                      ? 'bg-ink-700 text-paper-50 border-ink-700'
-                      : 'bg-paper-100 text-ink-700 border-ink-600/15 hover:border-ink-700/50',
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="relative flex-1 min-w-[180px] max-w-xs ml-auto">
-              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400" />
-              <input
-                type="text"
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-                placeholder="搜索题干/答案/解析"
-                className="w-full pl-8 pr-3 py-1.5 text-xs font-sans rounded-[3px] border border-ink-600/15 bg-paper-100 text-ink-800 placeholder:text-ink-400 focus:outline-none focus:border-seal/50"
-              />
-            </div>
-          </div>
+      {/* 搜索栏 */}
+      <PaperCard status="default" className="p-3">
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
+          <input
+            type="text"
+            value={searchKeyword}
+            onChange={(e) => setSearchKeyword(e.target.value)}
+            placeholder="搜索题干/答案/解析（在展开的题库内筛选）"
+            className="w-full pl-9 pr-3 py-2 text-sm font-sans rounded-[3px] border border-ink-600/15 bg-paper-100 text-ink-800 placeholder:text-ink-400 focus:outline-none focus:border-seal/50"
+          />
         </div>
       </PaperCard>
 
-      {/* 题目列表 */}
-      {filteredQuestions.length === 0 ? (
+      {/* 批量操作栏（批量模式 + 有选中时显示） */}
+      <AnimatePresence>
+        {batchMode && selectedIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+          >
+            <PaperCard status="active" className="p-3 flex items-center justify-between gap-3">
+              <span className="text-sm font-serif text-ink-800">
+                已选 <span className="font-bold text-seal">{selectedIds.size}</span> 题
+              </span>
+              <div className="flex items-center gap-2">
+                <VintageButton variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+                  清空选择
+                </VintageButton>
+                <VintageButton
+                  variant="primary"
+                  size="sm"
+                  className="bg-terracotta hover:bg-terracotta-dark border-terracotta-dark"
+                  onClick={() => setPendingDelete({ type: 'batch' })}
+                >
+                  <Trash2 size={14} className="mr-1" /> 批量删除
+                </VintageButton>
+              </div>
+            </PaperCard>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 题库为空 */}
+      {totalSets === 0 ? (
         <PaperCard status="default" className="p-8 text-center">
-          <p className="text-sm text-ink-500 font-serif">
-            {questions.length === 0
-              ? '题库为空，请先上传题库资料或点击「新增题目」'
-              : '当前筛选条件下无题目'}
-          </p>
+          <Folder size={40} className="mx-auto text-ink-300 mb-3" />
+          <p className="text-sm text-ink-500 font-serif mb-1">题库为空</p>
+          <p className="text-xs text-ink-400 font-sans">请先上传题库资料，或点击「新增题目」手动添加</p>
         </PaperCard>
       ) : (
-        <div className="space-y-2.5">
-          <AnimatePresence>
-            {filteredQuestions.map((q, idx) => {
-              const material = materials.find((m) => m.id === q.materialId);
-              return (
-                <motion.div
-                  key={q.id}
-                  layout
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.2, delay: Math.min(idx * 0.02, 0.2) }}
-                >
-                  <PaperCard status="default" className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-1 min-w-0">
-                        {/* 标签行 */}
-                        <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-                          <VintageTag color="ink">{QTYPE_LABEL[q.type]}</VintageTag>
-                          <VintageTag color={q.difficulty >= 4 ? 'seal' : q.difficulty <= 2 ? 'green' : 'gold'}>
-                            难度 {q.difficulty}/5
-                          </VintageTag>
-                          {q.source === 'bank' && (
-                            <VintageTag color={q.aiFilled ? 'worn' : 'seal'}>
-                              {q.aiFilled ? 'AI补答' : '原题'}
-                            </VintageTag>
-                          )}
-                          {material && (
-                            <span className="inline-flex items-center gap-1 text-[10px] text-ink-500 font-sans">
-                              <FileText size={10} />
-                              <span className="truncate max-w-[200px]">{material.name}</span>
-                            </span>
-                          )}
-                        </div>
-                        {/* 题干 */}
-                        <p className="font-serif text-sm text-ink-900 leading-relaxed mb-2 whitespace-pre-wrap line-clamp-3">
-                          {q.stem}
-                        </p>
-                        {/* 选项 */}
-                        {q.options && q.options.length > 0 && (
-                          <ul className="text-xs text-ink-600 font-sans space-y-0.5 mb-2">
-                            {q.options.map((opt, i) => (
-                              <li key={i} className="truncate">{opt}</li>
-                            ))}
-                          </ul>
+        /* 按日期分组的题库套列表 */
+        <div className="space-y-6">
+          {setsByDate.map(([dateLabel, sets]) => (
+            <div key={dateLabel}>
+              {/* 日期标题 */}
+              <div className="flex items-center gap-2 mb-2.5 sticky top-0 z-10 bg-paper-50/80 backdrop-blur-sm py-1">
+                <div className="flex-1 h-px bg-ink-600/10" />
+                <span className="text-xs font-sans text-ink-500 px-2">{dateLabel}</span>
+                <div className="flex-1 h-px bg-ink-600/10" />
+              </div>
+
+              {/* 该日期下的每套题库 */}
+              <div className="space-y-2.5">
+                {sets.map((set) => {
+                  const isExpanded = expandedSets.has(set.material.id);
+                  const filteredQs = getFilteredQuestions(set);
+                  const allSelectedInSet = batchMode && set.questions.length > 0 &&
+                    set.questions.every((q) => selectedIds.has(q.id));
+                  return (
+                    <PaperCard key={set.material.id} status="default" className="overflow-hidden">
+                      {/* 套标题栏 */}
+                      <div className="p-3.5 flex items-center gap-3">
+                        {/* 展开/折叠按钮 */}
+                        <button
+                          type="button"
+                          onClick={() => toggleExpand(set.material.id)}
+                          className="w-6 h-6 rounded-[3px] hover:bg-paper-200 flex items-center justify-center text-ink-600 flex-shrink-0"
+                        >
+                          {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                        </button>
+
+                        {/* 批量模式下的全选 checkbox */}
+                        {batchMode && (
+                          <button
+                            type="button"
+                            onClick={() => toggleSelectAllInSet(set)}
+                            className="w-5 h-5 flex-shrink-0 text-ink-600"
+                          >
+                            {allSelectedInSet ? <CheckSquare size={18} className="text-seal" /> : <Square size={18} />}
+                          </button>
                         )}
-                        {/* 答案 */}
-                        <div className="text-xs font-serif space-y-0.5">
-                          <p><span className="text-ink-500">答案：</span><span className="text-sage-dark font-bold">{q.answer || '（空）'}</span></p>
-                          {q.explanation && (
-                            <p className="text-ink-600 line-clamp-2"><span className="text-ink-500">解析：</span>{q.explanation}</p>
+
+                        <FileText size={16} className="text-ink-500 flex-shrink-0" />
+
+                        {/* 标题（可重命名） */}
+                        <div className="flex-1 min-w-0">
+                          {renameId === set.material.id ? (
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="text"
+                                value={renameValue}
+                                onChange={(e) => setRenameValue(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmRename(); if (e.key === 'Escape') setRenameId(null); }}
+                                autoFocus
+                                className="flex-1 px-2 py-1 text-sm font-serif rounded-[3px] border border-seal/40 bg-paper-100 text-ink-900 focus:outline-none"
+                              />
+                              <button onClick={handleConfirmRename} className="text-sage-dark hover:bg-sage/10 w-7 h-7 rounded flex items-center justify-center">
+                                <Save size={14} />
+                              </button>
+                              <button onClick={() => setRenameId(null)} className="text-ink-500 hover:bg-paper-200 w-7 h-7 rounded flex items-center justify-center">
+                                <X size={14} />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-serif text-sm font-bold text-ink-900 truncate">{set.material.name}</span>
+                              <VintageTag color="ink">{set.questions.length} 题</VintageTag>
+                              <span className="text-[10px] text-ink-500 font-sans">{getTypeDist(set.questions)}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 操作按钮 */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {!batchMode && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleStartRename(set.material)}
+                                title="重命名"
+                                className="w-7 h-7 rounded-[3px] hover:bg-paper-200 text-ink-500 hover:text-ink-800 flex items-center justify-center"
+                              >
+                                <Edit3 size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setPendingDelete({ type: 'set', id: set.material.id, name: set.material.name })}
+                                title="删除整套"
+                                className="w-7 h-7 rounded-[3px] hover:bg-terracotta/10 text-terracotta-dark flex items-center justify-center"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </>
                           )}
                         </div>
                       </div>
-                      {/* 操作按钮 */}
-                      <div className="flex flex-col gap-1.5 flex-shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdit(q)}
-                          title="编辑"
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-[3px] border border-ink-600/15 bg-paper-100 text-ink-600 hover:bg-paper-200 hover:text-ink-900 transition-colors"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPendingDeleteId(q.id)}
-                          title="删除"
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-[3px] border border-terracotta/30 bg-paper-100 text-terracotta-dark hover:bg-terracotta/10 transition-colors"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </PaperCard>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
+
+                      {/* 展开后的题目列表 */}
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="border-t border-ink-600/10"
+                          >
+                            {filteredQs.length === 0 ? (
+                              <p className="text-xs text-ink-400 font-serif py-4 text-center">
+                                {searchKeyword ? '无匹配题目' : '该题库暂无题目'}
+                              </p>
+                            ) : (
+                              <div className="divide-y divide-ink-600/5">
+                                {filteredQs.map((q, idx) => {
+                                  const isSelected = selectedIds.has(q.id);
+                                  return (
+                                    <div
+                                      key={q.id}
+                                      className={cn(
+                                        'px-3.5 py-2.5 flex items-start gap-2.5 transition-colors',
+                                        isSelected && 'bg-seal/5',
+                                      )}
+                                    >
+                                      {/* 批量模式 checkbox */}
+                                      {batchMode && (
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleSelect(q.id)}
+                                          className="w-5 h-5 flex-shrink-0 mt-0.5 text-ink-600"
+                                        >
+                                          {isSelected ? <CheckSquare size={16} className="text-seal" /> : <Square size={16} />}
+                                        </button>
+                                      )}
+
+                                      <div className="flex-1 min-w-0">
+                                        {/* 标签行 */}
+                                        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                                          <span className="text-[10px] text-ink-400 font-sans">#{idx + 1}</span>
+                                          <VintageTag color="ink">{QTYPE_LABEL[q.type]}</VintageTag>
+                                          <VintageTag color={q.difficulty >= 4 ? 'seal' : q.difficulty <= 2 ? 'green' : 'gold'}>
+                                            {q.difficulty}/5
+                                          </VintageTag>
+                                          {q.aiFilled && <VintageTag color="worn">AI补答</VintageTag>}
+                                        </div>
+                                        {/* 题干 */}
+                                        <p className="font-serif text-sm text-ink-900 leading-relaxed mb-1 whitespace-pre-wrap line-clamp-2">
+                                          {q.stem}
+                                        </p>
+                                        {/* 答案 */}
+                                        <p className="text-xs font-serif">
+                                          <span className="text-ink-500">答案：</span>
+                                          <span className="text-sage-dark font-bold">{q.answer || '（空）'}</span>
+                                        </p>
+                                      </div>
+
+                                      {/* 单题操作（非批量模式） */}
+                                      {!batchMode && (
+                                        <div className="flex flex-col gap-1 flex-shrink-0">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleOpenEdit(q)}
+                                            className="w-7 h-7 rounded-[3px] border border-ink-600/10 bg-paper-100 text-ink-500 hover:text-ink-800 hover:bg-paper-200 flex items-center justify-center"
+                                          >
+                                            <Pencil size={12} />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setPendingDelete({ type: 'question', id: q.id })}
+                                            className="w-7 h-7 rounded-[3px] border border-terracotta/20 bg-paper-100 text-terracotta-dark hover:bg-terracotta/10 flex items-center justify-center"
+                                          >
+                                            <Trash2 size={12} />
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {/* 套内新增题目按钮 */}
+                            {!batchMode && (
+                              <div className="p-2.5 border-t border-ink-600/5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenAdd(set.material.id)}
+                                  className="w-full py-1.5 rounded-[3px] border border-dashed border-ink-600/20 text-xs font-serif text-ink-500 hover:border-seal/40 hover:text-seal transition-colors flex items-center justify-center gap-1"
+                                >
+                                  <Plus size={12} /> 在此题库新增题目
+                                </button>
+                              </div>
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </PaperCard>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -423,22 +617,20 @@ export default function QuestionBank() {
               </div>
 
               <div className="p-5 space-y-4">
-                {/* 所属文件 */}
                 <div>
-                  <label className="block text-xs font-serif text-ink-600 mb-1">所属文件</label>
+                  <label className="block text-xs font-serif text-ink-600 mb-1">所属题库</label>
                   <select
                     value={editForm.materialId}
                     onChange={(e) => setEditForm({ ...editForm, materialId: e.target.value })}
                     className="w-full px-3 py-2 text-sm font-sans rounded-[3px] border border-ink-600/15 bg-paper-100 text-ink-800 focus:outline-none focus:border-seal/50"
                   >
-                    <option value="">请选择文件…</option>
-                    {bankMaterials.map((m) => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
+                    <option value="">请选择题库…</option>
+                    {questionSets.map((s) => (
+                      <option key={s.material.id} value={s.material.id}>{s.material.name}</option>
                     ))}
                   </select>
                 </div>
 
-                {/* 题型 + 难度 */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-serif text-ink-600 mb-1">题型</label>
@@ -466,7 +658,6 @@ export default function QuestionBank() {
                   </div>
                 </div>
 
-                {/* 题干 */}
                 <div>
                   <label className="block text-xs font-serif text-ink-600 mb-1">题干</label>
                   <textarea
@@ -478,7 +669,6 @@ export default function QuestionBank() {
                   />
                 </div>
 
-                {/* 选项（仅选择题） */}
                 {editForm.type === 'choice' && (
                   <div>
                     <label className="block text-xs font-serif text-ink-600 mb-1">
@@ -494,7 +684,6 @@ export default function QuestionBank() {
                   </div>
                 )}
 
-                {/* 答案 */}
                 <div>
                   <label className="block text-xs font-serif text-ink-600 mb-1">
                     答案{editForm.type === 'choice' ? '（填字母如 B）' : ''}
@@ -508,7 +697,6 @@ export default function QuestionBank() {
                   />
                 </div>
 
-                {/* 解析 */}
                 <div>
                   <label className="block text-xs font-serif text-ink-600 mb-1">解析（可选）</label>
                   <textarea
@@ -521,11 +709,8 @@ export default function QuestionBank() {
                 </div>
               </div>
 
-              {/* 操作栏 */}
               <div className="sticky bottom-0 bg-paper-50 border-t border-ink-600/10 px-5 py-3 flex items-center justify-end gap-2">
-                <VintageButton variant="ghost" size="sm" onClick={() => setEditForm(null)}>
-                  取消
-                </VintageButton>
+                <VintageButton variant="ghost" size="sm" onClick={() => setEditForm(null)}>取消</VintageButton>
                 <VintageButton variant="primary" size="sm" onClick={handleSave}>
                   <Save size={14} className="mr-1" /> 保存
                 </VintageButton>
@@ -537,13 +722,13 @@ export default function QuestionBank() {
 
       {/* 删除确认 */}
       <AnimatePresence>
-        {pendingDeleteId && (
+        {pendingDelete && (
           <motion.div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-900/40 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setPendingDeleteId(null)}
+            onClick={() => setPendingDelete(null)}
           >
             <motion.div
               className="bg-paper-50 rounded-paper border border-ink-600/20 shadow-paper-hover max-w-sm w-full p-5"
@@ -552,11 +737,17 @@ export default function QuestionBank() {
               exit={{ scale: 0.95 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <p className="font-serif text-sm text-ink-900 mb-4">确定删除该题目？此操作不可撤销。</p>
+              <p className="font-serif text-sm text-ink-900 mb-4">
+                {pendingDelete.type === 'set' && (
+                  <>确定删除题库「<span className="font-bold">{pendingDelete.name}</span>」及其所有题目？此操作不可撤销。</>
+                )}
+                {pendingDelete.type === 'question' && '确定删除该题目？此操作不可撤销。'}
+                {pendingDelete.type === 'batch' && (
+                  <>确定批量删除选中的 <span className="font-bold text-seal">{selectedIds.size}</span> 道题目？此操作不可撤销。</>
+                )}
+              </p>
               <div className="flex items-center justify-end gap-2">
-                <VintageButton variant="ghost" size="sm" onClick={() => setPendingDeleteId(null)}>
-                  取消
-                </VintageButton>
+                <VintageButton variant="ghost" size="sm" onClick={() => setPendingDelete(null)}>取消</VintageButton>
                 <VintageButton
                   variant="primary"
                   size="sm"

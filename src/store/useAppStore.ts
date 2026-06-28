@@ -134,6 +134,8 @@ interface AppState {
   addMaterial: (m: StudyMaterial) => void;
   updateMaterial: (id: string, updates: Partial<Omit<StudyMaterial, 'id'>>) => void;
   removeMaterial: (id: string) => void;
+  /** 删除整套资料及其关联的所有题目与知识点（题库管理"删除整套"用） */
+  removeMaterialAndQuestions: (id: string) => void;
 
   knowledgePoints: KnowledgePoint[];
   addKnowledgePoints: (points: KnowledgePoint[]) => void;
@@ -201,6 +203,11 @@ export const useAppStore = create<AppState>()(
       })),
       removeMaterial: (id) => set((state) => ({
         materials: state.materials.filter((m) => m.id !== id),
+      })),
+      removeMaterialAndQuestions: (id) => set((state) => ({
+        materials: state.materials.filter((m) => m.id !== id),
+        questions: state.questions.filter((q) => q.materialId !== id),
+        knowledgePoints: state.knowledgePoints.filter((kp) => kp.materialId !== id),
       })),
 
       knowledgePoints: [],
