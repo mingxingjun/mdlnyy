@@ -325,7 +325,7 @@ const ExplanationPanel = memo(function ExplanationPanel({
   return (
     <PaperCard status="default" className="mt-3 p-4">
       <div className="flex items-center gap-2 mb-3">
-        <Lightbulb size={16} className="text-gold-dark" />
+        <Lightbulb size={16} className="text-gold-dark" aria-hidden="true" />
         <h4 className="font-serif text-base text-ink-900 font-bold">讲解</h4>
       </div>
 
@@ -408,7 +408,7 @@ const ExplanationPanel = memo(function ExplanationPanel({
       <div className="mt-4 pt-3 border-t border-ink-600/10 flex items-center justify-between gap-2">
         {autoRecorded ? (
           <span className="inline-flex items-center gap-1 text-xs font-serif text-sage-dark">
-            <Check size={13} /> 已自动收录至错题本
+            <Check size={13} aria-hidden="true" /> 已自动收录至错题本
           </span>
         ) : (
           <span className="text-xs font-serif text-ink-500">答对无需收录</span>
@@ -420,7 +420,7 @@ const ExplanationPanel = memo(function ExplanationPanel({
           onClick={onGoWrongbook}
         >
           查看错题本
-          <BookOpen size={14} className="ml-1.5" />
+          <BookOpen size={14} className="ml-1.5" aria-hidden="true" />
         </VintageButton>
       </div>
     </PaperCard>
@@ -1010,7 +1010,7 @@ ${kpList}
                   disabled={genMode === 'knowledge' && noApiKey}
                   onClick={() => void startSession()}
                 >
-                  开始练习 <ChevronRight size={16} className="ml-1.5" />
+                  开始练习 <ChevronRight size={16} className="ml-1.5" aria-hidden="true" />
                 </VintageButton>
               </>
             )}
@@ -1117,10 +1117,10 @@ ${kpList}
                           animate={{ scale: 1, rotate: 0, opacity: 1 }}
                           transition={{ type: 'spring', stiffness: 300, damping: 14 }}
                         >
-                          <Check size={15} />
+                          <Check size={15} aria-hidden="true" />
                         </motion.span>
                       )}
-                      {judged && isWrongPick && <X size={15} className="ml-auto flex-shrink-0" />}
+                      {judged && isWrongPick && <X size={15} className="ml-auto flex-shrink-0" aria-hidden="true" />}
                     </VintageButton>
                     </motion.div>
                   );
@@ -1197,7 +1197,7 @@ ${kpList}
                 <div className="flex justify-end">
                   <VintageButton variant="primary" size="lg" onClick={handleNext}>
                     {currentIndex + 1 >= sessionQuestions.length ? '查看总结' : '下一题'}
-                    <ChevronRight size={16} className="ml-1.5" />
+                    <ChevronRight size={16} className="ml-1.5" aria-hidden="true" />
                   </VintageButton>
                 </div>
               </div>

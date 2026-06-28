@@ -110,7 +110,7 @@ function GalaxyFallback({ onNavigate }: GalaxyFallbackProps) {
                 boxShadow: '0 8px 40px rgba(99,91,255,0.5), 0 0 80px rgba(99,91,255,0.25), inset 0 1px 0 rgba(255,255,255,0.2)',
               }}
             >
-              <Sparkles size={28} className="text-white" style={{ filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.6))' }} />
+              <Sparkles size={28} className="text-white" style={{ filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.6))' }} aria-hidden="true" />
             </div>
             <motion.div
               className="absolute inset-0 rounded-2xl -z-10"
@@ -184,7 +184,7 @@ function GalaxyFallback({ onNavigate }: GalaxyFallbackProps) {
                     border: `2px solid ${planet.color}60`,
                   }}
                 >
-                  <Icon size={32} style={{ color: planet.color, filter: `drop-shadow(0 0 8px ${planet.color})` }} className="md:w-10 md:h-10" />
+                  <Icon size={32} style={{ color: planet.color, filter: `drop-shadow(0 0 8px ${planet.color})` }} className="md:w-10 md:h-10" aria-hidden="true" />
                 </motion.div>
 
                 <div className="text-center">
@@ -207,7 +207,7 @@ function GalaxyFallback({ onNavigate }: GalaxyFallbackProps) {
                     border: `1px solid ${planet.color}40`,
                   }}
                 >
-                  <ChevronLeft size={16} style={{ color: planet.color }} className="rotate-180" />
+                  <ChevronLeft size={16} style={{ color: planet.color }} className="rotate-180" aria-hidden="true" />
                 </motion.div>
               </div>
             </motion.button>
@@ -258,11 +258,12 @@ function PlanetFallback({ children }: PlanetFallbackProps) {
           style={{
             background: 'rgba(5, 12, 25, 0.85)',
             backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
             border: `1px solid ${currentPlanet.color}40`,
             boxShadow: `0 0 20px ${currentPlanet.color}20, 0 4px 20px rgba(0,0,0,0.4)`,
           }}
         >
-          <ChevronLeft size={18} style={{ color: currentPlanet.color }} />
+          <ChevronLeft size={18} style={{ color: currentPlanet.color }} aria-hidden="true" />
           <span style={{ color: currentPlanet.color }} className="text-sm font-medium">返回星系</span>
         </motion.button>
       </motion.div>
@@ -276,6 +277,7 @@ function PlanetFallback({ children }: PlanetFallbackProps) {
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{
           background: 'rgba(5, 12, 25, 0.85)',
           backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
           border: '1px solid rgba(255,255,255,0.1)',
           boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
         }}>
@@ -286,7 +288,7 @@ function PlanetFallback({ children }: PlanetFallbackProps) {
               boxShadow: `0 0 20px ${currentPlanet.color}40`,
             }}
           >
-            <currentPlanet.icon size={20} style={{ color: currentPlanet.color }} />
+            <currentPlanet.icon size={20} style={{ color: currentPlanet.color }} aria-hidden="true" />
           </div>
           <div className="flex flex-col">
             <span className="font-bold text-lg" style={{ color: currentPlanet.color }}>
@@ -308,6 +310,7 @@ function PlanetFallback({ children }: PlanetFallbackProps) {
           style={{
             background: 'rgba(5, 12, 25, 0.85)',
             backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
             border: '1px solid rgba(255,255,255,0.1)',
             boxShadow: '0 4px 30px rgba(0,0,0,0.4)',
           }}
@@ -326,7 +329,7 @@ function PlanetFallback({ children }: PlanetFallbackProps) {
                   border: `1px solid ${planet.color}30`,
                 }}
               >
-                <PlanetIcon size={18} style={{ color: planet.color, opacity: 0.7 }} />
+                <PlanetIcon size={18} style={{ color: planet.color, opacity: 0.7 }} aria-hidden="true" />
                 <span className="text-[9px] font-medium" style={{ color: planet.color, opacity: 0.6 }}>
                   {planet.name.slice(0, 2)}
                 </span>

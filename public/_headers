@@ -1,0 +1,21 @@
+# 安全头配置（适用于 Netlify / Cloudflare Pages 等静态托管平台）
+# 这些是 HTTP 响应头，需由部署服务器注入。本地 vite preview 不生效。
+#
+# 安全性：
+#   X-Content-Type-Options: nosniff 防止 MIME 类型嗅探
+#   X-Frame-Options: DENY 防止点击劫持
+#   Referrer-Policy: strict-origin-when-cross-origin 控制 Referrer 泄露
+#   Permissions-Policy: 限制浏览器功能
+# 性能：
+#   /assets/* 带hash的静态资源长期缓存（1年 immutable）
+#   HTML 文件不缓存，确保用户始终获取最新版本
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Cache-Control: no-cache
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

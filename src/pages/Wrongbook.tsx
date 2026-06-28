@@ -328,7 +328,7 @@ function WrongQuestionCard({ wq, kpNameMap, index }: WrongQuestionCardProps) {
         {/* 知识点链接 */}
         {kpNames.length > 0 && (
           <div className="mt-3 flex items-center gap-1.5 flex-wrap">
-            <BookOpen size={13} className="text-ink-400 flex-shrink-0" />
+            <BookOpen size={13} className="text-ink-400 flex-shrink-0" aria-hidden="true" />
             {kpNames.map((name, i) => (
               <span
                 key={`${wq.id}-kp-${i}`}
@@ -348,9 +348,9 @@ function WrongQuestionCard({ wq, kpNameMap, index }: WrongQuestionCardProps) {
               onClick={() => setExplanationOpen((v) => !v)}
               className="inline-flex items-center gap-1.5 text-sm text-gold-dark font-serif hover:underline"
             >
-              <Lightbulb size={14} />
+              <Lightbulb size={14} aria-hidden="true" />
               {explanationOpen ? '收起讲解' : '查看讲解'}
-              {explanationOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {explanationOpen ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
             </button>
             <AnimatePresence initial={false}>
               {explanationOpen && (
@@ -380,11 +380,11 @@ function WrongQuestionCard({ wq, kpNameMap, index }: WrongQuestionCardProps) {
             disabled={wq.isResolved}
             onClick={handleResolve}
           >
-            <Check size={13} className="mr-1" />
+            <Check size={13} className="mr-1" aria-hidden="true" />
             {wq.isResolved ? '已掌握' : '标记已掌握'}
           </VintageButton>
           <VintageButton variant="ghost" size="sm" onClick={handleReview}>
-            <RefreshCw size={13} className="mr-1" />
+            <RefreshCw size={13} className="mr-1" aria-hidden="true" />
             复习一次
           </VintageButton>
         </div>
@@ -640,7 +640,7 @@ ${kpList}
               答错的题目会自动收入错题本，在此回顾讲解、分析薄弱知识点，再回到练习针对性强化。
             </p>
             <VintageButton variant="primary" size="lg" onClick={handleGoPractice}>
-              <ArrowRight size={16} className="mr-1.5" /> 去练习
+              <ArrowRight size={16} className="mr-1.5" aria-hidden="true" /> 去练习
             </VintageButton>
           </div>
         </PaperCard>

@@ -156,7 +156,7 @@ function StatCard({
   const animated = useCountUp(value);
   return (
     <div className="rounded-paper border border-ink-600/10 bg-paper-100/50 px-3 py-3 text-center">
-      <div className="flex items-center justify-center mb-1 text-ink-500">{icon}</div>
+      <div className="flex items-center justify-center mb-1 text-ink-500" aria-hidden="true">{icon}</div>
       <p className="text-xs text-ink-500 font-sans mb-1">{label}</p>
       <p className={cn('font-serif text-2xl font-bold leading-none', color)}>
         {animated}
@@ -263,7 +263,7 @@ function PlanItemRow({ item, index, kpNames }: PlanItemRowProps) {
             {TASK_TYPE_LABEL[item.taskType]}
           </VintageTag>
           <VintageTag color="worn">
-            <Clock size={11} className="mr-0.5" />
+            <Clock size={11} className="mr-0.5" aria-hidden="true" />
             {item.durationMinutes} 分钟
           </VintageTag>
           <span className="inline-flex items-center gap-0.5" title={`优先级 ${filled}/${total}`}>
@@ -272,6 +272,7 @@ function PlanItemRow({ item, index, kpNames }: PlanItemRowProps) {
                 key={i}
                 size={11}
                 className={i < filled ? 'text-gold fill-gold' : 'text-ink-300'}
+                aria-hidden="true"
               />
             ))}
           </span>
@@ -500,7 +501,7 @@ ${wrongSummary}
               完成一些练习后，督学 Agent 会基于你的答题统计、薄弱点与错题生成本周复习报告与进度看板。
             </p>
             <VintageButton variant="primary" size="lg" onClick={handleGoPractice}>
-              <Target size={16} className="mr-1.5" /> 去练习
+              <Target size={16} className="mr-1.5" aria-hidden="true" /> 去练习
             </VintageButton>
           </div>
         </PaperCard>
@@ -535,7 +536,7 @@ ${wrongSummary}
             disabled={reportState === 'loading'}
             onClick={() => void generateReport()}
           >
-            <FileText size={13} className="mr-1" />
+            <FileText size={13} className="mr-1" aria-hidden="true" />
             {reportState === 'done' ? '重新生成' : '生成报告'}
           </VintageButton>
         </div>
@@ -550,7 +551,7 @@ ${wrongSummary}
       <section>
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="font-serif text-lg text-ink-900 font-bold flex items-center gap-2">
-            <BarChart3 size={16} className="text-seal" />
+            <BarChart3 size={16} className="text-seal" aria-hidden="true" />
             进度看板
           </h2>
           <span className="text-xs text-ink-500 font-sans">督学 Agent 跟踪</span>
@@ -605,7 +606,7 @@ ${wrongSummary}
             />
             <div className="flex items-center justify-between pt-1">
               <span className="font-serif text-sm text-ink-800 flex items-center gap-1.5">
-                <AlertCircle size={13} className="text-seal" />
+                <AlertCircle size={13} className="text-seal" aria-hidden="true" />
                 薄弱知识点数
               </span>
               <span className="font-serif text-base text-seal font-bold">
@@ -626,7 +627,7 @@ ${wrongSummary}
       <section>
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="font-serif text-lg text-ink-900 font-bold flex items-center gap-2">
-            <Calendar size={16} className="text-gold-dark" />
+            <Calendar size={16} className="text-gold-dark" aria-hidden="true" />
             复习计划
           </h2>
           {reviewPlan && (
@@ -642,7 +643,7 @@ ${wrongSummary}
               <p className="font-serif text-sm text-ink-700">尚未生成复习计划</p>
               <p className="text-xs text-ink-500 font-sans">前往首页生成复习计划</p>
               <VintageButton variant="ghost" size="sm" onClick={handleBackHome}>
-                <Home size={13} className="mr-1" /> 前往首页
+                <Home size={13} className="mr-1" aria-hidden="true" /> 前往首页
               </VintageButton>
             </div>
           </PaperCard>
@@ -660,7 +661,7 @@ ${wrongSummary}
                 <PaperCard key={group.date} status="default" className="p-4">
                   <div className="flex items-center justify-between mb-2.5">
                     <h3 className="font-serif text-sm text-ink-900 font-bold flex items-center gap-1.5">
-                      <Calendar size={13} className="text-seal" />
+                      <Calendar size={13} className="text-seal" aria-hidden="true" />
                       {group.date}
                     </h3>
                     <VintageTag color={completedCount === group.items.length ? 'green' : 'ink'}>
@@ -696,7 +697,7 @@ ${wrongSummary}
       <section>
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="font-serif text-lg text-ink-900 font-bold flex items-center gap-2">
-            <FileText size={16} className="text-seal" />
+            <FileText size={16} className="text-seal" aria-hidden="true" />
             AI 学习报告
           </h2>
           <VintageTag color="seal">督学 Agent</VintageTag>
@@ -711,7 +712,7 @@ ${wrongSummary}
                 督学 Agent 会综合答题统计、错题分布与知识点掌握度，生成阶段性复习报告与建议。
               </p>
               <VintageButton variant="primary" size="sm" onClick={() => void generateReport()}>
-                <FileText size={13} className="mr-1" /> 生成报告
+                <FileText size={13} className="mr-1" aria-hidden="true" /> 生成报告
               </VintageButton>
             </div>
           </PaperCard>
@@ -727,16 +728,16 @@ ${wrongSummary}
           <PaperCard status="default" className="p-4">
             <div className="rounded-paper border border-terracotta/25 bg-terracotta/5 px-3 py-3">
               <div className="flex items-center gap-2 mb-1.5">
-                <AlertCircle size={15} className="text-terracotta-dark" />
+                <AlertCircle size={15} className="text-terracotta-dark" aria-hidden="true" />
                 <p className="font-serif text-sm text-terracotta-dark font-bold">报告生成失败</p>
               </div>
               <p className="text-sm text-ink-700 font-sans mb-3">{reportError}</p>
               <div className="flex items-center gap-2 flex-wrap">
                 <VintageButton variant="primary" size="sm" onClick={() => void generateReport()}>
-                  <RefreshCw size={13} className="mr-1" /> 重试
+                  <RefreshCw size={13} className="mr-1" aria-hidden="true" /> 重试
                 </VintageButton>
                 <VintageButton variant="ghost" size="sm" onClick={handleBackHome}>
-                  <Home size={13} className="mr-1" /> 返回首页
+                  <Home size={13} className="mr-1" aria-hidden="true" /> 返回首页
                 </VintageButton>
               </div>
             </div>
@@ -752,7 +753,7 @@ ${wrongSummary}
               animate="visible"
             >
               <motion.div variants={reportItemVariants} className="flex items-center gap-2 pb-2 border-b border-ink-600/10">
-                <FileText size={16} className="text-seal" />
+                <FileText size={16} className="text-seal" aria-hidden="true" />
                 <h3 className="font-serif text-base text-ink-900 font-bold">本周复习报告</h3>
               </motion.div>
               {report.summary && (
@@ -765,7 +766,7 @@ ${wrongSummary}
               {report.suggestions.length > 0 && (
                 <motion.div variants={reportItemVariants}>
                   <p className="font-serif text-sm text-ink-700 mb-1.5 flex items-center gap-1.5">
-                    <Target size={13} className="text-gold-dark" />
+                    <Target size={13} className="text-gold-dark" aria-hidden="true" />
                     复习建议
                   </p>
                   <ul className="space-y-1.5">
@@ -791,7 +792,7 @@ ${wrongSummary}
               )}
               <motion.div variants={reportItemVariants} className="pt-2 border-t border-ink-600/10 flex items-center gap-2 flex-wrap">
                 <VintageButton variant="ghost" size="sm" onClick={() => void generateReport()}>
-                  <RefreshCw size={13} className="mr-1" /> 重新生成
+                  <RefreshCw size={13} className="mr-1" aria-hidden="true" /> 重新生成
                 </VintageButton>
               </motion.div>
             </motion.div>
@@ -810,7 +811,7 @@ ${wrongSummary}
         <section>
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="font-serif text-lg text-ink-900 font-bold flex items-center gap-2">
-              <BarChart3 size={16} className="text-terracotta-dark" />
+              <BarChart3 size={16} className="text-terracotta-dark" aria-hidden="true" />
               错题分布
             </h2>
             <span className="text-xs text-ink-500 font-sans">按知识点错题数</span>

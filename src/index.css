@@ -488,8 +488,11 @@ body {
 /* ─── Select Dropdown ──────────────────────────────── */
 
 select {
+  /* browserslist 设定 Firefox >= 91，已原生支持无前缀 appearance。
+     用 autoprefixer: ignore next 阻止 Autoprefixer 自动注入 -moz-appearance，
+     消除 Chrome/Edge/Safari 的兼容性告警（-webkit-appearance 保留兼容旧 Safari）。 */
   -webkit-appearance: none;
-  -moz-appearance: none;
+  /* autoprefixer: ignore next */
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238B7355' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -724,21 +727,21 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ─── 兼容性补丁：user-select 前缀顺序 ───────────────
-   覆盖 Tailwind 的 select-none，补齐 -khtml-/-moz-/-ms- 前缀，
-   确保 -khtml-user-select 在 user-select 之前（兼容旧 Safari/KHTML）。 */
+   标准前缀顺序：-webkit → -moz → -ms → -khtml → 无前缀。
+   -khtml 紧邻 user-select 之前，满足 stylelint-order 顺序规则。 */
 .select-none {
   -webkit-user-select: none;
-  -khtml-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
+  -khtml-user-select: none;
   user-select: none;
 }
 
 .select-text {
   -webkit-user-select: text;
-  -khtml-user-select: text;
   -moz-user-select: text;
   -ms-user-select: text;
+  -khtml-user-select: text;
   user-select: text;
 }
 

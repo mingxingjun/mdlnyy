@@ -1280,21 +1280,21 @@ function MaterialStatusBadge({ material }: { material: StudyMaterial }) {
     case 'parsing':
       return (
         <span className="inline-flex items-center gap-1 text-xs text-gold-dark font-serif flex-shrink-0">
-          <Loader2 size={12} className="animate-spin" />
+          <Loader2 size={12} className="animate-spin" aria-hidden="true" />
           解析中
         </span>
       );
     case 'parsed':
       return (
         <span className="inline-flex items-center gap-1 text-xs text-sage-dark font-serif flex-shrink-0">
-          <CheckCircle2 size={12} />
+          <CheckCircle2 size={12} aria-hidden="true" />
           已解析
         </span>
       );
     case 'failed':
       return (
         <span className="inline-flex items-center gap-1 text-xs text-terracotta-dark font-serif flex-shrink-0">
-          <AlertCircle size={12} />
+          <AlertCircle size={12} aria-hidden="true" />
           解析失败
         </span>
       );
@@ -1302,7 +1302,7 @@ function MaterialStatusBadge({ material }: { material: StudyMaterial }) {
     default:
       return (
         <span className="inline-flex items-center gap-1 text-xs text-ink-500 font-serif flex-shrink-0">
-          <Clock size={12} />
+          <Clock size={12} aria-hidden="true" />
           待解析
         </span>
       );

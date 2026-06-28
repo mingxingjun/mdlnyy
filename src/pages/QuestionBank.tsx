@@ -357,10 +357,10 @@ export default function QuestionBank() {
           ) : (
             <>
               <VintageButton variant="ghost" size="sm" onClick={() => setBatchMode(true)}>
-                <CheckSquare size={14} className="mr-1" /> 批量操作
+                <CheckSquare size={14} className="mr-1" aria-hidden="true" /> 批量操作
               </VintageButton>
               <VintageButton variant="primary" size="sm" onClick={() => handleOpenAdd()}>
-                <Plus size={14} className="mr-1" /> 新增题目
+                <Plus size={14} className="mr-1" aria-hidden="true" /> 新增题目
               </VintageButton>
             </>
           )}
@@ -370,7 +370,7 @@ export default function QuestionBank() {
       {/* 搜索栏 */}
       <PaperCard status="default" className="p-3">
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" aria-hidden="true" />
           <input
             type="text"
             value={searchKeyword}
@@ -479,7 +479,7 @@ export default function QuestionBank() {
                           </button>
                         )}
 
-                        <FileText size={16} className="text-ink-500 flex-shrink-0" />
+                        <FileText size={16} className="text-ink-500 flex-shrink-0" aria-hidden="true" />
 
                         {/* 标题（可重命名） */}
                         <div className="flex-1 min-w-0">
@@ -792,7 +792,7 @@ export default function QuestionBank() {
               <div className="sticky bottom-0 bg-paper-50 border-t border-ink-600/10 px-5 py-3 flex items-center justify-end gap-2">
                 <VintageButton variant="ghost" size="sm" onClick={() => setEditForm(null)}>取消</VintageButton>
                 <VintageButton variant="primary" size="sm" onClick={handleSave}>
-                  <Save size={14} className="mr-1" /> 保存
+                  <Save size={14} className="mr-1" aria-hidden="true" /> 保存
                 </VintageButton>
               </div>
             </motion.div>
@@ -834,7 +834,7 @@ export default function QuestionBank() {
                   className="bg-terracotta hover:bg-terracotta-dark border-terracotta-dark"
                   onClick={handleConfirmDelete}
                 >
-                  <Trash2 size={14} className="mr-1" /> 删除
+                  <Trash2 size={14} className="mr-1" aria-hidden="true" /> 删除
                 </VintageButton>
               </div>
             </motion.div>

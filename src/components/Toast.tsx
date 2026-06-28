@@ -98,7 +98,7 @@ export function ToastContainer() {
                 className="w-7 h-7 rounded-paper flex items-center justify-center flex-shrink-0"
                 style={{ background: colors.iconBg }}
               >
-                <Icon size={14} style={{ color: colors.text }} />
+                <Icon size={14} style={{ color: colors.text }} aria-hidden="true" />
               </div>
               <p className="text-sm font-serif flex-1" style={{ color: colors.text }}>
                 {toast.message}
