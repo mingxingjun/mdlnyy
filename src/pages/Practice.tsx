@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Check, X, Lightbulb, RefreshCw, Home,
   ChevronRight, BookOpen,
@@ -7,6 +7,7 @@ import {
 import { useAppStore } from '@/store/useAppStore';
 import type { Question, WrongQuestion } from '@/store/useAppStore';
 import { useToastStore } from '@/components/Toast';
+import { useCountUp } from '@/hooks/useCountUp';
 import { loadModelSettings, callModelForTask, isTaskConfigured } from '@/lib/models/api';
 import { getAgent, compressPrompt } from '@/lib/agents/definitions';
 import type { ExplanationStyle } from '@/lib/agents/types';
@@ -14,6 +15,8 @@ import { cn } from '@/lib/utils';
 import PaperCard from '@/components/PaperCard';
 import VintageButton from '@/components/VintageButton';
 import VintageTag from '@/components/VintageTag';
+import PaperSpinner from '@/components/PaperSpinner';
+import QuizResultPage from '@/components/QuizResultPage';
 
 /* ═══════════════════════════════════════════════════════
    常量与映射
@@ -244,24 +247,6 @@ function formatStepBreakdown(exp: ParsedExplanation): string {
 /* ═══════════════════════════════════════════════════════
    小型展示组件
    ═══════════════════════════════════════════════════════ */
-
-function PaperSpinner({ text }: { text: string }) {
-  return (
-    <div className="flex flex-col items-center gap-3 py-6">
-      <div className="flex items-center gap-1.5">
-        {[0, 1, 2].map((i) => (
-          <motion.span
-            key={i}
-            className="w-2.5 h-2.5 rounded-full bg-seal"
-            animate={{ opacity: [0.25, 1, 0.25], scale: [0.7, 1.15, 0.7] }}
-            transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.18, ease: 'easeInOut' }}
-          />
-        ))}
-      </div>
-      <p className="font-serif text-sm text-ink-600">{text}</p>
-    </div>
-  );
-}
 
 function StatCard({ label, value, color }: { label: string; value: string | number; color: string }) {
   return (
@@ -764,6 +749,10 @@ ${kpList}
   const correctCount = results.filter((r) => r.isCorrect).length;
   const wrongCount = totalAnswered - correctCount;
   const accuracy = totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0;
+  // P2-1 页头数字递增动画
+  const animatedCurrentIndex = useCountUp(currentIndex + 1);
+  const animatedCorrectCount = useCountUp(correctCount);
+  const animatedWrongCount = useCountUp(wrongCount);
   const noKnowledgePoints = knowledgePoints.length === 0;
   const noApiKey = !isApiKeyConfigured();
   /** 题库题所在的文件列表（用于文件筛选器） */
@@ -796,9 +785,9 @@ ${kpList}
 
         {phase === 'quiz' && sessionQuestions.length > 0 && (
           <div className="flex items-center gap-1.5 flex-wrap justify-end">
-            <VintageTag color="ink">第 {currentIndex + 1} / {sessionQuestions.length} 题</VintageTag>
-            <VintageTag color="green">对 {correctCount}</VintageTag>
-            {wrongCount > 0 && <VintageTag color="seal">错 {wrongCount}</VintageTag>}
+            <VintageTag color="ink">第 {animatedCurrentIndex} / {sessionQuestions.length} 题</VintageTag>
+            <VintageTag color="green">对 {animatedCorrectCount}</VintageTag>
+            {wrongCount > 0 && <VintageTag color="seal">错 {animatedWrongCount}</VintageTag>}
           </div>
         )}
       </header>
@@ -815,8 +804,16 @@ ${kpList}
         </div>
       )}
 
+      <AnimatePresence mode="wait">
       {/* ── Setup ── */}
       {phase === 'setup' && (
+        <motion.div
+          key="setup"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.25, ease: 'easeOut' }}
+        >
         <PaperCard status="active" className="p-6 md:p-8">
           <div className="text-center space-y-4">
             <span className="text-4xl">✍️</span>
@@ -844,24 +841,28 @@ ${kpList}
                       { v: 'knowledge', label: '知识点', desc: 'AI 现场出题' },
                     ] as const).map((opt) => {
                       const disabled = opt.v === 'bank' && bankQuestions.filter((q) => q.source === 'bank' && q.answer).length === 0;
+                      const selected = genMode === opt.v;
                       return (
                         <button
                           key={opt.v}
                           type="button"
                           role="radio"
-                          aria-checked={genMode === opt.v}
+                          aria-checked={selected}
                           disabled={disabled}
                           onClick={() => setGenMode(opt.v)}
-                          className={`px-2 py-2 rounded-[3px] text-xs font-serif border transition-colors text-center ${
-                            genMode === opt.v
+                          className={`relative px-2 py-2 rounded-[3px] text-xs font-serif border transition-colors text-center ${
+                            selected
                               ? 'bg-seal text-paper-50 border-seal'
                               : disabled
                                 ? 'bg-paper-100 text-ink-300 border-ink-600/10 cursor-not-allowed'
                                 : 'bg-paper-100 text-ink-700 border-ink-600/15 hover:border-seal/50'
                           }`}
                         >
-                          <div className="font-bold">{opt.label}</div>
-                          <div className="text-[10px] opacity-80 mt-0.5">{opt.desc}</div>
+                          {selected && <motion.div layoutId="modeHighlight" className="absolute inset-0 bg-seal/10 rounded-paper pointer-events-none" transition={{ type: 'spring', stiffness: 400, damping: 30 }} />}
+                          <div className="relative z-10">
+                            <div className="font-bold">{opt.label}</div>
+                            <div className="text-[10px] opacity-80 mt-0.5">{opt.desc}</div>
+                          </div>
                         </button>
                       );
                     })}
@@ -939,21 +940,39 @@ ${kpList}
             )}
           </div>
         </PaperCard>
+        </motion.div>
       )}
 
       {/* ── Generating ── */}
       {phase === 'generating' && (
+        <motion.div
+          key="generating"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.25, ease: 'easeOut' }}
+        >
         <PaperCard status="active" className="p-6 md:p-8">
           <PaperSpinner text="正在出题，请稍候..." />
         </PaperCard>
+        </motion.div>
       )}
 
       {/* ── Quiz ── */}
       {phase === 'quiz' && currentQuestion && (
         <motion.div
+          key="quiz"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.25, ease: 'easeOut' }}
+        >
+        <AnimatePresence mode="wait">
+        <motion.div
           key={currentIndex}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
         >
           <PaperCard status="active" className="p-5 md:p-6">
@@ -998,8 +1017,13 @@ ${kpList}
                     optCls = 'border-seal bg-seal/10 text-ink-800';
                   }
                   return (
-                    <VintageButton
+                    <motion.div
                       key={idx}
+                      // 判错时错误选项摇头反馈
+                      animate={isWrongPick ? { x: [-3, 3, -3, 3, 0] } : { x: 0 }}
+                      transition={{ duration: 0.3, ease: 'easeInOut' }}
+                    >
+                    <VintageButton
                       variant="secondary"
                       className={cn('w-full justify-start text-left h-auto py-2.5 whitespace-normal', optCls)}
                       onClick={() => {
@@ -1010,9 +1034,19 @@ ${kpList}
                       }}
                     >
                       <span className="font-serif text-sm">{opt}</span>
-                      {judged && isCorrectOpt && <Check size={15} className="ml-auto flex-shrink-0" />}
+                      {judged && isCorrectOpt && (
+                        <motion.span
+                          className="ml-auto flex-shrink-0"
+                          initial={{ scale: 2, rotate: -12, opacity: 0 }}
+                          animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                          transition={{ type: 'spring', stiffness: 300, damping: 14 }}
+                        >
+                          <Check size={15} />
+                        </motion.span>
+                      )}
                       {judged && isWrongPick && <X size={15} className="ml-auto flex-shrink-0" />}
                     </VintageButton>
+                    </motion.div>
                   );
                 })}
               </div>
@@ -1025,7 +1059,7 @@ ${kpList}
                 aria-label="输入你的答案"
                 title="输入你的答案"
                 rows={currentQuestion.type === 'short' || currentQuestion.type === 'calculation' ? 3 : 2}
-                className="w-full bg-paper-50 border border-ink-600/20 rounded-paper px-3 py-2 font-serif text-ink-800 text-sm focus:outline-none focus:border-seal focus:ring-1 focus:ring-seal/30 resize-none disabled:opacity-70"
+                className="w-full bg-paper-50 border border-ink-600/20 rounded-paper px-3 py-2 font-serif text-ink-800 text-sm focus:outline-none focus:border-seal/50 focus:shadow-[0_0_0_3px_rgba(139,37,0,0.08)] resize-none disabled:opacity-70"
               />
             )}
 
@@ -1094,34 +1128,37 @@ ${kpList}
             )}
           </PaperCard>
         </motion.div>
+        </AnimatePresence>
+        </motion.div>
       )}
 
       {/* ── Summary ── */}
       {phase === 'summary' && (
-        <PaperCard status="completed" className="p-6 md:p-8">
-          <div className="text-center space-y-5">
-            <span className="text-4xl">{accuracy >= 80 ? '🏆' : accuracy >= 60 ? '📚' : '💪'}</span>
-            <h2 className="font-serif text-2xl text-ink-900 font-bold">练习完成</h2>
-            <p className="text-sm text-ink-600 font-sans">
-              本组共作答 {totalAnswered} 题，正确率 <span className="font-serif text-gold-dark font-bold">{accuracy}%</span>
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-xl mx-auto">
-              <StatCard label="总题数" value={totalAnswered} color="text-ink-800" />
-              <StatCard label="答对" value={correctCount} color="text-sage-dark" />
-              <StatCard label="答错" value={wrongCount} color="text-terracotta-dark" />
-              <StatCard label="正确率" value={`${accuracy}%`} color="text-gold-dark" />
-            </div>
-            <div className="flex flex-wrap justify-center gap-3 pt-2">
-              <VintageButton variant="primary" size="lg" onClick={handleRetry}>
-                <RefreshCw size={16} className="mr-1.5" /> 再来一组
-              </VintageButton>
-              <VintageButton variant="ghost" size="lg" onClick={handleBackHome}>
-                <Home size={16} className="mr-1.5" /> 返回首页
-              </VintageButton>
-            </div>
-          </div>
-        </PaperCard>
+        <motion.div
+          key="summary"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.25, ease: 'easeOut' }}
+        >
+        <QuizResultPage
+          session={{
+            id: crypto.randomUUID(),
+            subjectId: null,
+            mode: 'practice',
+            totalQuestions: totalAnswered,
+            correctCount,
+            wrongCount,
+            accuracy,
+            durationSeconds: 0,
+          }}
+          onReviewWrong={() => { handleBackHome(); /* 跳转错题本由 App 层路由处理，这里先回首页 */ }}
+          onRetry={handleRetry}
+          onGoHome={handleBackHome}
+        />
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 interface ThreeLayerBackgroundProps {
@@ -111,6 +111,7 @@ function Petal({ size, color, rotation }: { size: number; color: string; rotatio
 }
 
 export default function ThreeLayerBackground({ children, className }: ThreeLayerBackgroundProps) {
+  const reduce = useReducedMotion();
   const decorItems = useMemo<DecorItem[]>(() => {
     const colors = [
       'rgba(139,37,0,0.35)',
@@ -130,7 +131,7 @@ export default function ThreeLayerBackground({ children, className }: ThreeLayer
 
     items.push({
       id: 2, type: 'confetti', top: '5%', right: '8%', size: 10, rotation: 25,
-      color: colors[0], floatDelay: 1.2, animated: false,
+      color: colors[0], floatDelay: 1.2, animated: true,
     });
     items.push({
       id: 3, type: 'confetti', top: '12%', right: '4%', size: 8, rotation: -40,
@@ -138,7 +139,7 @@ export default function ThreeLayerBackground({ children, className }: ThreeLayer
     });
     items.push({
       id: 4, type: 'confetti', top: '3%', right: '15%', size: 7, rotation: 60,
-      color: colors[2], floatDelay: 2, animated: false,
+      color: colors[2], floatDelay: 2, animated: true,
     });
 
     items.push({
@@ -147,12 +148,12 @@ export default function ThreeLayerBackground({ children, className }: ThreeLayer
     });
     items.push({
       id: 6, type: 'snippet', bottom: '12%', left: '8%', size: 0, rotation: 5,
-      color: snippetColors[1], floatDelay: 1.5, animated: false,
+      color: snippetColors[1], floatDelay: 1.5, animated: true,
     });
 
     items.push({
       id: 7, type: 'inkdot', top: '20%', right: '2%', size: 30, rotation: 0,
-      color: colors[3], floatDelay: 0.3, animated: false,
+      color: colors[3], floatDelay: 0.3, animated: true,
     });
     items.push({
       id: 8, type: 'inkdot', bottom: '25%', right: '3%', size: 24, rotation: 0,
@@ -165,33 +166,38 @@ export default function ThreeLayerBackground({ children, className }: ThreeLayer
     });
     items.push({
       id: 10, type: 'petal', bottom: '35%', left: '2%', size: 14, rotation: -50,
-      color: colors[1], floatDelay: 2.2, animated: false,
+      color: colors[1], floatDelay: 2.2, animated: true,
     });
 
     items.push({
       id: 11, type: 'confetti', top: '60%', right: '1%', size: 9, rotation: 15,
-      color: colors[2], floatDelay: 1, animated: false,
+      color: colors[2], floatDelay: 1, animated: true,
     });
     items.push({
       id: 12, type: 'confetti', bottom: '5%', right: '10%', size: 6, rotation: -20,
-      color: colors[4], floatDelay: 0.7, animated: false,
+      color: colors[4], floatDelay: 0.7, animated: true,
     });
 
     return items;
   }, []);
 
-  const floatAnimation = (delay: number) => ({
-    animate: {
-      y: [0, -4, 2, -2, 0],
-      rotate: [0, 0.8, -0.5, 0.3, 0],
-    },
-    transition: {
-      duration: 5,
-      delay,
-      repeat: Infinity,
-      ease: 'easeInOut',
-    },
-  });
+  const floatAnimation = (delay: number, duration = 5) => {
+    if (reduce) {
+      return { animate: { y: 0, rotate: 0 }, transition: { duration: 0 } };
+    }
+    return {
+      animate: {
+        y: [0, -4, 2, -2, 0],
+        rotate: [0, 0.8, -0.5, 0.3, 0],
+      },
+      transition: {
+        duration,
+        delay,
+        repeat: Infinity,
+        ease: 'easeInOut',
+      },
+    };
+  };
 
   return (
     <div className={cn('relative overflow-hidden min-h-screen', className)}>
@@ -260,7 +266,7 @@ export default function ThreeLayerBackground({ children, className }: ThreeLayer
               <motion.div
                 key={item.id}
                 style={posStyle}
-                {...floatAnimation(item.floatDelay)}
+                {...floatAnimation(item.floatDelay, 4 + (item.id % 4))}
                 className="backdrop-blur-[1px]"
               >
                 {item.type === 'feather' && <FeatherPen style={{ opacity: 0.4 }} />}
@@ -284,13 +290,15 @@ export default function ThreeLayerBackground({ children, className }: ThreeLayer
         })}
       </div>
 
-      <div
+      <motion.div
         className="absolute inset-0 z-30 pointer-events-none"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
           opacity: 0.03,
           mixBlendMode: 'multiply',
         }}
+        animate={reduce ? undefined : { backgroundPosition: ['0 0', '2px 2px', '0 0'] }}
+        transition={reduce ? undefined : { duration: 20, repeat: Infinity, ease: 'linear' }}
       />
     </div>
   );

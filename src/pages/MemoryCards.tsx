@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, RefreshCw, ChevronDown, ChevronUp,
   Trash2, Home, AlertCircle, Layers, BookOpen, Plus,
@@ -13,6 +13,8 @@ import { cn } from '@/lib/utils';
 import PaperCard from '@/components/PaperCard';
 import VintageButton from '@/components/VintageButton';
 import VintageTag from '@/components/VintageTag';
+import PaperSpinner from '@/components/PaperSpinner';
+import { useCountUp } from '@/hooks/useCountUp';
 
 /* ═══════════════════════════════════════════════════════
    工具函数
@@ -89,28 +91,6 @@ function isApiKeyConfigured(): boolean {
 }
 
 /* ═══════════════════════════════════════════════════════
-   小型展示组件
-   ═══════════════════════════════════════════════════════ */
-
-function PaperSpinner({ text }: { text: string }) {
-  return (
-    <div className="flex flex-col items-center gap-3 py-6">
-      <div className="flex items-center gap-1.5">
-        {[0, 1, 2].map((i) => (
-          <motion.span
-            key={i}
-            className="w-2.5 h-2.5 rounded-full bg-seal"
-            animate={{ opacity: [0.25, 1, 0.25], scale: [0.7, 1.15, 0.7] }}
-            transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.18, ease: 'easeInOut' }}
-          />
-        ))}
-      </div>
-      <p className="font-serif text-sm text-ink-600">{text}</p>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════
    3D 翻转记忆卡片
    ═══════════════════════════════════════════════════════ */
 
@@ -125,27 +105,41 @@ function FlashCardView({ card, kpName, index }: FlashCardViewProps) {
   const { addToast } = useToastStore();
   const [flipped, setFlipped] = useState(false);
   const [reviewed, setReviewed] = useState(false);
+  const [shake, setShake] = useState(false);
 
-  const handleFlip = () => {
-    if (!flipped) setFlipped(true);
-  };
+  const handleFlip = () => setFlipped((f) => !f);
 
   const handleReview = (isCorrect: boolean) => {
     if (reviewed) return;
-    reviewMemoryCard(card.id, isCorrect);
-    setReviewed(true);
-    addToast(
-      isCorrect ? 'success' : 'info',
-      isCorrect ? '已记录：记得，下次复习间隔延长' : '已记录：忘了，将尽快再次复习',
-    );
+    if (!isCorrect) {
+      // 忘了：先摇头反馈 0.3s 再记录
+      setShake(true);
+      setTimeout(() => {
+        setShake(false);
+        reviewMemoryCard(card.id, false);
+        setReviewed(true);
+        addToast('info', '已记录：忘了，将尽快再次复习');
+      }, 300);
+    } else {
+      // 记得：立即记录
+      reviewMemoryCard(card.id, true);
+      setReviewed(true);
+      addToast('success', '已记录：记得，下次复习间隔延长');
+    }
   };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.3), ease: 'easeOut' }}
+      layout
+      initial={{ opacity: 0, y: -40, rotate: -8, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9, y: -20 }}
+      transition={{ duration: 0.5, delay: Math.min(index * 0.05, 0.4), ease: [0.22, 1, 0.36, 1] }}
     >
+      <motion.div
+        animate={shake ? { x: [-4, 4, -4, 4, 0] } : { x: 0 }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
+      >
       <div className="flash-card h-[260px]">
         <div className={cn('flash-card-inner h-full w-full', flipped && 'flipped')}>
           {/* 正面：问题 / 关键词 */}
@@ -218,6 +212,7 @@ function FlashCardView({ card, kpName, index }: FlashCardViewProps) {
           </div>
         </div>
       </div>
+      </motion.div>
     </motion.div>
   );
 }
@@ -260,11 +255,21 @@ function CardRow({ card, kpName }: CardRowProps) {
             <p className="font-serif text-sm text-ink-900 leading-relaxed">
               <span className="text-ink-500">问：</span>{card.front}
             </p>
-            {expanded && (
-              <p className="font-serif text-sm text-ink-700 leading-relaxed mt-1.5">
-                <span className="text-sage-dark">答：</span>{card.back}
-              </p>
-            )}
+            <AnimatePresence initial={false}>
+              {expanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                  className="overflow-hidden"
+                >
+                  <p className="font-serif text-sm text-ink-700 leading-relaxed mt-1.5">
+                    <span className="text-sage-dark">答：</span>{card.back}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </button>
         </div>
         <button
@@ -327,6 +332,11 @@ export default function MemoryCards() {
     () => memoryCards.filter((c) => !c.isMastered),
     [memoryCards],
   );
+
+  // 顶部统计数字递增动画
+  const animatedDue = useCountUp(dueCards.length);
+  const animatedMastered = useCountUp(masteredCards.length);
+  const animatedTotal = useCountUp(memoryCards.length);
 
   const handleBackHome = useCallback(() => {
     setActiveView('dashboard');
@@ -460,7 +470,11 @@ ${kpList}
 
         <PaperCard status="default" className="p-8 md:p-12">
           <div className="text-center space-y-4">
-            <span className="text-5xl">🃏</span>
+            <motion.span
+              className="text-5xl block"
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            >🃏</motion.span>
             <p className="font-handwritten text-2xl text-ink-700">还没有记忆卡片，点击生成</p>
             <p className="text-sm text-ink-500 font-sans max-w-md mx-auto">
               记忆卡片 Agent 会基于知识点（薄弱点优先）生成 SM-2 间隔重复卡片，每日到期自动出现在「今日待复习」中。
@@ -517,9 +531,9 @@ ${kpList}
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <VintageTag color="seal">今日待复习 {dueCards.length}</VintageTag>
-          <VintageTag color="green">已掌握 {masteredCards.length}</VintageTag>
-          <VintageTag color="ink">总卡片 {memoryCards.length}</VintageTag>
+          <VintageTag color="seal">今日待复习 {animatedDue}</VintageTag>
+          <VintageTag color="green">已掌握 {animatedMastered}</VintageTag>
+          <VintageTag color="ink">总卡片 {animatedTotal}</VintageTag>
           <VintageButton
             variant="primary"
             size="sm"
@@ -570,7 +584,11 @@ ${kpList}
         {dueCards.length === 0 ? (
           <PaperCard status="default" className="p-6">
             <div className="text-center space-y-1">
-              <span className="text-3xl">🎉</span>
+              <motion.span
+                className="text-3xl block"
+                animate={{ y: [0, -6, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              >🎉</motion.span>
               <p className="font-serif text-sm text-ink-700">
                 今日无待复习卡片，已全部掌握或未到期
               </p>
@@ -578,14 +596,16 @@ ${kpList}
           </PaperCard>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {dueCards.map((c, i) => (
-              <FlashCardView
-                key={c.id}
-                card={c}
-                kpName={kpNameMap.get(c.knowledgePointId) ?? ''}
-                index={i}
-              />
-            ))}
+            <AnimatePresence mode="popLayout">
+              {dueCards.map((c, i) => (
+                <FlashCardView
+                  key={c.id}
+                  card={c}
+                  kpName={kpNameMap.get(c.knowledgePointId) ?? ''}
+                  index={i}
+                />
+              ))}
+            </AnimatePresence>
           </div>
         )}
       </section>

@@ -5,6 +5,29 @@
 @tailwind utilities;
 
 /* ═══════════════════════════════════════════════════════
+   TRANSITION 规范（项目动效统一参考）
+   ═══════════════════════════════════════════════════════
+   入场曲线（paperFall/路由切换/卡片入场）：
+     ease: [0.22, 1, 0.36, 1]  duration: 0.4-0.5s
+   列表 stagger 延迟：
+     delay: Math.min(index * 0.05, 0.4)
+   paperFall 入场参数：
+     initial: { opacity: 0, y: -40, rotate: -8, scale: 0.96 }
+     animate: { opacity: 1, y: 0, rotate: 0, scale: 1 }
+   spring 反馈（卡片 hover/tap）：
+     { type: 'spring', stiffness: 400, damping: 25 }
+   spring 反馈（按钮 hover/tap）：
+     { type: 'spring', stiffness: 500, damping: 20 }
+   spring 印章/勾选弹入：
+     { type: 'spring', stiffness: 300, damping: 14 }
+   layout 高亮滑块：
+     { type: 'spring', stiffness: 400, damping: 30 }
+   折叠区 height 动画：
+     { duration: 0.2, ease: 'easeOut' }
+   无障碍：所有 infinite 动画需配合 useReducedMotion hook 降级
+   ═══════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════
    PAPER AESTHETIC — Vintage Paper-Collage Design System
    Warm cream paper · sepia ink · seal red · antique gold
    ═══════════════════════════════════════════════════════ */
@@ -223,7 +246,7 @@ body {
 }
 
 .flash-card-inner {
-  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
   transform-style: preserve-3d;
   position: relative;
 }
@@ -249,11 +272,6 @@ body {
   to { opacity: 1; }
 }
 
-@keyframes twinkle {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-
 .animate-fade-in {
   animation: fadeIn 0.3s ease forwards;
 }
@@ -270,6 +288,44 @@ body {
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }
+}
+
+/* ─── 纸张/印章主题动效（启用闲置 keyframe）────────── */
+
+/* 印章下压回弹：用于 stamp 按钮悬停、判对反馈 */
+@keyframes stampPress {
+  0%   { transform: scale(1.4) rotate(-12deg); }
+  55%  { transform: scale(0.92) rotate(2deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+.btn-stamp-press {
+  transition: opacity 0.2s ease;
+}
+.btn-stamp-press:hover:not(:disabled) {
+  animation: stampPress 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 纸片飘落入场：用于列表卡片首次出现 */
+@keyframes paperFall {
+  0%   { opacity: 0; transform: translateY(-40px) rotate(-8deg) scale(0.96); }
+  55%  { opacity: 1; transform: translateY(6px) rotate(2deg) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+}
+
+.paper-fall-in {
+  animation: paperFall 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* 墨迹晕开：用于错题标记/判错反馈 */
+@keyframes inkSpread {
+  0%   { opacity: 0; transform: scale(0.8); filter: blur(2px); }
+  60%  { opacity: 0.6; transform: scale(1.08); filter: blur(0.5px); }
+  100% { opacity: 0.85; transform: scale(1); filter: blur(0); }
+}
+
+.ink-spread {
+  animation: inkSpread 0.6s ease-out both;
 }
 
 /* ─── Input Error ──────────────────────────────────── */
@@ -641,4 +697,18 @@ h1, h2, h3, h4, h5, h6 {
   -moz-user-select: text;
   -ms-user-select: text;
   user-select: text;
+}
+
+/* ─── 无障碍：prefers-reduced-motion 降级 ──────────────
+   满足 WCAG 2.1 SC 2.3.3，对前庭敏感用户关闭所有非必要动画。
+   framer-motion 侧的 infinite 动画需配合 useReducedMotion hook 单独处理。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

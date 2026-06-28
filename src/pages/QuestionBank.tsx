@@ -8,6 +8,7 @@ import { useAppStore } from '@/store/useAppStore';
 import type { Question, StudyMaterial } from '@/store/useAppStore';
 import { useToastStore } from '@/components/Toast';
 import { cn } from '@/lib/utils';
+import { useCountUp } from '@/hooks/useCountUp';
 import PaperCard from '@/components/PaperCard';
 import VintageButton from '@/components/VintageButton';
 import VintageTag from '@/components/VintageTag';
@@ -324,6 +325,8 @@ export default function QuestionBank() {
 
   const totalQuestions = questions.length;
   const totalSets = questionSets.length;
+  const animatedQuestions = useCountUp(totalQuestions);
+  const animatedSets = useCountUp(totalSets);
 
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 space-y-5">
@@ -341,7 +344,7 @@ export default function QuestionBank() {
           <div>
             <p className="font-handwritten text-sm text-ink-500 leading-none">题库管理</p>
             <h1 className="font-serif text-2xl text-ink-900 font-bold tracking-wide leading-tight">
-              题库 <span className="text-sm font-sans text-ink-500 font-normal ml-1">{totalSets} 套 · {totalQuestions} 题</span>
+              题库 <span className="text-sm font-sans text-ink-500 font-normal ml-1">{animatedSets} 套 · {animatedQuestions} 题</span>
             </h1>
           </div>
         </div>
@@ -410,7 +413,13 @@ export default function QuestionBank() {
       {/* 题库为空 */}
       {totalSets === 0 ? (
         <PaperCard status="default" className="p-8 text-center">
-          <Folder size={40} className="mx-auto text-ink-300 mb-3" />
+          <motion.span
+            className="block mb-4"
+            animate={{ y: [0, -6, 0] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <Folder size={40} className="mx-auto text-ink-300" />
+          </motion.span>
           <p className="text-sm text-ink-500 font-serif mb-1">题库为空</p>
           <p className="text-xs text-ink-400 font-sans">请先上传题库资料，或点击「新增题目」手动添加</p>
         </PaperCard>
@@ -428,13 +437,22 @@ export default function QuestionBank() {
 
               {/* 该日期下的每套题库 */}
               <div className="space-y-2.5">
-                {sets.map((set) => {
+                <AnimatePresence mode="popLayout">
+                {sets.map((set, idx) => {
                   const isExpanded = expandedSets.has(set.material.id);
                   const filteredQs = getFilteredQuestions(set);
                   const allSelectedInSet = batchMode && set.questions.length > 0 &&
                     set.questions.every((q) => selectedIds.has(q.id));
                   return (
-                    <PaperCard key={set.material.id} status="default" className="overflow-hidden">
+                    <motion.div
+                      key={set.material.id}
+                      layout
+                      initial={{ opacity: 0, y: -40, rotate: -8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                      transition={{ duration: 0.5, delay: Math.min(idx * 0.05, 0.4), ease: [0.22, 1, 0.36, 1] }}
+                    >
+                    <PaperCard status="default" className="overflow-hidden">
                       {/* 套标题栏 */}
                       <div className="p-3.5 flex items-center gap-3">
                         {/* 展开/折叠按钮 */}
@@ -531,8 +549,9 @@ export default function QuestionBank() {
                                 {filteredQs.map((q, idx) => {
                                   const isSelected = selectedIds.has(q.id);
                                   return (
-                                    <div
+                                    <motion.div
                                       key={q.id}
+                                      whileHover={{ y: -1, borderColor: 'rgba(139,37,0,0.2)' }}
                                       className={cn(
                                         'px-3.5 py-2.5 flex items-start gap-2.5 transition-colors',
                                         isSelected && 'bg-seal/5',
@@ -589,7 +608,7 @@ export default function QuestionBank() {
                                           </button>
                                         </div>
                                       )}
-                                    </div>
+                                    </motion.div>
                                   );
                                 })}
                               </div>
@@ -610,8 +629,10 @@ export default function QuestionBank() {
                         )}
                       </AnimatePresence>
                     </PaperCard>
+                    </motion.div>
                   );
                 })}
+                </AnimatePresence>
               </div>
             </div>
           ))}

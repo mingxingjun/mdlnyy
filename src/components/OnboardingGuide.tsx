@@ -106,6 +106,12 @@ export default function OnboardingGuide({ onDismiss }: OnboardingGuideProps) {
                     x: 0,
                     y: 0,
                   }}
+                  exit={{
+                    opacity: 0,
+                    scale: 0.5,
+                    x: step.initialX,
+                    y: step.initialY,
+                  }}
                   transition={{
                     type: 'spring',
                     stiffness: 280,
@@ -133,6 +139,7 @@ export default function OnboardingGuide({ onDismiss }: OnboardingGuideProps) {
             <motion.div
               initial={{ opacity: 0, scale: 0.5, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.5, y: 20 }}
               transition={{
                 type: 'spring',
                 stiffness: 400,

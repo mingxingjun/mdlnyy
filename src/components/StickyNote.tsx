@@ -29,6 +29,9 @@ export default function StickyNote({
     return (Math.random() - 0.5) * 6;
   }, [rotation]);
 
+  // 胶带轻微旋转角度，用 useMemo 固定避免每次渲染重新计算导致抖动
+  const tapeRotate = useMemo(() => (Math.random() - 0.5) * 4, []);
+
   const style = colorStyles[color];
 
   return (
@@ -39,6 +42,10 @@ export default function StickyNote({
         color: style.text,
         rotate: randomRotation,
       }}
+      initial={{ opacity: 0, y: -10, rotate: randomRotation - 3 }}
+      animate={{ opacity: 1, y: 0, rotate: randomRotation }}
+      exit={{ opacity: 0, scale: 0.9, y: 10 }}
+      whileTap={{ scale: 0.97 }}
       whileHover={{
         rotate: [randomRotation, randomRotation + 1.5, randomRotation - 0.5, randomRotation + 0.8],
         zIndex: 30,
@@ -50,7 +57,7 @@ export default function StickyNote({
         style={{
           backgroundColor: style.tape,
           boxShadow: '0 1px 2px rgba(92,64,51,0.08)',
-          transform: `translateX(-50%) rotate(${(Math.random() - 0.5) * 4}deg)`,
+          transform: `translateX(-50%) rotate(${tapeRotate}deg)`,
         }}
       />
 

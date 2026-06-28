@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, ArrowRight, RefreshCw, Check, BookOpen,
   ChevronDown, ChevronUp, Lightbulb, Home, AlertCircle, Target,
@@ -14,6 +14,8 @@ import PaperCard from '@/components/PaperCard';
 import type { PaperCardStatus } from '@/components/PaperCard';
 import VintageButton from '@/components/VintageButton';
 import VintageTag from '@/components/VintageTag';
+import PaperSpinner from '@/components/PaperSpinner';
+import { useCountUp } from '@/hooks/useCountUp';
 
 /* ═══════════════════════════════════════════════════════
    类型与常量
@@ -136,24 +138,6 @@ function formatRelativeTime(ts: number): string {
    小型展示组件
    ═══════════════════════════════════════════════════════ */
 
-function PaperSpinner({ text }: { text: string }) {
-  return (
-    <div className="flex flex-col items-center gap-3 py-6">
-      <div className="flex items-center gap-1.5">
-        {[0, 1, 2].map((i) => (
-          <motion.span
-            key={i}
-            className="w-2.5 h-2.5 rounded-full bg-seal"
-            animate={{ opacity: [0.25, 1, 0.25], scale: [0.7, 1.15, 0.7] }}
-            transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.18, ease: 'easeInOut' }}
-          />
-        ))}
-      </div>
-      <p className="font-serif text-sm text-ink-600">{text}</p>
-    </div>
-  );
-}
-
 function MasteryBar({ name, mastery }: { name: string; mastery: number }) {
   const clamped = Math.max(0, Math.min(1, mastery));
   const pct = Math.round(clamped * 100);
@@ -192,13 +176,20 @@ function FilterChip({
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex items-center px-2.5 py-1 rounded-paper font-serif text-xs border transition-colors',
+        'relative inline-flex items-center px-2.5 py-1 rounded-paper font-serif text-xs border transition-colors',
         active
           ? 'bg-seal/10 text-seal border-seal/30 shadow-stamp'
           : 'bg-paper-100 text-ink-600 border-ink-600/15 hover:border-seal/40 hover:text-seal',
       )}
     >
-      {children}
+      {active && (
+        <motion.div
+          layoutId="filterHighlight"
+          className="absolute inset-0 bg-seal/10 rounded-paper"
+          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+        />
+      )}
+      <span className="relative z-10">{children}</span>
     </button>
   );
 }
@@ -241,11 +232,29 @@ function WrongQuestionCard({ wq, kpNameMap, index }: WrongQuestionCardProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.3), ease: 'easeOut' }}
+      layout
+      initial={{ opacity: 0, y: -40, rotate: -8, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95, y: -10 }}
+      transition={{ duration: 0.5, delay: Math.min(index * 0.05, 0.4), ease: [0.22, 1, 0.36, 1] }}
     >
       <PaperCard status={status} className="p-4 md:p-5">
+        {/* 已掌握印章：盖章弹入动效 */}
+        {wq.isResolved && (
+          <motion.div
+            className="absolute top-2 right-2 pointer-events-none z-10"
+            initial={{ scale: 2.5, rotate: -42, opacity: 0 }}
+            animate={{ scale: 1, rotate: -12, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 14, delay: 0.1 }}
+          >
+            <svg width="60" height="60" viewBox="0 0 60 60">
+              <circle cx="30" cy="30" r="26" fill="none" stroke="#8B2500" strokeWidth="2" opacity="0.7" />
+              <circle cx="30" cy="30" r="22" fill="none" stroke="#8B2500" strokeWidth="1" opacity="0.5" />
+              <text x="30" y="36" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#8B2500" opacity="0.85" fontFamily="serif">已掌握</text>
+            </svg>
+          </motion.div>
+        )}
+
         {/* 顶部：状态 / 复习次数 / 标签 */}
         <div className="flex items-start justify-between gap-2 mb-3 flex-wrap">
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -275,14 +284,26 @@ function WrongQuestionCard({ wq, kpNameMap, index }: WrongQuestionCardProps) {
           className="block w-full text-left group"
           title="点击展开/收起题干"
         >
-          <p
-            className={cn(
-              'font-serif text-base text-ink-900 leading-relaxed whitespace-pre-wrap',
-              !stemExpanded && 'line-clamp-2',
+          {!stemExpanded && (
+            <p className="font-serif text-base text-ink-900 leading-relaxed whitespace-pre-wrap line-clamp-2">
+              {wq.stem}
+            </p>
+          )}
+          <AnimatePresence initial={false}>
+            {stemExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="overflow-hidden"
+              >
+                <p className="font-serif text-base text-ink-900 leading-relaxed whitespace-pre-wrap">
+                  {wq.stem}
+                </p>
+              </motion.div>
             )}
-          >
-            {wq.stem}
-          </p>
+          </AnimatePresence>
           <span className="inline-block mt-1 text-xs text-seal font-serif group-hover:underline">
             {stemExpanded ? '收起题干' : '展开题干'}
           </span>
@@ -331,13 +352,23 @@ function WrongQuestionCard({ wq, kpNameMap, index }: WrongQuestionCardProps) {
               {explanationOpen ? '收起讲解' : '查看讲解'}
               {explanationOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
-            {explanationOpen && (
-              <div className="mt-2 rounded-paper border border-gold/20 bg-gold/5 px-3 py-2.5">
-                <p className="text-sm text-ink-800 font-serif whitespace-pre-wrap leading-relaxed">
-                  {explanationText}
-                </p>
-              </div>
-            )}
+            <AnimatePresence initial={false}>
+              {explanationOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-2 rounded-paper border border-gold/20 bg-gold/5 px-3 py-2.5">
+                    <p className="text-sm text-ink-800 font-serif whitespace-pre-wrap leading-relaxed">
+                      {explanationText}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 
@@ -412,6 +443,10 @@ export default function Wrongbook() {
   const total = wrongQuestions.length;
   const resolvedCount = wrongQuestions.filter((wq) => wq.isResolved).length;
   const unresolvedCount = total - resolvedCount;
+
+  const animatedTotal = useCountUp(wrongQuestions.length);
+  const animatedUnresolved = useCountUp(wrongQuestions.filter((wq) => !wq.isResolved).length);
+  const animatedResolved = useCountUp(wrongQuestions.filter((wq) => wq.isResolved).length);
 
   /** 筛选 + 排序：未解决优先，再按入册时间倒序 */
   const filtered = useMemo(() => {
@@ -592,7 +627,13 @@ ${kpList}
         </header>
         <PaperCard status="default" className="p-8 md:p-12">
           <div className="text-center space-y-4">
-            <span className="text-5xl">📕</span>
+            <motion.span
+              className="text-5xl block"
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              📕
+            </motion.span>
             <p className="font-handwritten text-2xl text-ink-700">还没有错题，去练习吧</p>
             <p className="text-sm text-ink-500 font-sans max-w-md mx-auto">
               答错的题目会自动收入错题本，在此回顾讲解、分析薄弱知识点，再回到练习针对性强化。
@@ -625,9 +666,9 @@ ${kpList}
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <VintageTag color="ink">总错题 {total}</VintageTag>
-          <VintageTag color="seal">未解决 {unresolvedCount}</VintageTag>
-          <VintageTag color="green">已解决 {resolvedCount}</VintageTag>
+          <VintageTag color="ink">总错题 {animatedTotal}</VintageTag>
+          <VintageTag color="seal">未解决 {animatedUnresolved}</VintageTag>
+          <VintageTag color="green">已解决 {animatedResolved}</VintageTag>
           <VintageButton
             variant="primary"
             size="sm"
@@ -780,7 +821,13 @@ ${kpList}
         {filtered.length === 0 ? (
           <PaperCard status="default" className="p-6">
             <div className="text-center space-y-2">
-              <span className="text-3xl">🔍</span>
+              <motion.span
+                className="text-3xl block"
+                animate={{ y: [0, -6, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                🔍
+              </motion.span>
               <p className="font-serif text-sm text-ink-600">没有符合条件的错题</p>
               <button
                 type="button"
@@ -793,9 +840,11 @@ ${kpList}
           </PaperCard>
         ) : (
           <div className="space-y-3">
+            <AnimatePresence mode="popLayout">
             {filtered.map((wq, i) => (
               <WrongQuestionCard key={wq.id} wq={wq} kpNameMap={kpNameMap} index={i} />
             ))}
+            </AnimatePresence>
           </div>
         )}
       </section>

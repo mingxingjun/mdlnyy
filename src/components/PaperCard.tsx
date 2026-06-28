@@ -1,5 +1,5 @@
 import { forwardRef, useMemo, type ReactNode, type MouseEvent } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 export type PaperCardStatus = 'active' | 'has-reward' | 'inactive' | 'completed' | 'default';
@@ -14,6 +14,7 @@ export interface PaperCardProps {
 
 const PaperCard = forwardRef<HTMLDivElement, PaperCardProps>(
   ({ children, className, status = 'default', rotation, onClick }, ref) => {
+    const reduce = useReducedMotion();
     const randomRotation = useMemo(() => {
       if (rotation !== undefined) return rotation;
       return (Math.random() - 0.5) * 2.4;
@@ -32,7 +33,7 @@ const PaperCard = forwardRef<HTMLDivElement, PaperCardProps>(
       isClickable && 'cursor-pointer',
       isInteractive && status !== 'active' && 'hover:shadow-paper-hover',
       status === 'active' && 'paper-card-active shadow-paper-hover',
-      status === 'has-reward' && 'paper-card-reward border-seal/30',
+      status === 'has-reward' && (reduce ? 'border-seal/30' : 'paper-card-reward border-seal/30'),
       status === 'inactive' && 'opacity-60 saturate-50',
       status === 'completed' && 'opacity-50 paper-card-completed',
       className
@@ -41,23 +42,29 @@ const PaperCard = forwardRef<HTMLDivElement, PaperCardProps>(
     return (
       <motion.div
         ref={ref}
+        layout
         className={baseClasses}
         onClick={onClick}
         initial={{ rotate: animateRotate, y: animateY }}
         animate={{ rotate: animateRotate, y: animateY }}
-        whileHover={isInteractive ? { scale: 1.005, y: animateY - 2 } : undefined}
+        whileHover={isInteractive ? { scale: 1.01, y: animateY - 2 } : undefined}
         whileTap={isInteractive ? { scale: 0.99, y: animateY } : undefined}
         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
         data-rotation={finalRotation.toFixed(2)}
       >
         {status === 'has-reward' && (
-          <span className="absolute -top-1 -right-1 z-10 w-3 h-3 rounded-full bg-seal shadow-stamp" />
+          <motion.span
+            className="absolute -top-1 -right-1 z-10 w-3 h-3 rounded-full bg-seal shadow-stamp"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+          />
         )}
 
         {status === 'completed' && (
           <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden rounded-[3px]">
             <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-              <line
+              <motion.line
                 x1="0"
                 y1="100%"
                 x2="100%"
@@ -65,13 +72,22 @@ const PaperCard = forwardRef<HTMLDivElement, PaperCardProps>(
                 stroke="rgba(92,64,51,0.35)"
                 strokeWidth="1.5"
                 strokeLinecap="round"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 0.6, ease: 'easeOut' }}
               />
             </svg>
           </div>
         )}
 
         {status === 'active' && (
-          <div className="pointer-events-none absolute top-0 left-0 right-0 z-[4] h-[2px] bg-gradient-to-r from-transparent via-gold/60 to-transparent rounded-t-[3px]" />
+          <motion.div
+            className="pointer-events-none absolute top-0 left-0 right-0 z-[4] h-[2px] bg-gradient-to-r from-transparent via-gold/60 to-transparent rounded-t-[3px]"
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            style={{ transformOrigin: 'left' }}
+          />
         )}
 
         <div className="pointer-events-none absolute bottom-0 right-0 z-[2] w-6 h-6 overflow-hidden">

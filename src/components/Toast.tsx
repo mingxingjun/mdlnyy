@@ -63,10 +63,11 @@ const iconMap: Record<ToastType, typeof Check> = {
 };
 
 const colorMap: Record<ToastType, { bg: string; border: string; text: string; iconBg: string }> = {
-  success: { bg: 'rgba(0,217,36,0.1)', border: 'rgba(0,217,36,0.25)', text: '#00D924', iconBg: 'rgba(0,217,36,0.15)' },
-  error: { bg: 'rgba(255,61,0,0.1)', border: 'rgba(255,61,0,0.25)', text: '#FF3D00', iconBg: 'rgba(255,61,0,0.15)' },
-  warning: { bg: 'rgba(255,184,0,0.1)', border: 'rgba(255,184,0,0.25)', text: '#FFB800', iconBg: 'rgba(255,184,0,0.15)' },
-  info: { bg: 'rgba(99,91,255,0.1)', border: 'rgba(99,91,255,0.25)', text: '#635BFF', iconBg: 'rgba(99,91,255,0.15)' },
+  // paper 体系配色：sage(成功) / seal(错误) / gold(警告) / ink(信息)
+  success: { bg: '#FBF7F0', border: 'rgba(107,142,35,0.35)', text: '#4A6315', iconBg: 'rgba(107,142,35,0.15)' },
+  error: { bg: '#FBF7F0', border: 'rgba(139,37,0,0.35)', text: '#8B2500', iconBg: 'rgba(139,37,0,0.12)' },
+  warning: { bg: '#FBF7F0', border: 'rgba(184,134,11,0.4)', text: '#8B6914', iconBg: 'rgba(184,134,11,0.15)' },
+  info: { bg: '#FBF7F0', border: 'rgba(92,64,51,0.25)', text: '#3D2A20', iconBg: 'rgba(92,64,51,0.08)' },
 };
 
 export function ToastContainer() {
@@ -81,32 +82,31 @@ export function ToastContainer() {
           return (
             <motion.div
               key={toast.id}
+              layout
               initial={{ opacity: 0, x: 60, scale: 0.95 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 60, scale: 0.95 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-[12px] min-w-[260px] max-w-[calc(100vw-32px)] sm:max-w-sm"
+              className="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-paper min-w-[260px] max-w-[calc(100vw-32px)] sm:max-w-sm shadow-paper"
               style={{
                 background: colors.bg,
                 border: `1px solid ${colors.border}`,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                backdropFilter: 'blur(12px)',
               }}
             >
               <div
-                className="w-7 h-7 rounded-[8px] flex items-center justify-center flex-shrink-0"
+                className="w-7 h-7 rounded-paper flex items-center justify-center flex-shrink-0"
                 style={{ background: colors.iconBg }}
               >
                 <Icon size={14} style={{ color: colors.text }} />
               </div>
-              <p className="text-sm font-sans flex-1" style={{ color: colors.text }}>
+              <p className="text-sm font-serif flex-1" style={{ color: colors.text }}>
                 {toast.message}
               </p>
               <button
                 onClick={() => removeToast(toast.id)}
-                className="p-1 rounded hover:bg-white/5 transition-colors flex-shrink-0"
+                className="p-1 rounded-paper hover:bg-ink-600/10 transition-colors flex-shrink-0"
               >
-                <X size={12} className="text-[#6b7c93]" />
+                <X size={12} className="text-ink-500" />
               </button>
             </motion.div>
           );

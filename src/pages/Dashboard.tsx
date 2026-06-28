@@ -1,11 +1,12 @@
 import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, Trash2, Loader2, Clock, RefreshCw,
   AlertCircle, CheckCircle2, ArrowRight,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import type { StudyMaterial, KnowledgePoint, Question } from '@/store/useAppStore';
+import { useCountUp } from '@/hooks/useCountUp';
 import type { LearningState } from '@/lib/agents/types';
 import { useToastStore } from '@/components/Toast';
 import { loadModelSettings, callModelForTask, isTaskConfigured } from '@/lib/models/api';
@@ -1044,14 +1045,21 @@ ${text.slice(0, 8000)}`;
               role="radio"
               aria-checked={materialKind === opt.v}
               onClick={() => setMaterialKind(opt.v)}
-              className={`px-2.5 py-1 rounded-[3px] text-xs font-serif border transition-colors ${
+              className={`relative px-2.5 py-1 rounded-[3px] text-xs font-serif border transition-colors ${
                 materialKind === opt.v
                   ? 'bg-seal text-paper-50 border-seal'
                   : 'bg-paper-100 text-ink-700 border-ink-600/15 hover:border-seal/50'
               }`}
               title={opt.hint}
             >
-              {opt.label}
+              {materialKind === opt.v && (
+                <motion.div
+                  layoutId="processModeHighlight"
+                  className="absolute inset-0 bg-seal/10 rounded-paper"
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10">{opt.label}</span>
             </button>
           ))}
         </div>
@@ -1111,7 +1119,7 @@ ${text.slice(0, 8000)}`;
 
       {/* 粘贴文本入口：PDF / Word 等不支持格式的替代方案 */}
       <div className="mt-3">
-        {!showPaste ? (
+        {!showPaste && (
           <button
             type="button"
             onClick={() => setShowPaste(true)}
@@ -1119,42 +1127,53 @@ ${text.slice(0, 8000)}`;
           >
             或直接粘贴文本内容 →
           </button>
-        ) : (
-          <div className="rounded-[4px] border border-ink-600/15 bg-paper-100/50 p-3">
-            <label htmlFor="paste-text-input" className="block text-xs font-serif text-ink-600 mb-1.5">
-              粘贴复习资料正文（适用于 PDF / Word 复制出来的内容）
-            </label>
-            <textarea
-              id="paste-text-input"
-              value={pasteText}
-              onChange={(e) => setPasteText(e.target.value)}
-              placeholder="在此粘贴资料正文，至少 20 字…"
-              rows={5}
-              aria-label="粘贴复习资料文本"
-              className="w-full bg-paper-50 border border-ink-600/20 rounded-[3px] px-3 py-2 font-sans text-sm text-ink-800 focus:outline-none focus:border-seal focus:ring-1 focus:ring-seal/30 resize-y"
-            />
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-[11px] text-ink-500 font-sans">{pasteText.trim().length} 字</span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setPasteText(''); setShowPaste(false); }}
-                  className="text-xs font-serif text-ink-500 hover:text-ink-800 px-2 py-1"
-                >
-                  取消
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handlePasteExtract()}
-                  disabled={isParsing || pasteText.trim().length < 20}
-                  className="text-xs font-serif text-paper-50 bg-seal/80 hover:bg-seal px-3 py-1 rounded-[3px] disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {isParsing ? '解析中…' : '提取知识点'}
-                </button>
-              </div>
-            </div>
-          </div>
         )}
+        <AnimatePresence initial={false}>
+          {showPaste && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="overflow-hidden"
+            >
+              <div className="rounded-[4px] border border-ink-600/15 bg-paper-100/50 p-3">
+                <label htmlFor="paste-text-input" className="block text-xs font-serif text-ink-600 mb-1.5">
+                  粘贴复习资料正文（适用于 PDF / Word 复制出来的内容）
+                </label>
+                <textarea
+                  id="paste-text-input"
+                  value={pasteText}
+                  onChange={(e) => setPasteText(e.target.value)}
+                  placeholder="在此粘贴资料正文，至少 20 字…"
+                  rows={5}
+                  aria-label="粘贴复习资料文本"
+                  className="w-full bg-paper-50 border border-ink-600/20 rounded-[3px] px-3 py-2 font-sans text-sm text-ink-800 focus:outline-none focus:border-seal focus:ring-1 focus:ring-seal/30 resize-y"
+                />
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-[11px] text-ink-500 font-sans">{pasteText.trim().length} 字</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setPasteText(''); setShowPaste(false); }}
+                      className="text-xs font-serif text-ink-500 hover:text-ink-800 px-2 py-1"
+                    >
+                      取消
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handlePasteExtract()}
+                      disabled={isParsing || pasteText.trim().length < 20}
+                      className="text-xs font-serif text-paper-50 bg-seal/80 hover:bg-seal px-3 py-1 rounded-[3px] disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {isParsing ? '解析中…' : '提取知识点'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* 空状态引导（手账便签） */}
@@ -1176,15 +1195,18 @@ ${text.slice(0, 8000)}`;
             <span className="text-xs text-ink-500 font-sans">({materials.length})</span>
           </h3>
           <ul className="space-y-2">
-            {materials.map((m) => (
+            <AnimatePresence mode="popLayout">
+            {materials.map((m, idx) => (
               <MaterialRow
                 key={m.id}
                 material={m}
+                index={idx}
                 isParsing={isParsing}
                 onReparse={() => void handleReparse(m)}
                 onRemove={() => handleRemove(m)}
               />
             ))}
+            </AnimatePresence>
           </ul>
         </div>
       )}
@@ -1193,9 +1215,10 @@ ${text.slice(0, 8000)}`;
 }
 
 function MaterialRow({
-  material, isParsing, onReparse, onRemove,
+  material, index, isParsing, onReparse, onRemove,
 }: {
   material: StudyMaterial;
+  index: number;
   isParsing: boolean;
   onReparse: () => void;
   onRemove: () => void;
@@ -1203,7 +1226,14 @@ function MaterialRow({
   const typeIcon = material.type === 'pdf' ? '📄' : material.type === 'word' ? '📝' : material.type === 'ppt' ? '📊' : material.type === 'markdown' ? '📑' : '📃';
 
   return (
-    <li className="flex items-center gap-3 rounded-[3px] border border-ink-600/10 bg-paper-100/40 px-3 py-2">
+    <motion.li
+      layout
+      initial={{ opacity: 0, y: -40, rotate: -8, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95, y: -10 }}
+      transition={{ duration: 0.5, delay: Math.min(index * 0.04, 0.3), ease: [0.22, 1, 0.36, 1] }}
+      className="flex items-center gap-3 rounded-[3px] border border-ink-600/10 bg-paper-100/40 px-3 py-2"
+    >
       <span className="text-lg flex-shrink-0">{typeIcon}</span>
       <div className="min-w-0 flex-1">
         <p className="font-serif text-sm text-ink-800 truncate">{material.name}</p>
@@ -1235,7 +1265,7 @@ function MaterialRow({
           <Trash2 size={14} />
         </button>
       </div>
-    </li>
+    </motion.li>
   );
 }
 
@@ -1417,20 +1447,24 @@ function ProgressOverview() {
       <PaperCard status="default" className="p-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {stats.map((stat) => (
-            <div
-              key={stat.label}
-              className="rounded-[3px] border border-ink-600/10 bg-paper-100/50 px-3 py-2.5 text-center"
-            >
-              <p className="text-xs text-ink-500 font-sans mb-1">{stat.label}</p>
-              <p className={`font-serif text-2xl font-bold leading-none ${stat.color}`}>
-                {stat.value}
-                <span className="text-sm font-sans font-normal ml-0.5 text-ink-500">{stat.suffix}</span>
-              </p>
-            </div>
+            <StatItem key={stat.label} {...stat} />
           ))}
         </div>
       </PaperCard>
     </section>
+  );
+}
+
+function StatItem({ label, value, suffix, color }: { label: string; value: number; suffix: string; color: string }) {
+  const animated = useCountUp(value);
+  return (
+    <div className="rounded-[3px] border border-ink-600/10 bg-paper-100/50 px-3 py-2.5 text-center">
+      <p className="text-xs text-ink-500 font-sans mb-1">{label}</p>
+      <p className={`font-serif text-2xl font-bold leading-none ${color}`}>
+        {animated}
+        <span className="text-sm font-sans font-normal ml-0.5 text-ink-500">{suffix}</span>
+      </p>
+    </div>
   );
 }
 

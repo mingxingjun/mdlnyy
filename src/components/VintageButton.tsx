@@ -75,17 +75,18 @@ export default function VintageButton({
         'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100',
         isStamp ? stampSizeClass[size] : cn('rounded-[4px]', sizeClasses[size]),
         variantClasses[variant],
+        // stamp 变体用 CSS stampPress keyframe 替代 framer-motion（盖章回弹手感更贴主题）
+        isStamp && 'btn-stamp-press',
         className
       )}
       style={isStamp ? { rotate: -8, letterSpacing: '1px' } : undefined}
+      // 非 stamp 变体补 whileHover 目标值，让所有按钮都有 motion 手感
       whileHover={
-        !disabled
-          ? isStamp
-            ? { rotate: -6, scale: 1.05, transition: { type: 'spring', stiffness: 400, damping: 18 } }
-            : { transition: { duration: 0.15 } }
+        !isStamp && !disabled
+          ? { y: -2, boxShadow: '0 4px 12px rgba(139,37,0,0.15)', transition: { duration: 0.15, ease: 'easeOut' } }
           : undefined
       }
-      whileTap={!disabled ? { scale: 0.97 } : undefined}
+      whileTap={!disabled ? (isStamp ? { scale: 0.92 } : { scale: 0.97 }) : undefined}
       transition={{ type: 'spring', stiffness: 500, damping: 20 }}
     >
       {children}

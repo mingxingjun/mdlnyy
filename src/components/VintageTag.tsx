@@ -39,9 +39,11 @@ export default function VintageTag({
         closable && 'pr-1',
         className
       )}
-      style={{ rotate: rotation }}
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
+      initial={{ opacity: 0, scale: 0.9, rotate: rotation - 5 }}
+      animate={{ opacity: 1, scale: 1, rotate: rotation }}
+      exit={{ opacity: 0, scale: 0.85 }}
+      whileHover={{ scale: 1.08, rotate: rotation + 2 }}
+      whileTap={{ scale: 0.95 }}
       transition={{ type: 'spring', stiffness: 500, damping: 25 }}
     >
       <span className="relative z-[1] leading-tight">{children}</span>

@@ -45,7 +45,17 @@ const TASK_META: Record<ModelTaskType, { label: string; desc: string }> = {
 const TASK_KEYS: ModelTaskType[] = ['doc_parse', 'chat'];
 
 const inputClass =
-  'w-full bg-paper-50 border border-ink-600/20 rounded-[3px] px-3 py-2 text-sm text-ink-800 font-sans placeholder-ink-300/60 focus:outline-none focus:border-seal/40 focus:ring-1 focus:ring-seal/20 transition-colors';
+  'w-full bg-paper-50 border border-ink-600/20 rounded-[3px] px-3 py-2 text-sm text-ink-800 font-sans placeholder-ink-300/60 focus:outline-none focus:border-seal/50 focus:shadow-[0_0_0_3px_rgba(139,37,0,0.08)] transition-colors';
+
+const providerVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const providerContainerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.06 } },
+};
 
 export default function ModelSettingsModal({ open, onClose }: ModelSettingsModalProps) {
   const addToast = useToastStore((s) => s.addToast);
@@ -181,16 +191,25 @@ export default function ModelSettingsModal({ open, onClose }: ModelSettingsModal
                               type="button"
                               onClick={() => setTaskProvider(task, key)}
                               whileTap={{ scale: 0.96 }}
-                              className={`px-2.5 py-1.5 rounded-[2px] border text-xs font-serif transition-colors ${
+                              className={`relative px-2.5 py-1.5 rounded-[2px] border text-xs font-serif transition-colors ${
                                 selected
-                                  ? 'bg-seal/10 border-seal/50 text-seal font-semibold'
+                                  ? 'border-seal/50 text-seal font-semibold'
                                   : 'bg-paper-50 border-ink-600/15 text-ink-600 hover:bg-paper-200/60'
                               }`}
                             >
-                              {PROVIDER_LABELS[key]}
-                              {!cfg.enabled && (
-                                <span className="text-[10px] text-ink-400 ml-1">（未启用）</span>
+                              {selected && (
+                                <motion.div
+                                  layoutId={`taskHighlight-${task}`}
+                                  className="absolute inset-0 bg-seal/10 rounded-paper"
+                                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                                />
                               )}
+                              <span className="relative z-10">
+                                {PROVIDER_LABELS[key]}
+                                {!cfg.enabled && (
+                                  <span className="text-[10px] text-ink-400 ml-1">（未启用）</span>
+                                )}
+                              </span>
                             </motion.button>
                           );
                         })}
@@ -201,12 +220,18 @@ export default function ModelSettingsModal({ open, onClose }: ModelSettingsModal
               </div>
 
               {/* Per-provider configs */}
-              <div className="space-y-4">
+              <motion.div
+                className="space-y-4"
+                variants={providerContainerVariants}
+                initial="hidden"
+                animate="visible"
+              >
                 {PROVIDER_KEYS.map((key) => {
                   const config = settings.providers[key];
                   return (
-                    <div
+                    <motion.div
                       key={key}
+                      variants={providerVariants}
                       className="bg-paper-100/60 border border-ink-600/15 rounded-[3px] p-4"
                     >
                       {/* Header row: name + enabled toggle */}
@@ -302,10 +327,10 @@ export default function ModelSettingsModal({ open, onClose }: ModelSettingsModal
                           </button>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
-              </div>
+              </motion.div>
               </div>
               {/* /可滚动主体区 */}
 

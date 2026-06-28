@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import PaperCard from './PaperCard';
 import StickyNote from './StickyNote';
 import VintageButton from './VintageButton';
+import { useCountUp } from '@/hooks/useCountUp';
 
 interface QuizResultPageProps {
   session: {
@@ -23,10 +24,10 @@ interface QuizResultPageProps {
 
 const confettiColors = ['#8B2500', '#B8860B', '#2D5A27', '#5C4033', '#A0522D', '#DAA520', '#C4543A'];
 
-function Confetti() {
+function Confetti({ count }: { count: number }) {
   const pieces = useMemo(
     () =>
-      Array.from({ length: 50 }, (_, i) => ({
+      Array.from({ length: count }, (_, i) => ({
         id: i,
         left: Math.random() * 100,
         delay: Math.random() * 1.2,
@@ -36,7 +37,7 @@ function Confetti() {
         duration: 2 + Math.random() * 1.5,
         xDrift: (Math.random() - 0.5) * 120,
       })),
-    []
+    [count]
   );
 
   return (
@@ -127,7 +128,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 export default function QuizResultPage({ session, onReviewWrong, onRetry, onGoHome }: QuizResultPageProps) {
   const { totalQuestions, correctCount, wrongCount, accuracy, durationSeconds, weakSubjects, mode } = session;
-  const [animatedAccuracy, setAnimatedAccuracy] = useState(0);
+  const animatedAccuracy = useCountUp(accuracy);
   const [showConfetti, setShowConfetti] = useState(false);
 
   const grade = getGrade(accuracy);
@@ -136,27 +137,7 @@ export default function QuizResultPage({ session, onReviewWrong, onRetry, onGoHo
   const hasWrong = wrongCount > 0;
 
   useEffect(() => {
-    let frame: number;
-    const duration = 1000;
-    const start = performance.now();
-    const target = accuracy;
-
-    const animate = (now: number) => {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setAnimatedAccuracy(Math.round(eased * target));
-      if (progress < 1) {
-        frame = requestAnimationFrame(animate);
-      }
-    };
-
-    frame = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(frame);
-  }, [accuracy]);
-
-  useEffect(() => {
-    if (accuracy === 100) {
+    if (accuracy === 100 || (accuracy >= 80 && accuracy < 100)) {
       const t = setTimeout(() => setShowConfetti(true), 300);
       return () => clearTimeout(t);
     }
@@ -176,7 +157,7 @@ export default function QuizResultPage({ session, onReviewWrong, onRetry, onGoHo
       initial="hidden"
       animate="visible"
     >
-      {showConfetti && <Confetti />}
+      {showConfetti && <Confetti count={accuracy === 100 ? 50 : 30} />}
 
       <PaperCard className="relative overflow-hidden" rotation={0}>
         <div className="relative z-10 p-8 md:p-12">

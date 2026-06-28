@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 
 interface IntroAnimationProps {
   onComplete: () => void;
@@ -108,6 +108,7 @@ export default function IntroAnimation({ onComplete }: IntroAnimationProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [isFading, setIsFading] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
+  const reduce = useReducedMotion();
 
   const particles = useMemo(() => generateParticles(22), []);
   const papers = useMemo(() => generatePapers(4), []);
@@ -180,7 +181,7 @@ export default function IntroAnimation({ onComplete }: IntroAnimationProps) {
         transition={{ duration: isSkipping ? 0.08 : 0.4, ease: 'easeOut' }}
         onClick={skipAnimation}
       >
-        {particles.map((p) => {
+        {!reduce && particles.map((p) => {
           const targetX = cx - p.startX;
           const targetY = cy - p.startY;
 
@@ -276,7 +277,7 @@ export default function IntroAnimation({ onComplete }: IntroAnimationProps) {
           );
         })}
 
-        {papers.map((paper) => {
+        {!reduce && papers.map((paper) => {
           const pw = paper.widthPct * vw;
           return (
             <motion.div

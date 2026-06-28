@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Home, AlertCircle, RefreshCw, FileText,
   Check, Star, Calendar, Clock, Target, TrendingUp, BarChart3,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import type { ReviewPlanItem } from '@/store/useAppStore';
+import { useCountUp } from '@/hooks/useCountUp';
 import { useToastStore } from '@/components/Toast';
 import { loadModelSettings, callModelForTask, isTaskConfigured } from '@/lib/models/api';
 import { getAgent, compressPrompt } from '@/lib/agents/definitions';
@@ -13,6 +14,7 @@ import { cn } from '@/lib/utils';
 import PaperCard from '@/components/PaperCard';
 import VintageButton from '@/components/VintageButton';
 import VintageTag from '@/components/VintageTag';
+import PaperSpinner from '@/components/PaperSpinner';
 
 /* ═══════════════════════════════════════════════════════
    常量与映射
@@ -142,39 +144,22 @@ function priorityStars(priority: number): { filled: number; total: number } {
    小型展示组件
    ═══════════════════════════════════════════════════════ */
 
-function PaperSpinner({ text }: { text: string }) {
-  return (
-    <div className="flex flex-col items-center gap-3 py-6">
-      <div className="flex items-center gap-1.5">
-        {[0, 1, 2].map((i) => (
-          <motion.span
-            key={i}
-            className="w-2.5 h-2.5 rounded-full bg-seal"
-            animate={{ opacity: [0.25, 1, 0.25], scale: [0.7, 1.15, 0.7] }}
-            transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.18, ease: 'easeInOut' }}
-          />
-        ))}
-      </div>
-      <p className="font-serif text-sm text-ink-600">{text}</p>
-    </div>
-  );
-}
-
 function StatCard({
   label, value, suffix, color, icon,
 }: {
   label: string;
-  value: string | number;
+  value: number;
   suffix?: string;
   color: string;
   icon: ReactNode;
 }) {
+  const animated = useCountUp(value);
   return (
     <div className="rounded-paper border border-ink-600/10 bg-paper-100/50 px-3 py-3 text-center">
       <div className="flex items-center justify-center mb-1 text-ink-500">{icon}</div>
       <p className="text-xs text-ink-500 font-sans mb-1">{label}</p>
       <p className={cn('font-serif text-2xl font-bold leading-none', color)}>
-        {value}
+        {animated}
         {suffix && <span className="text-sm font-sans font-normal ml-0.5 text-ink-500">{suffix}</span>}
       </p>
     </div>
@@ -203,6 +188,7 @@ function PaperBar({
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
           transition={{ duration: 0.6, ease: 'easeOut' }}
+          whileHover={{ opacity: 0.85, scale: 1.02 }}
         />
       </div>
     </div>
@@ -212,6 +198,23 @@ function PaperBar({
 /* ═══════════════════════════════════════════════════════
    复习计划项
    ═══════════════════════════════════════════════════════ */
+
+/** 用 motion 包裹 lucide Check，用于勾选 spring 反馈 */
+const MotionCheck = motion(Check);
+
+/** AI 报告内容 stagger 容器 variants */
+const reportContainerVariants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.1 },
+  },
+};
+
+/** AI 报告内容 stagger 子项 variants */
+const reportItemVariants = {
+  hidden: { y: 10, opacity: 0 },
+  visible: { y: 0, opacity: 1 },
+};
 
 interface PlanItemRowProps {
   item: ReviewPlanItem;
@@ -224,7 +227,10 @@ function PlanItemRow({ item, index, kpNames }: PlanItemRowProps) {
   const { filled, total } = priorityStars(item.priority);
 
   return (
-    <li className="flex items-start gap-3 rounded-paper border border-ink-600/10 bg-paper-100/40 px-3 py-2.5">
+    <motion.li
+      className="flex items-start gap-3 rounded-paper border border-ink-600/10 bg-paper-100/40 px-3 py-2.5"
+      whileHover={{ y: -1, borderColor: 'rgba(139,37,0,0.2)' }}
+    >
       <button
         type="button"
         onClick={() => togglePlanItemCompleted(item.date, index)}
@@ -233,10 +239,21 @@ function PlanItemRow({ item, index, kpNames }: PlanItemRowProps) {
           'flex-shrink-0 mt-0.5 w-5 h-5 rounded-paper border-2 flex items-center justify-center transition-colors',
           item.completed
             ? 'bg-sage border-sage-dark text-paper-50'
-            : 'bg-paper-50 border-ink-500/40 text-transparent hover:border-sage',
+            : 'bg-paper-50 border-ink-500/40 hover:border-sage',
         )}
       >
-        <Check size={12} strokeWidth={3} />
+        <AnimatePresence>
+          {item.completed && (
+            <MotionCheck
+              size={12}
+              strokeWidth={3}
+              initial={{ scale: 0, rotate: -45 }}
+              animate={{ scale: 1, rotate: 0 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+            />
+          )}
+        </AnimatePresence>
       </button>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 mb-1 flex-wrap">
@@ -273,7 +290,7 @@ function PlanItemRow({ item, index, kpNames }: PlanItemRowProps) {
           <p className="font-serif text-xs text-ink-500 italic">未关联知识点</p>
         )}
       </div>
-    </li>
+    </motion.li>
   );
 }
 
@@ -474,7 +491,7 @@ ${wrongSummary}
 
         <PaperCard status="default" className="p-8 md:p-12">
           <div className="text-center space-y-4">
-            <span className="text-5xl">📊</span>
+            <motion.span className="text-5xl block mb-4" animate={{ y: [0, -6, 0] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}>📊</motion.span>
             <p className="font-handwritten text-2xl text-ink-700">还没有学习数据，去练习吧</p>
             <p className="text-sm text-ink-500 font-sans max-w-md mx-auto">
               完成一些练习后，督学 Agent 会基于你的答题统计、薄弱点与错题生成本周复习报告与进度看板。
@@ -521,6 +538,11 @@ ${wrongSummary}
       </header>
 
       {/* 2. 进度看板（始终可见） */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0, ease: [0.22, 1, 0.36, 1] }}
+      >
       <section>
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="font-serif text-lg text-ink-900 font-bold flex items-center gap-2">
@@ -589,8 +611,14 @@ ${wrongSummary}
           </div>
         </PaperCard>
       </section>
+      </motion.div>
 
       {/* 3. 复习计划 */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+      >
       <section>
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="font-serif text-lg text-ink-900 font-bold flex items-center gap-2">
@@ -606,7 +634,7 @@ ${wrongSummary}
         {!reviewPlan ? (
           <PaperCard status="default" className="p-5">
             <div className="text-center space-y-2">
-              <span className="text-2xl">🗓️</span>
+              <motion.span className="text-2xl block mb-4" animate={{ y: [0, -6, 0] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}>🗓️</motion.span>
               <p className="font-serif text-sm text-ink-700">尚未生成复习计划</p>
               <p className="text-xs text-ink-500 font-sans">前往首页生成复习计划</p>
               <VintageButton variant="ghost" size="sm" onClick={handleBackHome}>
@@ -653,8 +681,14 @@ ${wrongSummary}
           </div>
         )}
       </section>
+      </motion.div>
 
       {/* 4. AI 学习报告 */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
+      >
       <section>
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="font-serif text-lg text-ink-900 font-bold flex items-center gap-2">
@@ -707,20 +741,25 @@ ${wrongSummary}
 
         {reportState === 'done' && report && (
           <PaperCard status="active" className="p-5">
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 pb-2 border-b border-ink-600/10">
+            <motion.div
+              className="space-y-3"
+              variants={reportContainerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              <motion.div variants={reportItemVariants} className="flex items-center gap-2 pb-2 border-b border-ink-600/10">
                 <FileText size={16} className="text-seal" />
                 <h3 className="font-serif text-base text-ink-900 font-bold">本周复习报告</h3>
-              </div>
+              </motion.div>
               {report.summary && (
-                <div className="rounded-paper border border-ink-600/15 bg-paper-100/50 px-3 py-2.5">
+                <motion.div variants={reportItemVariants} className="rounded-paper border border-ink-600/15 bg-paper-100/50 px-3 py-2.5">
                   <p className="font-serif text-sm text-ink-800 leading-relaxed whitespace-pre-wrap">
                     {report.summary}
                   </p>
-                </div>
+                </motion.div>
               )}
               {report.suggestions.length > 0 && (
-                <div>
+                <motion.div variants={reportItemVariants}>
                   <p className="font-serif text-sm text-ink-700 mb-1.5 flex items-center gap-1.5">
                     <Target size={13} className="text-gold-dark" />
                     复习建议
@@ -738,26 +777,32 @@ ${wrongSummary}
                       </li>
                     ))}
                   </ul>
-                </div>
+                </motion.div>
               )}
               {report.nextPlan && (
-                <div className="rounded-paper border border-gold/20 bg-gold/5 px-3 py-2.5">
+                <motion.div variants={reportItemVariants} className="rounded-paper border border-gold/20 bg-gold/5 px-3 py-2.5">
                   <p className="text-xs text-gold-dark font-serif mb-0.5">下周建议</p>
                   <p className="text-sm text-ink-800 font-serif leading-relaxed">{report.nextPlan}</p>
-                </div>
+                </motion.div>
               )}
-              <div className="pt-2 border-t border-ink-600/10 flex items-center gap-2 flex-wrap">
+              <motion.div variants={reportItemVariants} className="pt-2 border-t border-ink-600/10 flex items-center gap-2 flex-wrap">
                 <VintageButton variant="ghost" size="sm" onClick={() => void generateReport()}>
                   <RefreshCw size={13} className="mr-1" /> 重新生成
                 </VintageButton>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
           </PaperCard>
         )}
       </section>
+      </motion.div>
 
       {/* 5. 错题分布 */}
       {wrongQuestions.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.24, ease: [0.22, 1, 0.36, 1] }}
+        >
         <section>
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="font-serif text-lg text-ink-900 font-bold flex items-center gap-2">
@@ -788,6 +833,7 @@ ${wrongSummary}
                           initial={{ width: 0 }}
                           animate={{ width: `${pct}%` }}
                           transition={{ duration: 0.5, ease: 'easeOut' }}
+                          whileHover={{ opacity: 0.85, scale: 1.02 }}
                         />
                       </div>
                     </div>
@@ -797,6 +843,7 @@ ${wrongSummary}
             )}
           </PaperCard>
         </section>
+        </motion.div>
       )}
     </div>
   );
