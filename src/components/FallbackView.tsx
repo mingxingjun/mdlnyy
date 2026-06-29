@@ -98,10 +98,9 @@ function GalaxyFallback({ onNavigate }: GalaxyFallbackProps) {
         className="mb-12 pointer-events-auto"
       >
         <div className="flex items-center gap-4">
-          <motion.div
-            animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.05, 1] }}
-            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+          <div
             className="relative"
+            style={{ animation: 'galaxyLogoSpin 4s ease-in-out infinite' }}
           >
             <div
               className="w-16 h-16 rounded-2xl flex items-center justify-center"
@@ -110,15 +109,13 @@ function GalaxyFallback({ onNavigate }: GalaxyFallbackProps) {
                 boxShadow: '0 8px 40px rgba(99,91,255,0.5), 0 0 80px rgba(99,91,255,0.25), inset 0 1px 0 rgba(255,255,255,0.2)',
               }}
             >
-              <Sparkles size={28} className="text-white" style={{ filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.6))' }} aria-hidden="true" />
+              <Sparkles size={28} className="text-white" aria-hidden="true" />
             </div>
-            <motion.div
+            <div
               className="absolute inset-0 rounded-2xl -z-10"
-              animate={{ scale: [1, 1.4, 1], opacity: [0.5, 0, 0.5] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              style={{ background: 'linear-gradient(135deg, #635BFF, #00D4FF)', filter: 'blur(16px)' }}
+              style={{ background: 'linear-gradient(135deg, #635BFF, #00D4FF)', animation: 'galaxyGlow 3s ease-in-out infinite' }}
             />
-          </motion.div>
+          </div>
           <div className="flex flex-col">
             <span
               className="font-bold text-3xl tracking-tight"
@@ -169,23 +166,16 @@ function GalaxyFallback({ onNavigate }: GalaxyFallbackProps) {
                   boxShadow: `0 4px 30px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)`,
                 }}
               >
-                <motion.div
-                  animate={{
-                    boxShadow: [
-                      `0 0 30px ${planet.color}40, 0 0 60px ${planet.color}20`,
-                      `0 0 50px ${planet.color}60, 0 0 80px ${planet.color}30`,
-                      `0 0 30px ${planet.color}40, 0 0 60px ${planet.color}20`,
-                    ]
-                  }}
-                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                <div
                   className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center"
                   style={{
                     background: `radial-gradient(circle at 30% 30%, ${planet.color}80, ${planet.color}40, ${planet.color}10)`,
                     border: `2px solid ${planet.color}60`,
+                    boxShadow: `0 0 40px ${planet.color}40, 0 0 70px ${planet.color}25`,
                   }}
                 >
-                  <Icon size={32} style={{ color: planet.color, filter: `drop-shadow(0 0 8px ${planet.color})` }} className="md:w-10 md:h-10" aria-hidden="true" />
-                </motion.div>
+                  <Icon size={32} style={{ color: planet.color }} className="md:w-10 md:h-10" aria-hidden="true" />
+                </div>
 
                 <div className="text-center">
                   <h3

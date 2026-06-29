@@ -227,9 +227,8 @@ function PlanItemRow({ item, index, kpNames }: PlanItemRowProps) {
   const { filled, total } = priorityStars(item.priority);
 
   return (
-    <motion.li
-      className="flex items-start gap-3 rounded-paper border border-ink-600/10 bg-paper-100/40 px-3 py-2.5"
-      whileHover={{ y: -1, borderColor: 'rgba(139,37,0,0.2)' }}
+    <li
+      className="flex items-start gap-3 rounded-paper border border-ink-600/10 bg-paper-100/40 px-3 py-2.5 transition-all hover:-translate-y-px hover:border-seal/20"
     >
       <button
         type="button"
@@ -293,7 +292,7 @@ function PlanItemRow({ item, index, kpNames }: PlanItemRowProps) {
           <p className="font-serif text-xs text-ink-500 italic">未关联知识点</p>
         )}
       </div>
-    </motion.li>
+    </li>
   );
 }
 
@@ -495,7 +494,7 @@ ${wrongSummary}
 
         <PaperCard status="default" className="p-8 md:p-12">
           <div className="text-center space-y-4">
-            <motion.span className="text-5xl block mb-4" animate={{ y: [0, -6, 0] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}>📊</motion.span>
+            <span className="text-5xl block mb-4 animate-float">📊</span>
             <p className="font-handwritten text-2xl text-ink-700">还没有学习数据，去练习吧</p>
             <p className="text-sm text-ink-500 font-sans max-w-md mx-auto">
               完成一些练习后，督学 Agent 会基于你的答题统计、薄弱点与错题生成本周复习报告与进度看板。
@@ -639,7 +638,7 @@ ${wrongSummary}
         {!reviewPlan ? (
           <PaperCard status="default" className="p-5">
             <div className="text-center space-y-2">
-              <motion.span className="text-2xl block mb-4" animate={{ y: [0, -6, 0] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}>🗓️</motion.span>
+              <span className="text-2xl block mb-4 animate-float">🗓️</span>
               <p className="font-serif text-sm text-ink-700">尚未生成复习计划</p>
               <p className="text-xs text-ink-500 font-sans">前往首页生成复习计划</p>
               <VintageButton variant="ghost" size="sm" onClick={handleBackHome}>

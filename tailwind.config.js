@@ -94,9 +94,9 @@ export default {
           '100%': { opacity: '1', transform: 'translateY(0) rotate(0deg) scale(1)' },
         },
         inkSpread: {
-          '0%': { opacity: '0', transform: 'scale(0.8)', filter: 'blur(2px)' },
-          '60%': { opacity: '0.6', transform: 'scale(1.08)', filter: 'blur(0.5px)' },
-          '100%': { opacity: '0.85', transform: 'scale(1)', filter: 'blur(0)' },
+          '0%': { opacity: '0', transform: 'scale(0.8)' },
+          '60%': { opacity: '0.6', transform: 'scale(1.08)' },
+          '100%': { opacity: '0.85', transform: 'scale(1)' },
         },
         stampPress: {
           '0%': { transform: 'scale(1.4) rotate(-12deg)' },

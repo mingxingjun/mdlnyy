@@ -232,7 +232,6 @@ function WrongQuestionCard({ wq, kpNameMap, index }: WrongQuestionCardProps) {
 
   return (
     <motion.div
-      layout
       initial={{ opacity: 0, y: -40, rotate: -8, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95, y: -10 }}
@@ -628,13 +627,9 @@ ${kpList}
         </header>
         <PaperCard status="default" className="p-8 md:p-12">
           <div className="text-center space-y-4">
-            <motion.span
-              className="text-5xl block"
-              animate={{ y: [0, -6, 0] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-            >
+            <span className="text-5xl block animate-float">
               📕
-            </motion.span>
+            </span>
             <p className="font-handwritten text-2xl text-ink-700">还没有错题，去练习吧</p>
             <p className="text-sm text-ink-500 font-sans max-w-md mx-auto">
               答错的题目会自动收入错题本，在此回顾讲解、分析薄弱知识点，再回到练习针对性强化。
@@ -823,13 +818,9 @@ ${kpList}
         {filtered.length === 0 ? (
           <PaperCard status="default" className="p-6">
             <div className="text-center space-y-2">
-              <motion.span
-                className="text-3xl block"
-                animate={{ y: [0, -6, 0] }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              >
+              <span className="text-3xl block animate-float">
                 🔍
-              </motion.span>
+              </span>
               <p className="font-serif text-sm text-ink-600">没有符合条件的错题</p>
               <button
                 type="button"

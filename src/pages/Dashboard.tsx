@@ -753,7 +753,7 @@ function MaterialUploadCard() {
   const materials = useAppStore((s) => s.materials);
   const addMaterial = useAppStore((s) => s.addMaterial);
   const updateMaterial = useAppStore((s) => s.updateMaterial);
-  const removeMaterial = useAppStore((s) => s.removeMaterial);
+  const removeMaterialAndQuestions = useAppStore((s) => s.removeMaterialAndQuestions);
   const addKnowledgePoints = useAppStore((s) => s.addKnowledgePoints);
   const replaceQuestionsByMaterial = useAppStore((s) => s.replaceQuestionsByMaterial);
   const setLearningState = useAppStore((s) => s.setLearningState);
@@ -1015,8 +1015,9 @@ ${text.slice(0, 8000)}`;
   };
 
   const handleRemove = (material: StudyMaterial) => {
-    removeMaterial(material.id);
-    addToast('info', `已移除资料「${material.name}」`);
+    // 级联删除：移除资料同时清理其关联的题目、知识点、错题、记忆卡，避免孤儿数据
+    removeMaterialAndQuestions(material.id);
+    addToast('info', `已移除资料「${material.name}」及其关联题目、错题、记忆卡`);
   };
 
   const hasMaterials = materials.length > 0;
@@ -1231,7 +1232,6 @@ function MaterialRow({
 
   return (
     <motion.li
-      layout
       initial={{ opacity: 0, y: -40, rotate: -8, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95, y: -10 }}

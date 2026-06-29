@@ -204,11 +204,29 @@ export const useAppStore = create<AppState>()(
       removeMaterial: (id) => set((state) => ({
         materials: state.materials.filter((m) => m.id !== id),
       })),
-      removeMaterialAndQuestions: (id) => set((state) => ({
-        materials: state.materials.filter((m) => m.id !== id),
-        questions: state.questions.filter((q) => q.materialId !== id),
-        knowledgePoints: state.knowledgePoints.filter((kp) => kp.materialId !== id),
-      })),
+      removeMaterialAndQuestions: (id) => set((state) => {
+        // 级联删除：题库 → 题目/知识点 → 错题/记忆卡
+        // 1. 找出被删题库下的所有题目 id 和知识点 id
+        const deletedQuestionIds = new Set(
+          state.questions.filter((q) => q.materialId === id).map((q) => q.id)
+        );
+        const deletedKpIds = new Set(
+          state.knowledgePoints.filter((kp) => kp.materialId === id).map((kp) => kp.id)
+        );
+        // 2. 错题：通过 questionId 关联，删掉对应题目产生的错题
+        // 3. 记忆卡：通过 knowledgePointId 关联，删掉对应知识点产生的卡片
+        return {
+          materials: state.materials.filter((m) => m.id !== id),
+          questions: state.questions.filter((q) => q.materialId !== id),
+          knowledgePoints: state.knowledgePoints.filter((kp) => kp.materialId !== id),
+          wrongQuestions: state.wrongQuestions.filter(
+            (wq) => !deletedQuestionIds.has(wq.questionId)
+          ),
+          memoryCards: state.memoryCards.filter(
+            (mc) => !deletedKpIds.has(mc.knowledgePointId)
+          ),
+        };
+      }),
 
       knowledgePoints: [],
       addKnowledgePoints: (points) => set((state) => ({

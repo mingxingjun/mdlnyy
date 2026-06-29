@@ -415,13 +415,9 @@ export default function QuestionBank() {
       {/* 题库为空 */}
       {totalSets === 0 ? (
         <PaperCard status="default" className="p-8 text-center">
-          <motion.span
-            className="block mb-4"
-            animate={{ y: [0, -6, 0] }}
-            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-          >
+          <span className="block mb-4 animate-float">
             <Folder size={40} className="mx-auto text-ink-300" />
-          </motion.span>
+          </span>
           <p className="text-sm text-ink-500 font-serif mb-1">题库为空</p>
           <p className="text-xs text-ink-400 font-sans">请先上传题库资料，或点击「新增题目」手动添加</p>
         </PaperCard>
@@ -448,7 +444,6 @@ export default function QuestionBank() {
                   return (
                     <motion.div
                       key={set.material.id}
-                      layout
                       initial={{ opacity: 0, y: -40, rotate: -8, scale: 0.96 }}
                       animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95, y: -10 }}
@@ -557,11 +552,10 @@ export default function QuestionBank() {
                                 {filteredQs.map((q, idx) => {
                                   const isSelected = selectedIds.has(q.id);
                                   return (
-                                    <motion.div
+                                    <div
                                       key={q.id}
-                                      whileHover={{ y: -1, borderColor: 'rgba(139,37,0,0.2)' }}
                                       className={cn(
-                                        'px-3.5 py-2.5 flex items-start gap-2.5 transition-colors',
+                                        'px-3.5 py-2.5 flex items-start gap-2.5 transition-all hover:-translate-y-px',
                                         isSelected && 'bg-seal/5',
                                       )}
                                     >
@@ -619,7 +613,7 @@ export default function QuestionBank() {
                                           </button>
                                         </div>
                                       )}
-                                    </motion.div>
+                                    </div>
                                   );
                                 })}
                               </div>

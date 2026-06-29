@@ -134,14 +134,24 @@ body {
 }
 
 .paper-card-reward {
-  /* 用 box-shadow inset 模拟边框脉冲，box-shadow 走合成层优于 border-color 动画 */
-  box-shadow: 0 0 0 1px rgba(139, 37, 0, 0.3), var(--shadow-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 奖励脉冲：伪元素静态 box-shadow + opacity 动画走合成层，
+   避免 box-shadow 逐帧触发 paint */
+.paper-card-reward::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 2px rgba(139, 37, 0, 0.4);
+  pointer-events: none;
   animation: rewardPulse 2.4s ease-in-out infinite;
 }
 
 @keyframes rewardPulse {
-  0%, 100% { box-shadow: 0 0 0 1px rgba(139, 37, 0, 0.25), var(--shadow-sm); }
-  50% { box-shadow: 0 0 0 2px rgba(139, 37, 0, 0.5), var(--shadow-sm); }
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }
 
 .paper-card-completed {
@@ -300,6 +310,37 @@ body {
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* PaperSpinner 加载点脉冲：纯 transform+opacity 走合成层 */
+@keyframes paperSpinnerPulse {
+  0%, 100% { opacity: 0.25; transform: scale(0.7); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+.paper-spinner-dot {
+  animation: paperSpinnerPulse 1.1s ease-in-out infinite;
+}
+
+/* FallbackView（错误边界兼容模式）装饰动效：纯 transform+opacity 走合成层 */
+@keyframes galaxyLogoSpin {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(10deg) scale(1.05); }
+  75% { transform: rotate(-10deg) scale(1.05); }
+}
+
+@keyframes galaxyGlow {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.4); opacity: 0; }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 /* ─── 纸张/印章主题动效（启用闲置 keyframe）────────── */
