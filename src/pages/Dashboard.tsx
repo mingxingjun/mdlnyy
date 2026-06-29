@@ -15,6 +15,7 @@ import PaperCard from '@/components/PaperCard';
 import type { PaperCardStatus } from '@/components/PaperCard';
 import VintageTag from '@/components/VintageTag';
 import StickyNote from '@/components/StickyNote';
+import AnimeMascot from '@/components/AnimeMascot';
 
 /* ═══════════════════════════════════════════════════════
    常量与映射
@@ -157,6 +158,16 @@ const ACTIVITY_CARDS: ActivityCardConfig[] = [
   { view: 'memory', icon: '🃏', title: '记忆卡片', description: 'SM-2 间隔重复，巩固长期记忆。' },
   { view: 'supervisor', icon: '📊', title: '学习报告', description: '进度看板、薄弱点与复习建议。' },
 ];
+
+/**
+ * 仪表盘主视觉二次元立绘 prompt（SDXL 风格英文描述）。
+ * 贴合备考主题 + 复古纸张配色，避免与现有暖色系冲突。
+ */
+const MASCOT_PROMPT =
+  'anime style watercolor illustration, a cheerful young student girl studying at a desk, ' +
+  'holding a pen and open notebook, stack of textbooks beside her, ' +
+  'warm cream and sepia color palette, vintage paper aesthetic, soft warm lighting, ' +
+  'gentle smile, upper body portrait, detailed, no text';
 
 /* ═══════════════════════════════════════════════════════
    工具函数
@@ -708,10 +719,10 @@ function DashboardHeader() {
     <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
       <div className="flex items-center gap-3">
         <div
-          className="w-12 h-12 rounded-full bg-ink-800 text-paper-50 flex items-center justify-center font-serif text-xl shadow-paper border-2 border-ink-700"
+          className="w-12 h-12 rounded-full bg-ink-800 text-paper-50 flex items-center justify-center font-brush text-2xl shadow-paper border-2 border-ink-700"
           style={{ backgroundImage: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.12), transparent)' }}
         >
-          优
+          優
         </div>
         <div>
           <p className="font-handwritten text-sm text-ink-500 leading-none">
@@ -739,6 +750,12 @@ function DashboardHeader() {
           <Clock size={14} />
           <span>{countdown.label}</span>
         </div>
+        {/* 二次元学习少女立绘：贴合备考主题的视觉点睛，md+ 显示 */}
+        <AnimeMascot
+          prompt={MASCOT_PROMPT}
+          size="portrait_4_3"
+          className="hidden md:block w-24 h-32 rounded-paper pointer-events-none flex-shrink-0 ml-1"
+        />
       </div>
     </header>
   );
@@ -1460,7 +1477,7 @@ function StatItem({ label, value, suffix, color }: { label: string; value: numbe
   return (
     <div className="rounded-[3px] border border-ink-600/10 bg-paper-100/50 px-3 py-2.5 text-center">
       <p className="text-xs text-ink-500 font-sans mb-1">{label}</p>
-      <p className={`font-serif text-2xl font-bold leading-none ${color}`}>
+      <p className={`font-display text-2xl font-bold leading-none ${color}`}>
         {animated}
         <span className="text-sm font-sans font-normal ml-0.5 text-ink-500">{suffix}</span>
       </p>

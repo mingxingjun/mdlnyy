@@ -1,6 +1,7 @@
-import { useMemo, type ReactNode } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { useEffect, useMemo, type ReactNode } from 'react';
+import { motion, useReducedMotion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import PaperParticlesCanvas from './PaperParticlesCanvas';
 
 interface ThreeLayerBackgroundProps {
   children: ReactNode;
@@ -110,8 +111,58 @@ function Petal({ size, color, rotation }: { size: number; color: string; rotatio
   );
 }
 
+/** 右下角手绘线稿：一摞书 + 书签，贴合备考主题 */
+function BookStack({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg
+      className={className}
+      style={style}
+      width="96"
+      height="76"
+      viewBox="0 0 96 76"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      {/* 底层书 */}
+      <rect x="6" y="54" width="84" height="16" rx="1.5" fill="rgba(139,37,0,0.10)" stroke="rgba(92,64,51,0.28)" strokeWidth="0.9" />
+      <line x1="12" y1="62" x2="84" y2="62" stroke="rgba(92,64,51,0.18)" strokeWidth="0.5" />
+      {/* 中层书 */}
+      <rect x="14" y="38" width="68" height="16" rx="1.5" fill="rgba(184,134,11,0.12)" stroke="rgba(92,64,51,0.28)" strokeWidth="0.9" />
+      <line x1="20" y1="46" x2="76" y2="46" stroke="rgba(92,64,51,0.18)" strokeWidth="0.5" />
+      {/* 顶层书（微斜） */}
+      <g transform="rotate(-5 46 30)">
+        <rect x="20" y="22" width="54" height="15" rx="1.5" fill="rgba(107,142,35,0.12)" stroke="rgba(92,64,51,0.28)" strokeWidth="0.9" />
+        <line x1="26" y1="29.5" x2="68" y2="29.5" stroke="rgba(92,64,51,0.18)" strokeWidth="0.5" />
+      </g>
+      {/* 书签 */}
+      <rect x="60" y="22" width="3.5" height="18" fill="rgba(139,37,0,0.32)" />
+      <path d="M60 40 L61.75 37 L63.5 40 Z" fill="rgba(139,37,0,0.32)" />
+    </svg>
+  );
+}
+
 export default function ThreeLayerBackground({ children, className }: ThreeLayerBackgroundProps) {
   const reduce = useReducedMotion();
+
+  // 鼠标视差：装饰层根据鼠标位置做微弱平移，增加层次感。
+  // reduce 时不启用。用 useSpring 平滑跟随，避免生硬。
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const smoothX = useSpring(mouseX, { stiffness: 60, damping: 20, mass: 0.6 });
+  const smoothY = useSpring(mouseY, { stiffness: 60, damping: 20, mass: 0.6 });
+  const parallaxX = useTransform(smoothX, (v) => v * 8);
+  const parallaxY = useTransform(smoothY, (v) => v * 8);
+
+  useEffect(() => {
+    if (reduce) return;
+    const onMove = (e: MouseEvent) => {
+      mouseX.set((e.clientX / window.innerWidth - 0.5) * 2);
+      mouseY.set((e.clientY / window.innerHeight - 0.5) * 2);
+    };
+    window.addEventListener('mousemove', onMove, { passive: true });
+    return () => window.removeEventListener('mousemove', onMove);
+  }, [reduce, mouseX, mouseY]);
+
   const decorItems = useMemo<DecorItem[]>(() => {
     const colors = [
       'rgba(139,37,0,0.35)',
@@ -249,9 +300,15 @@ export default function ThreeLayerBackground({ children, className }: ThreeLayer
         />
       </div>
 
+      {/* Canvas 动态粒子背景：飘落纸片 + 墨水晕染，fixed 定位覆盖视口，z-index:1 在背景之上内容之下 */}
+      <PaperParticlesCanvas />
+
       <div className="relative z-10">{children}</div>
 
-      <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
+      <motion.div
+        className="absolute inset-0 z-20 pointer-events-none overflow-hidden"
+        style={{ x: parallaxX, y: parallaxY }}
+      >
         {decorItems.map((item) => {
           const posStyle: React.CSSProperties = {
             top: item.top,
@@ -288,7 +345,9 @@ export default function ThreeLayerBackground({ children, className }: ThreeLayer
             </div>
           );
         })}
-      </div>
+        {/* 右下角手绘书堆插画，受视差影响 */}
+        <BookStack style={{ position: 'absolute', bottom: '3%', right: '2%', opacity: 0.55 }} />
+      </motion.div>
 
       <motion.div
         className="absolute inset-0 z-30 pointer-events-none"

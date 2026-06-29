@@ -70,6 +70,9 @@
   --shadow-md: 0 2px 4px rgba(92, 64, 51, 0.08), 0 8px 24px rgba(92, 64, 51, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.5);
   --shadow-lg: 0 4px 8px rgba(92, 64, 51, 0.10), 0 12px 32px rgba(92, 64, 51, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.5);
 
+  /* ── Display font（数字 / 点睛标题专用）────────── */
+  --font-display: 'Playfair Display', 'Noto Serif SC', Georgia, serif;
+
   font-family: 'Noto Sans SC', 'Inter', sans-serif;
   line-height: 1.6;
   font-weight: 400;
@@ -102,6 +105,26 @@ body {
 
 #root {
   position: relative;
+}
+
+/* ─── Display Font Utilities（数字 / 点睛标题）──────────
+   Playfair Display 高对比衬线，专给仪表盘数字、倒计时、章节编号等点睛处。
+   配合 tabular-nums 避免数字跳动，letter-spacing 收紧显精致。 */
+.font-display {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* 等宽数字：统计 / 倒计时 / 进度对齐，数字变化时不抖动 */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 毛笔体点睛：仅用于 1-4 字的装饰标题（如「優」「備考」），不宜长文 */
+.font-brush {
+  font-family: 'Ma Shan Zheng', 'Liu Jian Mao Cao', cursive;
+  letter-spacing: 0.04em;
 }
 
 /* ─── Paper Texture Utility ────────────────────────── */

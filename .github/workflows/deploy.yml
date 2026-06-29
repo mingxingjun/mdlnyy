@@ -39,6 +39,11 @@ jobs:
       - name: Build
         run: npm run build
 
+      # SPA fallback：让 GitHub Pages 在子路由刷新时返回 index.html，
+      # 避免 BrowserRouter 访问 /dashboard 等路径刷新后 404。
+      - name: Generate 404.html for SPA fallback
+        run: cp dist/index.html dist/404.html
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 

@@ -48,6 +48,8 @@ export default {
         serif: ['"Noto Serif SC"', '"Playfair Display"', 'Georgia', 'serif'],
         sans: ['"Noto Sans SC"', '"Inter"', 'sans-serif'],
         handwritten: ['"Ma Shan Zheng"', '"Liu Jian Mao Cao"', 'cursive'],
+        // display：专给大数字 / 点睛标题，Playfair Display 的高对比衬线比 Noto Serif SC 更精致
+        display: ['"Playfair Display"', '"Noto Serif SC"', 'Georgia', 'serif'],
       },
       boxShadow: {
         'paper': '0 1px 2px rgba(92,64,51,0.06), 0 2px 8px rgba(92,64,51,0.05), inset 0 1px 0 rgba(255,255,255,0.4)',
