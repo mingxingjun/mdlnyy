@@ -8,7 +8,7 @@ import { ToastContainer } from '@/components/Toast';
 export default function App() {
   const [introDone, setIntroDone] = useState(false);
   return (
-    <BrowserRouter basename="/mdlnyy">
+    <BrowserRouter>
       <ToastContainer />
       <AnimatePresence>
         {!introDone && <IntroAnimation onComplete={() => setIntroDone(true)} />}
