@@ -4,9 +4,9 @@
 
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite)](https://vitejs.dev/)
-[![Three.js](https://img.shields.io/badge/Three.js-r173-000000?logo=three.js)](https://threejs.org/)
+[![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite)](https://vite.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-38BDF8?logo=tailwindcss)](https://tailwindcss.com/)
+[![Framer Motion](https://img.shields.io/badge/Framer_Motion-11-FF0080?logo=framer)](https://www.framer.com/motion/)
 [![Zustand](https://img.shields.io/badge/Zustand-5-433E3F)](https://zustand.docs.pmnd.rs/)
 
 ---
@@ -62,21 +62,25 @@ ExamReady ← Reviewing ← Planned ← Diagnosed
 - **自定义端点** — 任意 OpenAI 兼容 API
 - **Token 优化**：响应缓存 + Prompt 压缩 + 用量统计
 
-### 四大功能模块
+### 六大功能模块
 
 | 模块 | 功能 |
 |------|------|
-| **高光仪表盘** | 考试倒计时、科目进度追踪、Agent 协同可视化 |
-| **AI 冲刺核** | 5+1 Agent 控制台 + DAG 工作流 + 模型配置 |
-| **我的笔记** | 笔记上传/编辑/标签管理，Markdown 内容支持 |
-| **沉浸流空间** | 番茄钟计时器、6 种白噪音、虚拟自习室 |
+| **复习手册（Dashboard）** | 资料上传与 Agent 解析、复习活动入口、学习进度统计 |
+| **开始练习** | 基于知识点出题，即时判定对错并讲解 |
+| **题库管理** | 查看、编辑、新增题目，按文件筛选练习 |
+| **错题本** | 回顾错题、步骤化讲解与薄弱点分析 |
+| **记忆卡片** | SM-2 间隔重复，巩固长期记忆 |
+| **学习报告** | 进度看板、薄弱点与复习建议 |
 
-### 3D 赛博朋克视觉
+### 复古纸张拼贴视觉
 
-- 800 粒子数据雨动态背景（Three.js + R3F）
-- 浮动线框几何体（八面体/二十面体/环面）
-- 霓虹光晕 + 毛玻璃卡片 + 便当盒布局
-- 深色主题极客风格
+- **三层纸张背景**：暖米黄渐变 + 重复线条纹理 + 径向光晕 + SVG 噪点
+- **Canvas 动态粒子**：飘落纸片 + 墨水晕染，纯 Canvas 2D 实现，尊重 `prefers-reduced-motion`
+- **鼠标视差**：装饰元素随鼠标微弱平移，营造层次感
+- **手绘 SVG 插画**：羽毛笔 / 墨水溅 / 书堆 / 花瓣等拼贴装饰
+- **二次元点睛**：仪表盘学习少女立绘，融入纸张暖色调
+- **印章红 + 古金 + 沙绿配色**，毛笔体 / 衬线体 / 等宽数字三套字体体系
 
 ### 研究技巧引擎
 
@@ -99,10 +103,10 @@ ExamReady ← Reviewing ← Planned ← Diagnosed
 
 ```
 React 18 · TypeScript · Vite 6
-Three.js · React Three Fiber · @react-three/drei
-Tailwind CSS 3 · Framer Motion
-Zustand · React Router v6
-Lucide React (图标)
+Tailwind CSS 3 · Framer Motion 11
+Zustand 5 · React Router 7
+Lucide React (图标) · Recharts (图表)
+pdfjs-dist (PDF 解析) · mammoth (Word 解析) · turndown (HTML→MD)
 ```
 
 ---
@@ -126,7 +130,7 @@ npm run build
 
 ### 配置 AI 模型
 
-启动后在 **AI 冲刺核 → 模型配置** 标签页中填入 API Key：
+启动后点击页面右上角 **设置** 按钮打开模型配置面板，填入 API Key：
 
 - **DeepSeek**：前往 [platform.deepseek.com](https://platform.deepseek.com) 获取 API Key
 - **Ollama**：本地安装 `ollama pull qwen2.5:7b`，无需 Key
@@ -140,24 +144,34 @@ npm run build
 src/
 ├── lib/
 │   ├── agents/
-│   │   ├── types.ts         # Agent 契约 + 学习状态机 + DAG 类型
-│   │   └── definitions.ts   # 5+1 Agent 身份 + 3 DAG + 路由函数
+│   │   ├── types.ts            # Agent 契约 + 学习状态机 + DAG 类型
+│   │   └── definitions.ts      # 5+1 Agent 身份 + 3 DAG + 路由函数
 │   ├── models/
-│   │   ├── types.ts         # 模型配置类型
-│   │   └── api.ts           # API 调用 + 缓存 + Token 管理
-│   └── study/
-│       └── techniques.ts    # 间隔重复 + 费曼技巧 + 闪卡生成
+│   │   ├── types.ts            # 模型配置类型
+│   │   └── api.ts              # API 调用 + 缓存 + Token 管理
+│   ├── study/techniques.ts     # 间隔重复 + 费曼技巧 + 闪卡生成
+│   ├── fileParser.ts           # PDF / Word / Markdown 文本提取
+│   ├── webglSupport.ts         # WebGL 能力检测
+│   └── utils.ts                # cn 等工具函数
 ├── components/
-│   ├── Layout.tsx           # 侧边栏导航
-│   ├── ThreeBackground.tsx  # 3D 赛博朋克粒子背景
-│   └── Toast.tsx            # 全局通知组件
+│   ├── Layout.tsx              # 顶部导航 + 视图路由容器
+│   ├── VintageNav.tsx          # 复古风导航栏
+│   ├── ThreeLayerBackground.tsx# 三层纸张背景 + 视差 + 装饰
+│   ├── PaperParticlesCanvas.tsx# Canvas 飘落纸片 + 墨水晕染
+│   ├── AnimeMascot.tsx         # 二次元立绘（文生图）
+│   ├── PaperCard.tsx           # 纸张卡片
+│   ├── IntroAnimation.tsx      # 开场纸片聚拢动画
+│   ├── ModelSettingsModal.tsx  # 模型配置弹窗
+│   └── Toast.tsx               # 全局通知
 ├── pages/
-│   ├── AIEngine.tsx         # Agent 控制台 + DAG 工作流 + 模型配置
-│   ├── Dashboard.tsx        # 考试仪表盘 + Agent 协同可视化
-│   ├── MyNotes.tsx          # 笔记管理
-│   └── FlowChamber.tsx      # 番茄钟 + 白噪音 + 自习室
-└── store/
-    └── useAppStore.ts       # Zustand 全局状态 + 学习状态机
+│   ├── Dashboard.tsx           # 复习手册（资料上传 + 活动入口 + 进度）
+│   ├── Practice.tsx            # 开始练习
+│   ├── QuestionBank.tsx        # 题库管理
+│   ├── Wrongbook.tsx           # 错题本
+│   ├── MemoryCards.tsx         # 记忆卡片
+│   └── Supervisor.tsx          # 学习报告
+├── hooks/                      # useCountUp / useTheme
+└── store/useAppStore.ts        # Zustand 全局状态 + 学习状态机
 ```
 
 ---
