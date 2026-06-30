@@ -152,7 +152,7 @@ export default function QuizResultPage({ session, onReviewWrong, onRetry, onGoHo
 
   return (
     <motion.div
-      className="max-w-3xl mx-auto py-8 px-4 relative"
+      className="relative"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
@@ -160,7 +160,7 @@ export default function QuizResultPage({ session, onReviewWrong, onRetry, onGoHo
       {showConfetti && <Confetti count={accuracy === 100 ? 50 : 30} />}
 
       <PaperCard className="relative overflow-hidden" rotation={0}>
-        <div className="relative z-10 p-8 md:p-12">
+        <div className="relative z-10 p-4 sm:p-6 md:p-8 lg:p-12">
           <div className="relative mb-8">
             <motion.h1
               variants={itemVariants}
@@ -173,7 +173,7 @@ export default function QuizResultPage({ session, onReviewWrong, onRetry, onGoHo
               initial={{ scale: 2.5, rotate: -12 - 30, opacity: 0 }}
               animate={{ scale: 1, rotate: -12, opacity: accuracy < 60 ? 0.65 : 0.88 }}
               transition={{ type: 'spring', stiffness: 300, damping: 14, delay: 0.5 }}
-              className="absolute top-0 right-0 w-24 h-24 rounded-full flex items-center justify-center flex-col"
+              className="absolute -top-2 -right-2 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center flex-col"
               style={{
                 border: `3px solid ${grade.borderColor}`,
                 color: grade.color,
@@ -182,7 +182,7 @@ export default function QuizResultPage({ session, onReviewWrong, onRetry, onGoHo
                 textShadow: `0 0 1px ${grade.color}40`,
               }}
             >
-              <span className="font-serif font-bold text-base leading-tight text-center whitespace-pre-line" style={{ letterSpacing: '2px' }}>
+              <span className="font-serif font-bold text-xs sm:text-sm md:text-base leading-tight text-center whitespace-pre-line" style={{ letterSpacing: '1px' }}>
                 {grade.text}
               </span>
             </motion.div>
@@ -193,7 +193,7 @@ export default function QuizResultPage({ session, onReviewWrong, onRetry, onGoHo
             className="flex flex-col items-center mb-8"
           >
             <div className="relative">
-              <svg width="140" height="140" viewBox="0 0 140 140" className="transform -rotate-90">
+              <svg width="140" height="140" viewBox="0 0 140 140" className="transform -rotate-90 w-[120px] h-[120px] sm:w-[140px] sm:h-[140px]">
                 <circle
                   cx="70"
                   cy="70"
@@ -224,7 +224,7 @@ export default function QuizResultPage({ session, onReviewWrong, onRetry, onGoHo
               </svg>
               <div className="absolute inset-0 flex items-center justify-center flex-col">
                 <motion.span
-                  className="font-serif text-3xl font-bold tabular-nums"
+                  className="font-serif text-2xl sm:text-3xl font-bold tabular-nums"
                   style={{ color: accuracyColor }}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -239,25 +239,25 @@ export default function QuizResultPage({ session, onReviewWrong, onRetry, onGoHo
 
           <motion.div
             variants={itemVariants}
-            className="grid grid-cols-3 gap-4 mb-8 max-w-lg mx-auto"
+            className="grid grid-cols-3 gap-2 sm:gap-4 mb-8 max-w-lg mx-auto"
           >
             <div className="text-center">
               <p className="font-serif text-[10px] text-ink-500 mb-1 tracking-wider uppercase">答对</p>
-              <p className="font-serif text-3xl font-bold tabular-nums" style={{ color: '#2D5A27' }}>
+              <p className="font-serif text-2xl sm:text-3xl font-bold tabular-nums" style={{ color: '#2D5A27' }}>
                 {correctCount}
               </p>
               <p className="font-serif text-xs text-ink-400">题</p>
             </div>
             <div className="text-center border-x border-ink-600/15">
               <p className="font-serif text-[10px] text-ink-500 mb-1 tracking-wider uppercase">答错</p>
-              <p className="font-serif text-3xl font-bold tabular-nums text-seal">
+              <p className="font-serif text-2xl sm:text-3xl font-bold tabular-nums text-seal">
                 {wrongCount}
               </p>
               <p className="font-serif text-xs text-ink-400">题</p>
             </div>
             <div className="text-center">
               <p className="font-serif text-[10px] text-ink-500 mb-1 tracking-wider uppercase">用时</p>
-              <p className="font-serif text-xl font-bold tabular-nums text-ink-700 mt-1">
+              <p className="font-serif text-base sm:text-xl font-bold tabular-nums text-ink-700 mt-1">
                 {formatDuration(durationSeconds)}
               </p>
             </div>
@@ -265,10 +265,10 @@ export default function QuizResultPage({ session, onReviewWrong, onRetry, onGoHo
 
           <motion.div variants={itemVariants} className="flex justify-center mb-8">
             <div className="max-w-md">
-              <StickyNote color="yellow" rotation={-1.5} className="!px-6 !py-5">
-                <div className="flex items-start gap-3">
-                  <span className="text-xl flex-shrink-0 mt-0.5">📝</span>
-                  <p className="handwritten text-base leading-relaxed" style={{ color: '#5D4E37' }}>
+              <StickyNote color="yellow" rotation={-1.5} className="!px-4 !py-3 sm:!px-6 sm:!py-5">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <span className="text-base sm:text-xl flex-shrink-0 mt-0.5">📝</span>
+                  <p className="handwritten text-sm sm:text-base leading-relaxed" style={{ color: '#5D4E37' }}>
                     {comment}
                   </p>
                 </div>
@@ -289,10 +289,10 @@ export default function QuizResultPage({ session, onReviewWrong, onRetry, onGoHo
                     animate={{ opacity: 1, y: 0, rotate: stickyRotations[i] }}
                     transition={{ delay: 0.5 + i * 0.1, type: 'spring', stiffness: 200, damping: 20 }}
                   >
-                    <StickyNote color="pink" rotation={stickyRotations[i]} className="!py-3 !px-4 !min-h-0">
-                      <div className="flex items-center gap-2 whitespace-nowrap">
-                        <span className="text-lg">{subject.icon}</span>
-                        <span className="font-serif text-sm font-medium" style={{ color: subject.color }}>
+                    <StickyNote color="pink" rotation={stickyRotations[i]} className="!py-2 !px-3 sm:!py-3 sm:!px-4 !min-h-0">
+                      <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap">
+                        <span className="text-base sm:text-lg">{subject.icon}</span>
+                        <span className="font-serif text-xs sm:text-sm font-medium" style={{ color: subject.color }}>
                           {subject.name}
                         </span>
                         <span className="font-serif text-xs text-seal font-bold">
@@ -315,6 +315,7 @@ export default function QuizResultPage({ session, onReviewWrong, onRetry, onGoHo
                 variant="stamp"
                 size="lg"
                 onClick={onReviewWrong}
+                className="w-full sm:w-auto"
               >
                 复习错题
               </VintageButton>

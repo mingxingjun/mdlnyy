@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import ErrorBoundary from './ErrorBoundary';
 import FallbackView from './FallbackView';
 import ThreeLayerBackground from './ThreeLayerBackground';
@@ -33,19 +33,18 @@ function renderView(activeView: string) {
 
 function ViewRouter() {
   const activeView = useAppStore((s) => s.activeView);
+  // 移除 AnimatePresence mode="wait"：与 React 18 并发渲染冲突会导致退出动画卡住、页面切换空白。
+  // 改为简单的 key 淡入切换，无退出动画，规避冲突。
   return (
     <ErrorBoundary resetKeys={[activeView]} fallback={<FallbackView><ViewRouter /></FallbackView>}>
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeView}
-          initial={{ opacity: 0, y: -20, rotate: -4, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 10, rotate: 2, scale: 0.98 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        >
-          {renderView(activeView)}
-        </motion.div>
-      </AnimatePresence>
+      <motion.div
+        key={activeView}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+      >
+        {renderView(activeView)}
+      </motion.div>
     </ErrorBoundary>
   );
 }
@@ -56,7 +55,8 @@ export default function Layout() {
   return (
     <ThreeLayerBackground>
       <VintageNav onSettingsClick={() => setSettingsOpen(true)} />
-      <main className="relative z-10 max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8">
+      {/* 移除 main 的 max-w-6xl 和 padding：各页面已自带统一容器（px-3 sm:px-4 md:px-6 py-4 sm:py-6），避免双重嵌套 */}
+      <main className="relative z-10">
         <ViewRouter />
       </main>
       <ModelSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />

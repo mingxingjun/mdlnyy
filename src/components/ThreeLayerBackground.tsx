@@ -1,7 +1,6 @@
 import { useEffect, useMemo, type ReactNode } from 'react';
 import { motion, useReducedMotion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import PaperParticlesCanvas from './PaperParticlesCanvas';
 
 interface ThreeLayerBackgroundProps {
   children: ReactNode;
@@ -300,8 +299,7 @@ export default function ThreeLayerBackground({ children, className }: ThreeLayer
         />
       </div>
 
-      {/* Canvas 动态粒子背景：飘落纸片 + 墨水晕染，fixed 定位覆盖视口，z-index:1 在背景之上内容之下 */}
-      <PaperParticlesCanvas />
+      {/* Canvas 动态粒子背景已移除（性能消耗大），改用轻量 CSS/SVG 装饰层 */}
 
       <div className="relative z-10">{children}</div>
 

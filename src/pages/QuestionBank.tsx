@@ -12,6 +12,7 @@ import { useCountUp } from '@/hooks/useCountUp';
 import PaperCard from '@/components/PaperCard';
 import VintageButton from '@/components/VintageButton';
 import VintageTag from '@/components/VintageTag';
+import MathText from '@/components/MathText';
 
 /* ═══════════════════════════════════════════════════════
    常量与类型
@@ -329,7 +330,7 @@ export default function QuestionBank() {
   const animatedSets = useCountUp(totalSets);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 space-y-5">
+    <div className="max-w-5xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 space-y-5">
       {/* 页头 */}
       <header className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
@@ -343,7 +344,7 @@ export default function QuestionBank() {
           </button>
           <div>
             <p className="font-handwritten text-sm text-ink-500 leading-none">题库管理</p>
-            <h1 className="font-serif text-2xl text-ink-900 font-bold tracking-wide leading-tight">
+            <h1 className="font-serif text-xl sm:text-2xl text-ink-900 font-bold tracking-wide leading-tight">
               题库 <span className="text-sm font-sans text-ink-500 font-normal ml-1">{animatedSets} 套 · {animatedQuestions} 题</span>
             </h1>
           </div>
@@ -412,7 +413,7 @@ export default function QuestionBank() {
 
       {/* 题库为空 */}
       {totalSets === 0 ? (
-        <PaperCard status="default" className="p-8 text-center">
+        <PaperCard status="default" className="p-4 sm:p-6 md:p-8 text-center">
           <motion.span
             className="block mb-4"
             animate={{ y: [0, -6, 0] }}
@@ -579,14 +580,14 @@ export default function QuestionBank() {
                                           {q.aiFilled && <VintageTag color="worn">AI补答</VintageTag>}
                                         </div>
                                         {/* 题干 */}
-                                        <p className="font-serif text-sm text-ink-900 leading-relaxed mb-1 whitespace-pre-wrap line-clamp-2">
+                                        <MathText as="div" className="font-serif text-sm text-ink-900 leading-relaxed mb-1 whitespace-pre-wrap line-clamp-2">
                                           {q.stem}
-                                        </p>
+                                        </MathText>
                                         {/* 答案 */}
-                                        <p className="text-xs font-serif">
+                                        <div className="text-xs font-serif">
                                           <span className="text-ink-500">答案：</span>
-                                          <span className="text-sage-dark font-bold">{q.answer || '（空）'}</span>
-                                        </p>
+                                          <MathText as="span" className="text-sage-dark font-bold">{q.answer || '（空）'}</MathText>
+                                        </div>
                                       </div>
 
                                       {/* 单题操作（非批量模式） */}

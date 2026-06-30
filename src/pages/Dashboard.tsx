@@ -15,7 +15,8 @@ import PaperCard from '@/components/PaperCard';
 import type { PaperCardStatus } from '@/components/PaperCard';
 import VintageTag from '@/components/VintageTag';
 import StickyNote from '@/components/StickyNote';
-import AnimeMascot from '@/components/AnimeMascot';
+import MathText from '@/components/MathText';
+import { buildDemoData } from '@/lib/demoData';
 
 /* ═══════════════════════════════════════════════════════
    常量与映射
@@ -158,16 +159,6 @@ const ACTIVITY_CARDS: ActivityCardConfig[] = [
   { view: 'memory', icon: '🃏', title: '记忆卡片', description: 'SM-2 间隔重复，巩固长期记忆。' },
   { view: 'supervisor', icon: '📊', title: '学习报告', description: '进度看板、薄弱点与复习建议。' },
 ];
-
-/**
- * 仪表盘主视觉二次元立绘 prompt（SDXL 风格英文描述）。
- * 贴合备考主题 + 复古纸张配色，避免与现有暖色系冲突。
- */
-const MASCOT_PROMPT =
-  'anime style watercolor illustration, a cheerful young student girl studying at a desk, ' +
-  'holding a pen and open notebook, stack of textbooks beside her, ' +
-  'warm cream and sepia color palette, vintage paper aesthetic, soft warm lighting, ' +
-  'gentle smile, upper body portrait, detailed, no text';
 
 /* ═══════════════════════════════════════════════════════
    工具函数
@@ -711,35 +702,32 @@ ${batch.map((q, i) => JSON.stringify({
 function DashboardHeader() {
   const learningState = useAppStore((s) => s.learningState);
   const reviewPlan = useAppStore((s) => s.reviewPlan);
-  const currentUser = useAppStore((s) => s.currentUser);
 
   const countdown = useMemo(() => getExamCountdown(reviewPlan?.examDate), [reviewPlan?.examDate]);
 
   return (
     <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5 sm:gap-3">
         <div
-          className="w-12 h-12 rounded-full bg-ink-800 text-paper-50 flex items-center justify-center font-brush text-2xl shadow-paper border-2 border-ink-700"
+          className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-ink-800 text-paper-50 flex items-center justify-center font-brush text-xl sm:text-2xl shadow-paper border-2 border-ink-700 flex-shrink-0"
           style={{ backgroundImage: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.12), transparent)' }}
         >
-          優
+          学
         </div>
         <div>
-          <p className="font-handwritten text-sm text-ink-500 leading-none">
-            {currentUser ? `${currentUser} 的` : '优流手账 ·'}
-          </p>
-          <h1 className="font-serif text-2xl md:text-3xl text-ink-900 font-bold tracking-wide leading-tight">
-            期末复习手册
+          <h1 className="font-serif text-xl sm:text-2xl md:text-[28px] text-ink-900 font-bold tracking-wide leading-tight">
+            期末复习助手
           </h1>
+          <div className="mt-1 h-px w-24 sm:w-32 bg-gradient-to-r from-gold/40 via-gold/20 to-transparent" />
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <VintageTag color={LEARNING_STATE_TAG_COLOR[learningState]} className="text-sm">
+        <VintageTag color={LEARNING_STATE_TAG_COLOR[learningState]}>
           {LEARNING_STATE_LABEL[learningState]}
         </VintageTag>
         <div
-          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-[3px] border font-serif text-sm ${
+          className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-[3px] border font-serif text-xs sm:text-sm ${
             countdown.passed
               ? 'bg-ink-500/10 text-ink-600 border-ink-500/15'
               : reviewPlan?.examDate
@@ -747,15 +735,9 @@ function DashboardHeader() {
                 : 'bg-paper-200 text-ink-500 border-ink-600/15'
           }`}
         >
-          <Clock size={14} />
+          <Clock size={13} />
           <span>{countdown.label}</span>
         </div>
-        {/* 二次元学习少女立绘：贴合备考主题的视觉点睛，md+ 显示 */}
-        <AnimeMascot
-          prompt={MASCOT_PROMPT}
-          size="portrait_4_3"
-          className="hidden md:block w-24 h-32 rounded-paper pointer-events-none flex-shrink-0 ml-1"
-        />
       </div>
     </header>
   );
@@ -1035,7 +1017,7 @@ ${text.slice(0, 8000)}`;
   const hasMaterials = materials.length > 0;
 
   return (
-    <PaperCard status="active" className="p-5 md:p-6">
+    <PaperCard status="active" className="p-3 sm:p-5 md:p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <span className="text-2xl">📥</span>
@@ -1489,10 +1471,70 @@ function StatItem({ label, value, suffix, color }: { label: string; value: numbe
    主组件
    ═══════════════════════════════════════════════════════ */
 
+/* ═══════════════════════════════════════════════════════
+   Demo 数据一键加载横幅
+   ═══════════════════════════════════════════════════════ */
+
+function DemoBanner() {
+  const materials = useAppStore((s) => s.materials);
+  const addMaterial = useAppStore((s) => s.addMaterial);
+  const addKnowledgePoints = useAppStore((s) => s.addKnowledgePoints);
+  const addQuestions = useAppStore((s) => s.addQuestions);
+  const setLearningState = useAppStore((s) => s.setLearningState);
+  const { addToast } = useToastStore();
+
+  // 已有数据时隐藏横幅
+  if (materials.length > 0) return null;
+
+  const handleLoadDemo = () => {
+    const demo = buildDemoData();
+    addMaterial(demo.materials[0]);
+    addKnowledgePoints(demo.knowledgePoints);
+    addQuestions(demo.questions);
+    setLearningState('Onboarded');
+    addToast('success', `已加载高数示例：${demo.questions.length} 道题，${demo.knowledgePoints.length} 个知识点`);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <PaperCard status="default" className="p-3 sm:p-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="text-xl sm:text-2xl flex-shrink-0">📐</span>
+            <div className="min-w-0">
+              <p className="font-serif text-sm sm:text-base text-ink-900 font-bold leading-tight">
+                高等数学期末复习示例
+              </p>
+              <p className="text-xs text-ink-500 font-sans leading-tight mt-0.5">
+                一键加载 41 道高数题（8 个知识点），快速体验完整流程
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleLoadDemo}
+            className="flex-shrink-0 px-3 sm:px-4 py-1.5 rounded-[3px] bg-seal text-paper-50 font-serif text-xs sm:text-sm hover:bg-seal-dark transition-colors shadow-stamp"
+          >
+            加载示例
+          </button>
+        </div>
+      </PaperCard>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   主组件
+   ═══════════════════════════════════════════════════════ */
+
 export default function Dashboard() {
   return (
-    <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 space-y-6">
+    <div className="max-w-5xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6">
       <DashboardHeader />
+      <DemoBanner />
       <MaterialUploadCard />
       <ActivityCardList />
       <ProgressOverview />

@@ -185,6 +185,9 @@ interface AppState {
   /** 单页视图切换：工作台 / 出题 / 错题本 / 记忆卡片 / 督学 / 题库管理 */
   activeView: 'dashboard' | 'practice' | 'wrongbook' | 'memory' | 'supervisor' | 'questionbank';
   setActiveView: (view: 'dashboard' | 'practice' | 'wrongbook' | 'memory' | 'supervisor' | 'questionbank') => void;
+
+  /** 清除所有持久化数据（重置到初始状态）。直接移除 localStorage 项，规避 persist 中间件竞态导致的水合回填。 */
+  clearAllData: () => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -366,6 +369,39 @@ export const useAppStore = create<AppState>()(
 
       activeView: 'dashboard',
       setActiveView: (view) => set({ activeView: view }),
+
+      clearAllData: () => {
+        // 直接移除 localStorage 持久化项，规避 zustand persist 中间件在 set 后异步重新水合导致数据回填的竞态。
+        try {
+          localStorage.removeItem('uniflow-storage');
+        } catch {
+          // 忽略 localStorage 不可用情况
+        }
+        // 重置内存状态到初始值
+        set({
+          currentUser: null,
+          learningState: 'Onboarded',
+          materials: [],
+          knowledgePoints: [],
+          questions: [],
+          answerRecords: [],
+          wrongQuestions: [],
+          memoryCards: [],
+          studyProgress: {
+            totalQuestions: 0,
+            correctCount: 0,
+            wrongCount: 0,
+            streakDays: 0,
+            lastStudyDate: '',
+            studyMinutesToday: 0,
+            weakPointIds: [],
+            reviewedCardCount: 0,
+          },
+          reviewPlan: null,
+          agentSessions: [],
+          activeView: 'dashboard',
+        });
+      },
     }),
     {
       name: 'uniflow-storage',

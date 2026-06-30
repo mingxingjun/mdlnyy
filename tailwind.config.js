@@ -7,6 +7,9 @@ export default {
       center: true,
     },
     extend: {
+      screens: {
+        xs: '420px',
+      },
       colors: {
         paper: {
           50: '#FBF7F0',

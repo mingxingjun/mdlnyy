@@ -14,6 +14,7 @@ import PaperCard from '@/components/PaperCard';
 import VintageButton from '@/components/VintageButton';
 import VintageTag from '@/components/VintageTag';
 import PaperSpinner from '@/components/PaperSpinner';
+import MathText from '@/components/MathText';
 import { useCountUp } from '@/hooks/useCountUp';
 
 /* ═══════════════════════════════════════════════════════
@@ -156,15 +157,15 @@ function FlashCardView({ card, kpName, index }: FlashCardViewProps) {
               }
             }}
           >
-            <PaperCard status="default" rotation={0} className="h-full p-5 flex flex-col">
+            <PaperCard status="default" rotation={0} className="h-full p-4 sm:p-6 flex flex-col">
               <div className="flex items-start justify-between gap-2 mb-3 flex-wrap">
                 <VintageTag color="seal">记忆卡片</VintageTag>
                 {kpName && <VintageTag color="gold">{kpName}</VintageTag>}
               </div>
               <div className="flex-1 flex items-center justify-center text-center px-2">
-                <p className="font-serif text-lg md:text-xl text-ink-900 leading-relaxed whitespace-pre-wrap">
+                <MathText as="div" className="font-serif text-base sm:text-lg md:text-xl text-ink-900 leading-relaxed whitespace-pre-wrap">
                   {card.front}
-                </p>
+                </MathText>
               </div>
               <p className="text-xs text-ink-500 font-sans text-center mt-2">
                 点击卡片查看答案 →
@@ -174,15 +175,15 @@ function FlashCardView({ card, kpName, index }: FlashCardViewProps) {
 
           {/* 背面：答案 + 评分按钮 */}
           <div className="flash-card-back absolute inset-0">
-            <PaperCard status="active" rotation={0} className="h-full p-5 flex flex-col">
+            <PaperCard status="active" rotation={0} className="h-full p-4 sm:p-6 flex flex-col">
               <div className="flex items-start justify-between gap-2 mb-3 flex-wrap">
                 <VintageTag color="green">答案</VintageTag>
                 {kpName && <VintageTag color="gold">{kpName}</VintageTag>}
               </div>
               <div className="flex-1 flex items-center justify-center text-center px-2 overflow-auto">
-                <p className="font-serif text-base md:text-lg text-ink-800 leading-relaxed whitespace-pre-wrap">
+                <MathText as="div" className="font-serif text-sm sm:text-base md:text-lg text-ink-800 leading-relaxed whitespace-pre-wrap">
                   {card.back}
-                </p>
+                </MathText>
               </div>
               {!reviewed ? (
                 <div className="mt-3 flex items-center justify-center gap-2">
@@ -252,9 +253,9 @@ function CardRow({ card, kpName }: CardRowProps) {
             onClick={() => setExpanded((v) => !v)}
             className="block w-full text-left"
           >
-            <p className="font-serif text-sm text-ink-900 leading-relaxed">
-              <span className="text-ink-500">问：</span>{card.front}
-            </p>
+            <div className="font-serif text-sm text-ink-900 leading-relaxed">
+              <span className="text-ink-500">问：</span><MathText>{card.front}</MathText>
+            </div>
             <AnimatePresence initial={false}>
               {expanded && (
                 <motion.div
@@ -264,9 +265,9 @@ function CardRow({ card, kpName }: CardRowProps) {
                   transition={{ duration: 0.2, ease: 'easeOut' }}
                   className="overflow-hidden"
                 >
-                  <p className="font-serif text-sm text-ink-700 leading-relaxed mt-1.5">
-                    <span className="text-sage-dark">答：</span>{card.back}
-                  </p>
+                  <div className="font-serif text-sm text-ink-700 leading-relaxed mt-1.5">
+                    <span className="text-sage-dark">答：</span><MathText>{card.back}</MathText>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -452,7 +453,7 @@ ${kpList}
   /* ── 空状态 ── */
   if (memoryCards.length === 0) {
     return (
-      <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 space-y-5">
+      <div className="max-w-3xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 space-y-5">
         <header className="flex items-center gap-3">
           <button
             type="button"
@@ -464,11 +465,11 @@ ${kpList}
           </button>
           <div>
             <p className="font-handwritten text-sm text-ink-500 leading-none">间隔重复 · 长期记忆</p>
-            <h1 className="font-serif text-2xl text-ink-900 font-bold tracking-wide leading-tight">记忆卡片</h1>
+            <h1 className="font-serif text-xl sm:text-2xl text-ink-900 font-bold tracking-wide leading-tight">记忆卡片</h1>
           </div>
         </header>
 
-        <PaperCard status="default" className="p-8 md:p-12">
+        <PaperCard status="default" className="p-4 sm:p-6 md:p-8 lg:p-12">
           <div className="text-center space-y-4">
             <motion.span
               className="text-5xl block"
@@ -513,7 +514,7 @@ ${kpList}
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 space-y-5">
+    <div className="max-w-3xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 space-y-5">
       {/* 1. 页头 */}
       <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -527,7 +528,7 @@ ${kpList}
           </button>
           <div>
             <p className="font-handwritten text-sm text-ink-500 leading-none">间隔重复 · 长期记忆</p>
-            <h1 className="font-serif text-2xl text-ink-900 font-bold tracking-wide leading-tight">记忆卡片</h1>
+            <h1 className="font-serif text-xl sm:text-2xl text-ink-900 font-bold tracking-wide leading-tight">记忆卡片</h1>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -585,7 +586,7 @@ ${kpList}
           <PaperCard status="default" className="p-6">
             <div className="text-center space-y-1">
               <motion.span
-                className="text-3xl block"
+                className="text-2xl sm:text-3xl block"
                 animate={{ y: [0, -6, 0] }}
                 transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
               >🎉</motion.span>

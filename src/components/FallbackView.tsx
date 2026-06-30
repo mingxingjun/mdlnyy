@@ -160,7 +160,7 @@ function GalaxyFallback({ onNavigate }: GalaxyFallbackProps) {
                 }}
               />
               <div
-                className="relative p-6 md:p-8 rounded-3xl flex flex-col items-center gap-4 transition-all duration-300"
+                className="relative p-4 sm:p-6 md:p-8 rounded-3xl flex flex-col items-center gap-4 transition-all duration-300"
                 style={{
                   background: 'rgba(5, 12, 25, 0.85)',
                   backdropFilter: 'blur(20px)',

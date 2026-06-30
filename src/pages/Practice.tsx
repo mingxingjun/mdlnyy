@@ -16,6 +16,7 @@ import PaperCard from '@/components/PaperCard';
 import VintageButton from '@/components/VintageButton';
 import VintageTag from '@/components/VintageTag';
 import PaperSpinner from '@/components/PaperSpinner';
+import MathText from '@/components/MathText';
 import QuizResultPage from '@/components/QuizResultPage';
 
 /* ═══════════════════════════════════════════════════════
@@ -218,7 +219,12 @@ function extractChoiceLetter(s: string): string {
   return m ? m[1].toUpperCase() : s.trim();
 }
 
-/** 判对错：选择题按字母精确匹配，其余题型归一化后大小写不敏感包含检查 */
+/**
+ * 判对错：
+ *  - 选择题：按字母精确匹配
+ *  - 填空题：归一化后精确匹配；若双方都是数值则按数值相等判断（容许 1/2 与 0.5 等价）
+ *  - 简答/计算题：归一化后精确匹配（不使用 includes，避免"填1也能答对"的子串误判）
+ */
 function judgeAnswer(question: Question, userAnswer: string): boolean {
   const u = userAnswer.trim();
   if (!u) return false;
@@ -229,7 +235,19 @@ function judgeAnswer(question: Question, userAnswer: string): boolean {
   const cn = normalizeText(question.answer);
   if (!un || !cn) return false;
   if (un === cn) return true;
-  return cn.includes(un) || un.includes(cn);
+  // 数值等价判断：把常见分隔符统一后尝试 parseFloat，容差 1e-9
+  const toNum = (s: string): number | null => {
+    // 去除 LaTeX 包裹 $...$ 与 \, 等千分位
+    const cleaned = s.replace(/\$/g, '').replace(/\\,/g, '').replace(/,/g, '').trim();
+    const n = parseFloat(cleaned);
+    return Number.isFinite(n) ? n : null;
+  };
+  const unNum = toNum(un);
+  const cnNum = toNum(cn);
+  if (unNum !== null && cnNum !== null) {
+    return Math.abs(unNum - cnNum) < 1e-9;
+  }
+  return false;
 }
 
 /** 将讲解结构序列化为错题本的 stepBreakdown 字符串 */
@@ -270,14 +288,14 @@ function ExplanationPanel({
   selectedStyle, onStyleChange, loading, explanation, onGoWrongbook, autoRecorded,
 }: ExplanationPanelProps) {
   return (
-    <PaperCard status="default" className="mt-3 p-4">
+    <PaperCard status="default" className="mt-3 p-3 sm:p-4">
       <div className="flex items-center gap-2 mb-3">
         <Lightbulb size={16} className="text-gold-dark" />
         <h4 className="font-serif text-base text-ink-900 font-bold">讲解</h4>
       </div>
 
       {/* 讲解风格切换 */}
-      <div className="flex flex-wrap items-center gap-2 mb-3">
+      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3">
         {EXPLANATION_STYLES.map((s) => (
           <VintageButton
             key={s.value}
@@ -297,7 +315,7 @@ function ExplanationPanel({
           {explanation.errorLocation && (
             <div className="rounded-paper border border-terracotta/20 bg-terracotta/5 px-3 py-2">
               <p className="text-xs text-terracotta-dark font-serif mb-0.5">错因定位</p>
-              <p className="text-sm text-ink-800 font-serif">{explanation.errorLocation}</p>
+              <MathText as="div" className="text-sm text-ink-800 font-serif">{explanation.errorLocation}</MathText>
             </div>
           )}
 
@@ -310,12 +328,12 @@ function ExplanationPanel({
                     <span className="flex-shrink-0 w-5 h-5 rounded-full bg-seal/10 text-seal text-xs flex items-center justify-center font-bold">
                       {i + 1}
                     </span>
-                    <span className="flex-1 leading-relaxed">
-                      {s.content}
+                    <div className="flex-1 leading-relaxed">
+                      <MathText>{s.content}</MathText>
                       {s.rationale && (
-                        <span className="block text-xs text-ink-500 mt-0.5 font-sans">依据：{s.rationale}</span>
+                        <MathText as="div" className="text-xs text-ink-500 mt-0.5 font-sans">{`依据：${s.rationale}`}</MathText>
                       )}
-                    </span>
+                    </div>
                   </li>
                 ))}
               </ol>
@@ -329,7 +347,7 @@ function ExplanationPanel({
                 {explanation.pitfalls.map((p, i) => (
                   <li key={i} className="flex gap-2 text-sm text-ink-700 font-serif">
                     <span className="text-gold-dark flex-shrink-0">·</span>
-                    <span>{p}</span>
+                    <MathText as="span">{p}</MathText>
                   </li>
                 ))}
               </ul>
@@ -341,7 +359,9 @@ function ExplanationPanel({
               <p className="text-xs text-gold-dark font-serif mb-1">引导追问</p>
               <ul className="space-y-1">
                 {explanation.followupQuestions.map((q, i) => (
-                  <li key={i} className="text-sm text-ink-800 font-serif">? {q}</li>
+                  <li key={i} className="text-sm text-ink-800 font-serif">
+                    <MathText>{`? ${q}`}</MathText>
+                  </li>
                 ))}
               </ul>
             </div>
@@ -352,7 +372,7 @@ function ExplanationPanel({
       )}
 
       {/* 错题已自动收录，提供跳转错题本入口 */}
-      <div className="mt-4 pt-3 border-t border-ink-600/10 flex items-center justify-between gap-2">
+      <div className="mt-4 pt-3 border-t border-ink-600/10 flex flex-wrap items-center justify-between gap-2">
         {autoRecorded ? (
           <span className="inline-flex items-center gap-1 text-xs font-serif text-sage-dark">
             <Check size={13} /> 已自动收录至错题本
@@ -765,7 +785,7 @@ ${kpList}
   );
 
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 space-y-5">
+    <div className="max-w-3xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 space-y-5">
       {/* 页头 */}
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -773,13 +793,13 @@ ${kpList}
             type="button"
             onClick={handleBackHome}
             title="返回首页"
-            className="inline-flex items-center justify-center w-9 h-9 rounded-paper border border-ink-600/20 bg-paper-100 text-ink-700 hover:bg-paper-200 hover:text-seal transition-colors"
+            className="inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-paper border border-ink-600/20 bg-paper-100 text-ink-700 hover:bg-paper-200 hover:text-seal transition-colors"
           >
             <ArrowLeft size={16} />
           </button>
           <div>
             <p className="font-handwritten text-sm text-ink-500 leading-none">出题 · 作答 · 讲解</p>
-            <h1 className="font-serif text-2xl text-ink-900 font-bold tracking-wide leading-tight">练习</h1>
+            <h1 className="font-serif text-xl sm:text-2xl text-ink-900 font-bold tracking-wide leading-tight">练习</h1>
           </div>
         </div>
 
@@ -814,7 +834,7 @@ ${kpList}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.25, ease: 'easeOut' }}
         >
-        <PaperCard status="active" className="p-6 md:p-8">
+        <PaperCard status="active" className="p-4 sm:p-6 md:p-8">
           <div className="text-center space-y-4">
             <span className="text-4xl">✍️</span>
             {noKnowledgePoints && bankQuestions.filter((q) => q.source === 'bank' && q.answer).length === 0 ? (
@@ -952,7 +972,7 @@ ${kpList}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.25, ease: 'easeOut' }}
         >
-        <PaperCard status="active" className="p-6 md:p-8">
+        <PaperCard status="active" className="p-4 sm:p-6 md:p-8">
           <PaperSpinner text="正在出题，请稍候..." />
         </PaperCard>
         </motion.div>
@@ -975,7 +995,7 @@ ${kpList}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
         >
-          <PaperCard status="active" className="p-5 md:p-6">
+          <PaperCard status="active" className="p-3 sm:p-5 md:p-6">
             {/* 题型 / 难度 / 来源 */}
             <div className="flex items-center gap-2 mb-3 flex-wrap">
               <VintageTag color="ink">{QTYPE_LABEL[currentQuestion.type]}</VintageTag>
@@ -995,9 +1015,9 @@ ${kpList}
             </div>
 
             {/* 题干 */}
-            <p className="font-serif text-base md:text-lg text-ink-900 leading-relaxed mb-4 whitespace-pre-wrap">
+            <MathText as="div" className="font-serif text-base sm:text-base md:text-lg text-ink-900 leading-relaxed mb-4 sm:mb-5 whitespace-pre-wrap">
               {currentQuestion.stem}
-            </p>
+            </MathText>
 
             {/* 作答区 */}
             {currentQuestion.type === 'choice' && currentQuestion.options ? (
@@ -1025,7 +1045,7 @@ ${kpList}
                     >
                     <VintageButton
                       variant="secondary"
-                      className={cn('w-full justify-start text-left h-auto py-2.5 whitespace-normal', optCls)}
+                      className={cn('w-full justify-start text-left h-auto py-2.5 sm:py-3 px-3 sm:px-4 text-sm sm:text-base whitespace-normal', optCls)}
                       onClick={() => {
                         if (!judged) {
                           setSelectedOptionIdx(idx);
@@ -1033,7 +1053,7 @@ ${kpList}
                         }
                       }}
                     >
-                      <span className="font-serif text-sm">{opt}</span>
+                      <MathText as="span" className="font-serif text-sm sm:text-base">{opt}</MathText>
                       {judged && isCorrectOpt && (
                         <motion.span
                           className="ml-auto flex-shrink-0"
@@ -1080,11 +1100,11 @@ ${kpList}
               <div className="mt-4 space-y-3">
                 <div
                   className={cn(
-                    'rounded-paper border px-3 py-2.5',
+                    'rounded-paper border px-3 sm:px-4 py-2.5 sm:py-3',
                     judged.isCorrect ? 'border-sage/30 bg-sage/10' : 'border-terracotta/30 bg-terracotta/10',
                   )}
                 >
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
                     {judged.isCorrect ? (
                       <>
                         <Check size={16} className="text-sage-dark" />
@@ -1099,11 +1119,11 @@ ${kpList}
                   </div>
                   {!judged.isCorrect && (
                     <p className="text-sm text-ink-800 font-serif">
-                      正确答案：<span className="text-sage-dark font-bold">{currentQuestion.answer}</span>
+                      正确答案：<MathText as="span" className="text-sage-dark font-bold">{currentQuestion.answer}</MathText>
                     </p>
                   )}
                   {currentQuestion.explanation && (
-                    <p className="text-xs text-ink-600 font-sans mt-1">{currentQuestion.explanation}</p>
+                    <MathText as="div" className="text-xs text-ink-600 font-sans mt-1">{currentQuestion.explanation}</MathText>
                   )}
                 </div>
 
@@ -1119,7 +1139,7 @@ ${kpList}
                 )}
 
                 <div className="flex justify-end">
-                  <VintageButton variant="primary" size="lg" onClick={handleNext}>
+                  <VintageButton variant="primary" size="lg" onClick={handleNext} className="w-full sm:w-auto">
                     {currentIndex + 1 >= sessionQuestions.length ? '查看总结' : '下一题'}
                     <ChevronRight size={16} className="ml-1.5" />
                   </VintageButton>

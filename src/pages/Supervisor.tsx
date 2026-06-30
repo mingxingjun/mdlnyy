@@ -15,6 +15,7 @@ import PaperCard from '@/components/PaperCard';
 import VintageButton from '@/components/VintageButton';
 import VintageTag from '@/components/VintageTag';
 import PaperSpinner from '@/components/PaperSpinner';
+import MathText from '@/components/MathText';
 
 /* ═══════════════════════════════════════════════════════
    常量与映射
@@ -278,12 +279,12 @@ function PlanItemRow({ item, index, kpNames }: PlanItemRowProps) {
         {kpNames.length > 0 ? (
           <div className="flex items-center gap-1 flex-wrap">
             {kpNames.map((name, i) => (
-              <span
+              <div
                 key={`${name}-${i}`}
                 className="inline-flex items-center px-2 py-0.5 rounded-paper bg-paper-200/60 text-ink-700 font-serif text-xs border border-ink-600/10"
               >
-                {name}
-              </span>
+                <MathText>{name}</MathText>
+              </div>
             ))}
           </div>
         ) : (
@@ -473,7 +474,7 @@ ${wrongSummary}
   /* ── 空状态 ── */
   if (noDataAtAll) {
     return (
-      <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 space-y-5">
+      <div className="max-w-3xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 space-y-5">
         <header className="flex items-center gap-3">
           <button
             type="button"
@@ -485,11 +486,11 @@ ${wrongSummary}
           </button>
           <div>
             <p className="font-handwritten text-sm text-ink-500 leading-none">进度 · 报告 · 提醒</p>
-            <h1 className="font-serif text-2xl text-ink-900 font-bold tracking-wide leading-tight">学习报告</h1>
+            <h1 className="font-serif text-xl sm:text-2xl text-ink-900 font-bold tracking-wide leading-tight">学习报告</h1>
           </div>
         </header>
 
-        <PaperCard status="default" className="p-8 md:p-12">
+        <PaperCard status="default" className="p-4 sm:p-6 md:p-8 lg:p-12">
           <div className="text-center space-y-4">
             <motion.span className="text-5xl block mb-4" animate={{ y: [0, -6, 0] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}>📊</motion.span>
             <p className="font-handwritten text-2xl text-ink-700">还没有学习数据，去练习吧</p>
@@ -506,7 +507,7 @@ ${wrongSummary}
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 space-y-5">
+    <div className="max-w-3xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 space-y-5">
       {/* 1. 页头 */}
       <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -520,7 +521,7 @@ ${wrongSummary}
           </button>
           <div>
             <p className="font-handwritten text-sm text-ink-500 leading-none">进度 · 报告 · 提醒</p>
-            <h1 className="font-serif text-2xl text-ink-900 font-bold tracking-wide leading-tight">学习报告</h1>
+            <h1 className="font-serif text-xl sm:text-2xl text-ink-900 font-bold tracking-wide leading-tight">学习报告</h1>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -552,7 +553,7 @@ ${wrongSummary}
           <span className="text-xs text-ink-500 font-sans">督学 Agent 跟踪</span>
         </div>
         <PaperCard status="default" className="p-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
             <StatCard
               label="累计答题"
               value={studyProgress.totalQuestions}
@@ -822,7 +823,7 @@ ${wrongSummary}
                   return (
                     <div key={d.id}>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-serif text-sm text-ink-800 truncate">{d.name}</span>
+                        <MathText className="font-serif text-sm text-ink-800 truncate">{d.name}</MathText>
                         <span className="font-serif text-xs text-terracotta-dark font-bold flex-shrink-0 ml-2">
                           {d.count} 题
                         </span>
