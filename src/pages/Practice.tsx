@@ -496,7 +496,14 @@ ${optionsBlock}【学生答案】${userAnswer}
 
       try {
         const settings = loadModelSettings();
-        const userMessage = compressPrompt(agent, input);
+        // 注入学生上下文：薄弱知识点，让讲解更有针对性
+        const weakNames = knowledgePoints
+          .filter((kp) => studyProgress.weakPointIds.includes(kp.id))
+          .map((kp) => kp.name);
+        const extraContext = weakNames.length > 0
+          ? `学生当前薄弱知识点：${weakNames.join('、')}。讲解时可针对性关联这些薄弱点。`
+          : undefined;
+        const userMessage = compressPrompt(agent, input, extraContext);
         const { content } = await callModelForTask(
           settings, 'chat', agent.systemPrompt, userMessage, controller.signal,
           { temperature: agent.temperature, maxTokens: agent.maxTokens },
@@ -535,7 +542,7 @@ ${optionsBlock}【学生答案】${userAnswer}
         if (!controller.signal.aborted) setExplanationLoading(false);
       }
     },
-    [sessionQuestions, currentIndex, userAnswer, addToast, updateWrongQuestion],
+    [sessionQuestions, currentIndex, userAnswer, addToast, updateWrongQuestion, knowledgePoints, studyProgress.weakPointIds],
   );
 
   /** 题库模式：从已导入题库抽取原题，分批出完。支持按文件筛选 */
