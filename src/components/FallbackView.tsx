@@ -67,7 +67,6 @@ function StarFieldCSS() {
           radial-gradient(1px 1px at 420px 180px, #fff, transparent)
         `,
         backgroundSize: '400px 250px',
-        animation: 'twinkle 8s ease-in-out infinite',
       }} />
       <div className="absolute inset-0 z-0 pointer-events-none" style={{
         backgroundImage: `
@@ -77,7 +76,6 @@ function StarFieldCSS() {
           radial-gradient(2px 2px at 380px 130px, rgba(255,200,100,0.6), transparent)
         `,
         backgroundSize: '500px 300px',
-        animation: 'twinkle 10s ease-in-out infinite reverse',
         opacity: 0.7,
       }} />
     </>

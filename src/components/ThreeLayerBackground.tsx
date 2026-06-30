@@ -144,7 +144,7 @@ export default function ThreeLayerBackground({ children, className }: ThreeLayer
   const reduce = useReducedMotion();
 
   // 鼠标视差：装饰层根据鼠标位置做微弱平移，增加层次感。
-  // reduce 时不启用。用 useSpring 平滑跟随，避免生硬。
+  // 用 rAF 节流避免 mousemove 高频触发；reduce 时不启用。
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const smoothX = useSpring(mouseX, { stiffness: 60, damping: 20, mass: 0.6 });
@@ -154,12 +154,25 @@ export default function ThreeLayerBackground({ children, className }: ThreeLayer
 
   useEffect(() => {
     if (reduce) return;
+    let rafId: number | null = null;
+    let pendingX = 0;
+    let pendingY = 0;
     const onMove = (e: MouseEvent) => {
-      mouseX.set((e.clientX / window.innerWidth - 0.5) * 2);
-      mouseY.set((e.clientY / window.innerHeight - 0.5) * 2);
+      pendingX = (e.clientX / window.innerWidth - 0.5) * 2;
+      pendingY = (e.clientY / window.innerHeight - 0.5) * 2;
+      if (rafId === null) {
+        rafId = requestAnimationFrame(() => {
+          rafId = null;
+          mouseX.set(pendingX);
+          mouseY.set(pendingY);
+        });
+      }
     };
     window.addEventListener('mousemove', onMove, { passive: true });
-    return () => window.removeEventListener('mousemove', onMove);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, [reduce, mouseX, mouseY]);
 
   const decorItems = useMemo<DecorItem[]>(() => {
@@ -168,12 +181,12 @@ export default function ThreeLayerBackground({ children, className }: ThreeLayer
       'rgba(184,134,11,0.35)',
       'rgba(45,90,39,0.25)',
       'rgba(92,64,51,0.2)',
-      'rgba(139,37,0,0.2)',
     ];
-    const snippetColors = ['#FFF9C4', '#FFCDD2', '#BBDEFB', '#C8E6C9'];
+    const snippetColors = ['#FFF9C4', '#FFCDD2'];
 
     const items: DecorItem[] = [];
 
+    // 精简至 6 个装饰元素（原 12 个），降低无限循环动画数量
     items.push({
       id: 1, type: 'feather', top: '8%', left: '2%', size: 80, rotation: -15,
       color: 'rgba(92,64,51,0.3)', floatDelay: 0, animated: true,
@@ -184,11 +197,7 @@ export default function ThreeLayerBackground({ children, className }: ThreeLayer
       color: colors[0], floatDelay: 1.2, animated: true,
     });
     items.push({
-      id: 3, type: 'confetti', top: '12%', right: '4%', size: 8, rotation: -40,
-      color: colors[1], floatDelay: 0.5, animated: true,
-    });
-    items.push({
-      id: 4, type: 'confetti', top: '3%', right: '15%', size: 7, rotation: 60,
+      id: 3, type: 'confetti', top: '3%', right: '15%', size: 7, rotation: 60,
       color: colors[2], floatDelay: 2, animated: true,
     });
 
@@ -196,36 +205,15 @@ export default function ThreeLayerBackground({ children, className }: ThreeLayer
       id: 5, type: 'snippet', bottom: '6%', left: '3%', size: 0, rotation: -8,
       color: snippetColors[0], floatDelay: 0.8, animated: true,
     });
-    items.push({
-      id: 6, type: 'snippet', bottom: '12%', left: '8%', size: 0, rotation: 5,
-      color: snippetColors[1], floatDelay: 1.5, animated: true,
-    });
 
     items.push({
       id: 7, type: 'inkdot', top: '20%', right: '2%', size: 30, rotation: 0,
-      color: colors[3], floatDelay: 0.3, animated: true,
-    });
-    items.push({
-      id: 8, type: 'inkdot', bottom: '25%', right: '3%', size: 24, rotation: 0,
-      color: colors[0], floatDelay: 1.8, animated: false,
+      color: colors[3], floatDelay: 0.3, animated: false,
     });
 
     items.push({
       id: 9, type: 'petal', top: '40%', left: '1%', size: 18, rotation: 30,
       color: colors[0], floatDelay: 0, animated: true,
-    });
-    items.push({
-      id: 10, type: 'petal', bottom: '35%', left: '2%', size: 14, rotation: -50,
-      color: colors[1], floatDelay: 2.2, animated: true,
-    });
-
-    items.push({
-      id: 11, type: 'confetti', top: '60%', right: '1%', size: 9, rotation: 15,
-      color: colors[2], floatDelay: 1, animated: true,
-    });
-    items.push({
-      id: 12, type: 'confetti', bottom: '5%', right: '10%', size: 6, rotation: -20,
-      color: colors[4], floatDelay: 0.7, animated: true,
     });
 
     return items;
@@ -236,9 +224,10 @@ export default function ThreeLayerBackground({ children, className }: ThreeLayer
       return { animate: { y: 0, rotate: 0 }, transition: { duration: 0 } };
     }
     return {
+      // 简化 keyframes：5 帧 → 3 帧，减少每帧计算
       animate: {
-        y: [0, -4, 2, -2, 0],
-        rotate: [0, 0.8, -0.5, 0.3, 0],
+        y: [0, -4, 0],
+        rotate: [0, 0.8, 0],
       },
       transition: {
         duration,
@@ -347,15 +336,14 @@ export default function ThreeLayerBackground({ children, className }: ThreeLayer
         <BookStack style={{ position: 'absolute', bottom: '3%', right: '2%', opacity: 0.55 }} />
       </motion.div>
 
-      <motion.div
+      {/* 噪点纹理层：静态展示，不做 backgroundPosition 动画（避免持续重绘） */}
+      <div
         className="absolute inset-0 z-30 pointer-events-none"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
           opacity: 0.03,
           mixBlendMode: 'multiply',
         }}
-        animate={reduce ? undefined : { backgroundPosition: ['0 0', '2px 2px', '0 0'] }}
-        transition={reduce ? undefined : { duration: 20, repeat: Infinity, ease: 'linear' }}
       />
     </div>
   );

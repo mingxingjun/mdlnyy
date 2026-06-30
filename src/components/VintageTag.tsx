@@ -35,6 +35,7 @@ export default function VintageTag({
       className={cn(
         'inline-flex items-center gap-1 px-2 py-0.5 text-xs font-serif',
         'shadow-note relative',
+        'transition-transform duration-150 ease-out hover:scale-110 hover:-rotate-1 active:scale-95',
         colorStyles[color],
         closable && 'pr-1',
         className
@@ -42,8 +43,6 @@ export default function VintageTag({
       initial={{ opacity: 0, scale: 0.9, rotate: rotation - 5 }}
       animate={{ opacity: 1, scale: 1, rotate: rotation }}
       exit={{ opacity: 0, scale: 0.85 }}
-      whileHover={{ scale: 1.08, rotate: rotation + 2 }}
-      whileTap={{ scale: 0.95 }}
       transition={{ type: 'spring', stiffness: 500, damping: 25 }}
     >
       <span className="relative z-[1] leading-tight">{children}</span>

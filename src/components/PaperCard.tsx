@@ -10,10 +10,12 @@ export interface PaperCardProps {
   status?: PaperCardStatus;
   rotation?: number;
   onClick?: (e: MouseEvent<HTMLDivElement>) => void;
+  /** 是否启用 layout 动画（仅列表项重排时需要，默认关闭以避免性能消耗） */
+  layout?: boolean;
 }
 
 const PaperCard = forwardRef<HTMLDivElement, PaperCardProps>(
-  ({ children, className, status = 'default', rotation, onClick }, ref) => {
+  ({ children, className, status = 'default', rotation, onClick, layout: enableLayout = false }, ref) => {
     const reduce = useReducedMotion();
     const randomRotation = useMemo(() => {
       if (rotation !== undefined) return rotation;
@@ -42,7 +44,7 @@ const PaperCard = forwardRef<HTMLDivElement, PaperCardProps>(
     return (
       <motion.div
         ref={ref}
-        layout
+        layout={enableLayout}
         className={baseClasses}
         onClick={onClick}
         initial={{ rotate: animateRotate, y: animateY }}

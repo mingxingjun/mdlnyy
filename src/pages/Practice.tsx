@@ -994,13 +994,11 @@ ${kpList}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.25, ease: 'easeOut' }}
         >
-        <AnimatePresence mode="wait">
         <motion.div
           key={currentIndex}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
+          transition={{ duration: 0.25, ease: 'easeOut' }}
         >
           <PaperCard status="active" className="p-3 sm:p-5 md:p-6">
             {/* 题型 / 难度 / 来源 */}
@@ -1155,7 +1153,6 @@ ${kpList}
             )}
           </PaperCard>
         </motion.div>
-        </AnimatePresence>
         </motion.div>
       )}
 
