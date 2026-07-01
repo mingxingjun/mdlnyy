@@ -460,7 +460,7 @@ export default function QuestionBank() {
                         <button
                           type="button"
                           onClick={() => toggleExpand(set.material.id)}
-                          className="w-6 h-6 rounded-[3px] hover:bg-paper-200 flex items-center justify-center text-ink-600 flex-shrink-0"
+                          className="w-9 h-9 rounded-[3px] hover:bg-paper-200 flex items-center justify-center text-ink-600 flex-shrink-0"
                         >
                           {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                         </button>
@@ -470,7 +470,7 @@ export default function QuestionBank() {
                           <button
                             type="button"
                             onClick={() => toggleSelectAllInSet(set)}
-                            className="w-5 h-5 flex-shrink-0 text-ink-600"
+                            className="w-9 h-9 flex-shrink-0 text-ink-600 flex items-center justify-center"
                           >
                             {allSelectedInSet ? <CheckSquare size={18} className="text-seal" /> : <Square size={18} />}
                           </button>
@@ -490,11 +490,11 @@ export default function QuestionBank() {
                                 autoFocus
                                 className="flex-1 px-2 py-1 text-sm font-serif rounded-[3px] border border-seal/40 bg-paper-100 text-ink-900 focus:outline-none"
                               />
-                              <button onClick={handleConfirmRename} className="text-sage-dark hover:bg-sage/10 w-7 h-7 rounded flex items-center justify-center">
-                                <Save size={14} />
+                              <button onClick={handleConfirmRename} className="text-sage-dark hover:bg-sage/10 w-9 h-9 rounded flex items-center justify-center">
+                                <Save size={15} />
                               </button>
-                              <button onClick={() => setRenameId(null)} className="text-ink-500 hover:bg-paper-200 w-7 h-7 rounded flex items-center justify-center">
-                                <X size={14} />
+                              <button onClick={() => setRenameId(null)} className="text-ink-500 hover:bg-paper-200 w-9 h-9 rounded flex items-center justify-center">
+                                <X size={15} />
                               </button>
                             </div>
                           ) : (
@@ -507,15 +507,15 @@ export default function QuestionBank() {
                         </div>
 
                         {/* 操作按钮 */}
-                        <div className="flex items-center gap-1 flex-shrink-0">
+                        <div className="flex items-center gap-2 flex-shrink-0">
                           {!batchMode && set.material.id !== '__orphan__' && (
                             <button
                               type="button"
                               onClick={() => handleStartRename(set.material)}
                               title="重命名"
-                              className="w-7 h-7 rounded-[3px] hover:bg-paper-200 text-ink-500 hover:text-ink-800 flex items-center justify-center"
+                              className="w-9 h-9 rounded-[3px] hover:bg-paper-200 text-ink-500 hover:text-ink-800 flex items-center justify-center"
                             >
-                              <Edit3 size={13} />
+                              <Edit3 size={15} />
                             </button>
                           )}
                           {!batchMode && (
@@ -523,9 +523,9 @@ export default function QuestionBank() {
                               type="button"
                               onClick={() => setPendingDelete({ type: 'set', id: set.material.id, name: set.material.name })}
                               title={set.material.id === '__orphan__' ? '清空未分类题目' : '删除整套'}
-                              className="w-7 h-7 rounded-[3px] hover:bg-terracotta/10 text-terracotta-dark flex items-center justify-center"
+                              className="w-9 h-9 rounded-[3px] hover:bg-terracotta/10 text-terracotta-dark flex items-center justify-center"
                             >
-                              <Trash2 size={13} />
+                              <Trash2 size={15} />
                             </button>
                           )}
                         </div>
@@ -563,7 +563,7 @@ export default function QuestionBank() {
                                         <button
                                           type="button"
                                           onClick={() => toggleSelect(q.id)}
-                                          className="w-5 h-5 flex-shrink-0 mt-0.5 text-ink-600"
+                                          className="w-9 h-9 flex-shrink-0 mt-0.5 text-ink-600 flex items-center justify-center"
                                         >
                                           {isSelected ? <CheckSquare size={16} className="text-seal" /> : <Square size={16} />}
                                         </button>
@@ -592,20 +592,20 @@ export default function QuestionBank() {
 
                                       {/* 单题操作（非批量模式） */}
                                       {!batchMode && (
-                                        <div className="flex flex-col gap-1 flex-shrink-0">
+                                        <div className="flex flex-col gap-2 flex-shrink-0">
                                           <button
                                             type="button"
                                             onClick={() => handleOpenEdit(q)}
-                                            className="w-7 h-7 rounded-[3px] border border-ink-600/10 bg-paper-100 text-ink-500 hover:text-ink-800 hover:bg-paper-200 flex items-center justify-center"
+                                            className="w-9 h-9 rounded-[3px] border border-ink-600/10 bg-paper-100 text-ink-500 hover:text-ink-800 hover:bg-paper-200 flex items-center justify-center"
                                           >
-                                            <Pencil size={12} />
+                                            <Pencil size={14} />
                                           </button>
                                           <button
                                             type="button"
                                             onClick={() => setPendingDelete({ type: 'question', id: q.id })}
-                                            className="w-7 h-7 rounded-[3px] border border-terracotta/20 bg-paper-100 text-terracotta-dark hover:bg-terracotta/10 flex items-center justify-center"
+                                            className="w-9 h-9 rounded-[3px] border border-terracotta/20 bg-paper-100 text-terracotta-dark hover:bg-terracotta/10 flex items-center justify-center"
                                           >
-                                            <Trash2 size={12} />
+                                            <Trash2 size={14} />
                                           </button>
                                         </div>
                                       )}
@@ -665,9 +665,9 @@ export default function QuestionBank() {
                 <button
                   type="button"
                   onClick={() => setEditForm(null)}
-                  className="w-7 h-7 rounded-full hover:bg-paper-200 flex items-center justify-center text-ink-500"
+                  className="w-9 h-9 rounded-full hover:bg-paper-200 flex items-center justify-center text-ink-500"
                 >
-                  <X size={16} />
+                  <X size={18} />
                 </button>
               </div>
 

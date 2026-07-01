@@ -128,14 +128,14 @@ export default function VintageNav({ onSettingsClick }: VintageNavProps) {
                 >
                   <button
                     onClick={handleClear}
-                    className="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center bg-seal text-paper-50 hover:bg-seal-dark transition-colors text-xs font-bold"
+                    className="w-9 h-9 rounded-full flex items-center justify-center bg-seal text-paper-50 hover:bg-seal-dark transition-colors text-xs font-bold"
                     title="确认清除"
                   >
                     ✓
                   </button>
                   <button
                     onClick={() => setConfirmClear(false)}
-                    className="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center bg-ink-200 text-ink-600 hover:bg-ink-300 transition-colors text-xs"
+                    className="w-9 h-9 rounded-full flex items-center justify-center bg-ink-200 text-ink-600 hover:bg-ink-300 transition-colors text-xs"
                     title="取消"
                   >
                     ✕
@@ -145,12 +145,12 @@ export default function VintageNav({ onSettingsClick }: VintageNavProps) {
                 <motion.button
                   key="idle"
                   onClick={() => setConfirmClear(true)}
-                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-ink-500 hover:text-seal hover:bg-paper-200/60 transition-colors border border-ink-600/10"
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-ink-500 hover:text-seal hover:bg-paper-200/60 transition-colors border border-ink-600/10"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   title="清除所有数据"
                 >
-                  <Trash2 size={15} strokeWidth={2} />
+                  <Trash2 size={16} strokeWidth={2} />
                 </motion.button>
               )}
             </AnimatePresence>
@@ -158,13 +158,13 @@ export default function VintageNav({ onSettingsClick }: VintageNavProps) {
             {onSettingsClick && (
               <motion.button
                 onClick={onSettingsClick}
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-ink-500 hover:text-ink-800 hover:bg-paper-200/60 transition-colors border border-ink-600/10"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-ink-500 hover:text-ink-800 hover:bg-paper-200/60 transition-colors border border-ink-600/10"
                 whileHover={{ rotate: 90, scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 transition={{ duration: 0.3 }}
                 title="AI设置"
               >
-                <Settings size={15} strokeWidth={2} />
+                <Settings size={16} strokeWidth={2} />
               </motion.button>
             )}
           </div>

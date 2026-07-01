@@ -277,9 +277,9 @@ function CardRow({ card, kpName }: CardRowProps) {
           type="button"
           onClick={handleRemove}
           title="移除卡片"
-          className="flex-shrink-0 p-1.5 rounded-paper text-ink-500 hover:bg-terracotta/10 hover:text-terracotta-dark transition-colors"
+          className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-paper text-ink-500 hover:bg-terracotta/10 hover:text-terracotta-dark transition-colors"
         >
-          <Trash2 size={14} />
+          <Trash2 size={15} />
         </button>
       </div>
     </li>

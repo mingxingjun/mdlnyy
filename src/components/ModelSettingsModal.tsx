@@ -1,5 +1,6 @@
 import { useEffect, useState, type MouseEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { X, Eye, EyeOff } from 'lucide-react';
 import PaperCard from './PaperCard';
 import VintageButton from './VintageButton';
 import { loadModelSettings, saveModelSettings } from '@/lib/models/api';
@@ -157,10 +158,10 @@ export default function ModelSettingsModal({ open, onClose }: ModelSettingsModal
                 <button
                   type="button"
                   onClick={onClose}
-                  className="text-ink-500 hover:text-ink-800 text-xl leading-none px-2 -mt-1 transition-colors"
+                  className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-ink-500 hover:text-ink-800 hover:bg-paper-200 transition-colors -mt-1"
                   aria-label="关闭"
                 >
-                  ✕
+                  <X size={18} />
                 </button>
               </div>
 
@@ -261,14 +262,14 @@ export default function ModelSettingsModal({ open, onClose }: ModelSettingsModal
                           <button
                             type="button"
                             onClick={() => updateProvider(key, 'enabled', !config.enabled)}
-                            className={`relative w-10 h-5 rounded-full transition-colors ${
+                            className={`relative w-12 h-7 rounded-full transition-colors ${
                               config.enabled ? 'bg-seal/70' : 'bg-ink-600/20'
                             }`}
                             aria-label={`${PROVIDER_LABELS[key]} 启用开关`}
                           >
                             <motion.span
-                              className="absolute top-0.5 w-4 h-4 rounded-full bg-paper-50 shadow-sm"
-                              animate={{ x: config.enabled ? 20 : 2 }}
+                              className="absolute top-1 w-5 h-5 rounded-full bg-paper-50 shadow-sm"
+                              animate={{ x: config.enabled ? 26 : 2 }}
                               transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                             />
                           </button>
@@ -321,9 +322,9 @@ export default function ModelSettingsModal({ open, onClose }: ModelSettingsModal
                             onClick={() => toggleShowKey(key)}
                             aria-label={showKeys[key] ? `隐藏 ${PROVIDER_LABELS[key]} API Key` : `显示 ${PROVIDER_LABELS[key]} API Key`}
                             title={showKeys[key] ? '隐藏 API Key' : '显示 API Key'}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-serif text-ink-500 hover:text-ink-800 px-1 transition-colors"
+                            className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-[3px] text-ink-500 hover:text-ink-800 hover:bg-paper-200 transition-colors"
                           >
-                            {showKeys[key] ? '隐藏' : '显示'}
+                            {showKeys[key] ? <EyeOff size={16} /> : <Eye size={16} />}
                           </button>
                         </div>
                       </div>

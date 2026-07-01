@@ -16,7 +16,7 @@ export interface VintageButtonProps {
 }
 
 const sizeClasses: Record<VintageButtonSize, string> = {
-  sm: 'px-3 py-1.5 text-xs',
+  sm: 'px-3.5 py-2 text-xs',
   md: 'px-5 py-2.5 text-sm',
   lg: 'px-7 py-3.5 text-base',
 };
@@ -58,7 +58,7 @@ export default function VintageButton({
   const isStamp = variant === 'stamp';
 
   const stampSizeClass = {
-    sm: 'w-10 h-10 text-[10px]',
+    sm: 'w-10 h-10 text-xs',
     md: 'w-16 h-16 text-xs',
     lg: 'w-20 h-20 text-sm',
   };

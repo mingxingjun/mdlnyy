@@ -1243,25 +1243,25 @@ function MaterialRow({
 
       <MaterialStatusBadge material={material} />
 
-      <div className="flex items-center gap-1 flex-shrink-0">
+      <div className="flex items-center gap-2 flex-shrink-0">
         {(material.status === 'pending' || material.status === 'failed') && (
           <button
             type="button"
             onClick={onReparse}
             disabled={isParsing}
             title="重新解析"
-            className="p-1.5 rounded-[3px] text-ink-600 hover:bg-seal/10 hover:text-seal transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-9 h-9 flex items-center justify-center rounded-[3px] text-ink-600 hover:bg-seal/10 hover:text-seal transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <RefreshCw size={14} className={isParsing ? 'animate-spin' : ''} />
+            <RefreshCw size={15} className={isParsing ? 'animate-spin' : ''} />
           </button>
         )}
         <button
           type="button"
           onClick={onRemove}
           title="移除"
-          className="p-1.5 rounded-[3px] text-ink-600 hover:bg-terracotta/10 hover:text-terracotta-dark transition-colors"
+          className="w-9 h-9 flex items-center justify-center rounded-[3px] text-ink-600 hover:bg-terracotta/10 hover:text-terracotta-dark transition-colors"
         >
-          <Trash2 size={14} />
+          <Trash2 size={15} />
         </button>
       </div>
     </motion.li>

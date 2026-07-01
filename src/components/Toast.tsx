@@ -104,9 +104,9 @@ export function ToastContainer() {
               </p>
               <button
                 onClick={() => removeToast(toast.id)}
-                className="p-1 rounded-paper hover:bg-ink-600/10 transition-colors flex-shrink-0"
+                className="w-8 h-8 flex items-center justify-center rounded-paper hover:bg-ink-600/10 transition-colors flex-shrink-0"
               >
-                <X size={12} className="text-ink-500" />
+                <X size={16} className="text-ink-500" />
               </button>
             </motion.div>
           );
